@@ -1,0 +1,130 @@
+I’m now adding the game engine layer: database-backed games/moves/events, python-chess legal validation, board UI, clocks, WebSocket gameplay messages, PGN/FEN import/export, and REST endpoints.
+
+Module 3 is now structured as a full gameplay layer rather than a small board mockup. I’m doing a final packaging pass: syntax validation, removing build caches, and producing the ZIP.
+
+Thought for 4m 44s
+Module 3 delivered: Realtime Chess Gameplay
+
+Download the complete updated project ZIP here:
+
+Download Module 3 ZIP
+
+This ZIP contains Module 1 + Module 2 + Module 3 integrated.
+
+Module 3 added
+apps/games/
+├── admin.py
+├── api_urls.py
+├── api_views.py
+├── consumers.py
+├── forms.py
+├── migrations/
+│   └── 0001_initial.py
+├── models.py
+├── routing.py
+├── serializers.py
+├── services.py
+├── tasks.py
+├── tests/
+│   └── test_gameplay.py
+├── urls.py
+└── views.py
+
+templates/games/
+├── fen_import.html
+├── play.html
+└── same_pc_new.html
+
+static/css/games.css
+static/js/games.js
+docs_module3_games.md
+Features completed in Module 3
+Server-side chess game model
+Game move model
+Game event audit log
+python-chess legal move validation
+Realtime WebSocket gameplay
+Drag/drop chess board
+Click-to-move chess board
+Move highlight
+Legal move target highlight
+Captured pieces display
+Move history
+Game clocks
+Increment support
+Delay support
+Server-authoritative move validation
+Same PC offline game mode
+Room-to-game start flow
+/play/<ROOM_CODE>/start-game/
+FEN import
+FEN export
+PGN generation
+PGN download
+Resign
+Abort
+Draw offer
+Draw accept
+Draw decline
+Game state API
+Mobile-ready REST API
+Admin panel for games, moves, and events
+Celery task for timeout marking
+Pytest gameplay tests
+Important URLs
+/games/same-pc/new/          Same computer offline game
+/games/fen/import/           Import FEN position
+/games/<GAME_UUID>/          Play/watch game
+/games/<GAME_UUID>/state/    JSON game state
+/games/<GAME_UUID>/fen/      Download FEN
+/games/<GAME_UUID>/pgn/      Download PGN
+/play/<ROOM_CODE>/start-game/ Start game from room
+
+/api/games/                  Game REST API
+/api/games/<uuid>/           Game detail API
+/api/games/<uuid>/move/      REST move endpoint
+/api/games/<uuid>/action/    REST resign/abort/draw actions
+
+/ws/games/<GAME_UUID>/       Realtime game WebSocket
+Run commands
+unzip chess-platform-module3.zip
+cd chess-platform-module3/chess_platform_repo
+
+cp .env.example .env
+
+docker compose up --build
+
+Apply migrations:
+
+docker compose exec web python manage.py migrate
+
+Run tests:
+
+docker compose exec web pytest apps/games
+
+Run full checks:
+
+docker compose exec web python manage.py check
+docker compose exec web python manage.py makemigrations --check --dry-run
+docker compose exec web ruff check .
+Manual test flow
+1. Open /rooms/create/
+2. Create a room.
+3. Open invite URL in another browser/private window.
+4. Both players click Ready.
+5. Click Start Game.
+6. Move e2 to e4.
+7. Confirm realtime board update.
+8. Download PGN.
+9. Export FEN.
+
+For offline same computer mode:
+
+/games/same-pc/new/
+Git commit
+git add .
+git commit -m "Complete realtime chess gameplay and server move validation"
+
+I packaged the complete module and ran Python syntax compilation successfully in this environment. I did not run Docker containers here, so please run the Docker commands above on your machine/server.
+
+Reply continue Module 4 for Stockfish analysis, analysis board, game review, blunder/mistake/inaccuracy detection, evaluation graph, and opening explorer foundation.

@@ -1,0 +1,138 @@
+I’m adding Module 4 on top of Module 3: Stockfish integration, analysis jobs, review classification, analysis board pages, evaluation graph data, and opening explorer foundation.
+
+The foundation is being expanded with actual database models and migrations, not just views. I’m also wiring Docker to install the Stockfish binary so offline analysis can work without internet after deployment.
+
+Thought for 5m 30s
+Module 4 delivered: Stockfish Analysis, Game Review, Opening Explorer
+
+Download the complete updated project ZIP here:
+
+Download Module 4 ZIP
+
+This ZIP contains Module 1 + Module 2 + Module 3 + Module 4 integrated.
+
+Module 4 added
+apps/stockfish/
+├── admin.py
+├── engine.py
+├── migrations/
+│   └── 0001_initial.py
+├── models.py
+├── services.py
+├── tests/
+│   └── test_stockfish_services.py
+├── urls.py
+└── views.py
+
+apps/analysis/
+├── admin.py
+├── api_urls.py
+├── api_views.py
+├── forms.py
+├── migrations/
+│   └── 0001_initial.py
+├── models.py
+├── serializers.py
+├── services.py
+├── tasks.py
+├── tests/
+│   └── test_analysis_classification.py
+├── urls.py
+└── views.py
+
+templates/analysis/
+├── analysis_board.html
+├── game_review.html
+├── job_detail.html
+└── opening_explorer.html
+
+static/css/analysis.css
+static/js/analysis.js
+docs_module4_analysis.md
+Features completed in Module 4
+Offline Stockfish integration
+Docker installs Stockfish binary
+UCI subprocess engine client
+Engine profile model
+Engine run audit logs
+Stockfish status endpoint
+Position analysis board
+Full-game review queue
+Celery-powered analysis jobs
+Move classification:
+Best
+Excellent
+Good
+Inaccuracy
+Mistake
+Blunder
+Evaluation graph data
+Principal variation storage
+Best move detection
+Score loss calculation
+Opening explorer foundation
+Seeded local ECO opening lines
+Analysis REST APIs for future mobile app
+Admin support for analysis jobs, reviews, openings, and Stockfish runs
+Important URLs
+/analysis/board/
+/analysis/openings/
+/analysis/openings.json
+/analysis/jobs/<JOB_UUID>/
+/analysis/jobs/<JOB_UUID>/state/
+/games/<GAME_UUID>/review/
+/games/<GAME_UUID>/review/start/
+/stockfish/status/
+API URLs
+/api/analysis/games/<GAME_UUID>/start/
+/api/analysis/jobs/<JOB_UUID>/
+/api/analysis/position/
+/api/analysis/openings/?moves=e2e4,e7e5
+Run commands
+unzip chess-platform-module4.zip
+cd chess-platform-module4/chess_platform_repo
+
+cp .env.example .env
+
+docker compose up --build
+
+Apply migrations:
+
+docker compose exec web python manage.py migrate
+
+Check Stockfish:
+
+curl http://localhost:8000/stockfish/status/
+
+Run tests:
+
+docker compose exec web pytest apps/analysis apps/stockfish
+
+Run full checks:
+
+docker compose exec web python manage.py check
+docker compose exec web python manage.py makemigrations --check --dry-run
+docker compose exec web ruff check .
+Manual test flow
+1. Open a completed or active game.
+2. Click Game Review.
+3. Choose depth.
+4. Queue Stockfish Review.
+5. Open the analysis job page.
+6. Wait for Celery to process the game.
+7. Review move classifications and evaluation graph.
+
+For single-position analysis:
+
+/analysis/board/
+
+For opening explorer:
+
+/analysis/openings/
+Git commit
+git add .
+git commit -m "Complete Stockfish analysis and game review module"
+
+I packaged the full module and ran Python syntax compilation successfully in this environment. I did not run Docker services here, so please run the Docker commands above on your machine/server.
+
+Reply continue Module 5 for puzzles, puzzle rating, daily puzzle, puzzle dashboard, and puzzle leaderboard.

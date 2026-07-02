@@ -13,7 +13,7 @@ from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
 from django.views import View
 from django.views.generic import FormView, TemplateView, UpdateView
-from ratelimit.decorators import ratelimit
+from django_ratelimit.decorators import ratelimit
 from .forms import DisableTwoFactorForm, EmailLoginForm, EmailOTPForm, EnableTwoFactorForm, ProfileForm, SignUpForm
 from .models import EmailOTP, User
 from .tasks import send_email_verification
