@@ -1,63 +1,42 @@
+/* Enhanced games.css — drop-in replacement: static/css/games.css */
 .chessboard{
-  width:min(88vw,640px);
-  height:min(88vw,640px);
+  width:min(88vw,650px);
+  height:min(88vw,650px);
   display:grid;
   grid-template-columns:repeat(8,1fr);
   grid-template-rows:repeat(8,1fr);
   margin:0 auto;
-  border:1px solid rgba(234,230,221,.14);
-  border-radius:.5rem;
+  border:1px solid rgba(228,195,125,.28);
+  border-radius:1rem;
   overflow:hidden;
-  background:#0e0f13;
-  box-shadow:0 18px 40px -24px rgba(0,0,0,.6);
+  background:#0d0f14;
+  box-shadow:0 28px 80px rgba(0,0,0,.45),0 0 0 8px rgba(241,237,228,.025),inset 0 1px 0 rgba(255,255,255,.04);
 }
 .board-square{
   position:relative;
   display:flex;
   align-items:center;
   justify-content:center;
-  font-size:clamp(1.9rem,6.5vw,4.3rem);
+  font-size:clamp(1.9rem,6.4vw,4.3rem);
   line-height:1;
   user-select:none;
   cursor:pointer;
+  transition:filter .14s ease,box-shadow .14s ease,transform .14s ease;
 }
-.board-square.light{background:#efe9dc;color:#20211f;}
-.board-square.dark{background:#7c6b52;color:#1a1712;}
-.board-square.selected{outline:3px solid var(--brass);outline-offset:-3px;}
-.board-square.legal::after{
-  content:"";
-  width:22%;
-  height:22%;
-  border-radius:50%;
-  background:rgba(122,148,113,.55);
-  position:absolute;
-}
-.board-square.last{box-shadow:inset 0 0 0 9999px rgba(176,138,78,.20);}
-.piece{z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.3);}
-.coord-rank,.coord-file{
-  position:absolute;
-  font-family:var(--font-mono);
-  font-size:.68rem;
-  font-weight:600;
-  opacity:.65;
-}
-.board-square.light .coord-rank,.board-square.light .coord-file{color:#7c6b52;}
-.board-square.dark .coord-rank,.board-square.dark .coord-file{color:#efe9dc;}
-.coord-rank{top:4px;left:5px;}
-.coord-file{right:5px;bottom:3px;}
-.game-clock{
-  min-width:128px;
-  text-align:center;
-  border:1px solid var(--bs-border-color);
-  border-radius:.5rem;
-  padding:.55rem .9rem;
-  font-family:var(--font-mono);
-  font-size:1.3rem;
-  font-weight:600;
-  background:var(--ink-900);
-  letter-spacing:.02em;
-}
-.active-clock{border-color:var(--brass);box-shadow:0 0 0 .15rem rgba(176,138,78,.18);color:var(--brass-light);}
-.captured-row{min-height:1.7rem;color:var(--paper-faint);font-size:1.15rem;}
-.move-history{max-height:280px;overflow:auto;}
-.move-pill{display:inline-block;margin:0 .35rem .35rem 0;padding:.25rem .5rem;border-radius:.35rem;background:var(--ink-800);border:1px solid var(--bs-border-color);font-family:var(--font-mono);font-size:.85rem;}
+.board-square:hover{filter:brightness(1.08);}
+.board-square.light{background:linear-gradient(145deg,#eee2cd,#d7ccb9);color:#1d1d1c;}
+.board-square.dark{background:linear-gradient(145deg,#765f40,#5d4a31);color:#17120d;}
+.board-square.selected{outline:3px solid var(--brass-light);outline-offset:-3px;box-shadow:inset 0 0 0 9999px rgba(228,195,125,.18);}
+.board-square.legal::after{content:"";width:22%;height:22%;border-radius:50%;background:rgba(32,71,36,.36);position:absolute;box-shadow:0 0 0 6px rgba(135,164,122,.12);}
+.board-square.last{box-shadow:inset 0 0 0 9999px rgba(197,154,82,.24);}
+.piece{z-index:2;text-shadow:0 2px 3px rgba(0,0,0,.35);filter:drop-shadow(0 8px 6px rgba(0,0,0,.18));}
+.coord-rank,.coord-file{position:absolute;font-family:var(--font-mono);font-size:.68rem;font-weight:800;opacity:.66;}
+.board-square.light .coord-rank,.board-square.light .coord-file{color:#5c4b34;}.board-square.dark .coord-rank,.board-square.dark .coord-file{color:#f1eadc;}
+.coord-rank{top:5px;left:6px;}.coord-file{right:6px;bottom:4px;}
+.game-clock{min-width:132px;text-align:center;border:1px solid var(--surface-border);border-radius:.75rem;padding:.65rem 1rem;font-family:var(--font-mono);font-size:1.35rem;font-weight:800;background:rgba(8,9,13,.66);letter-spacing:.03em;box-shadow:inset 0 1px 0 rgba(255,255,255,.03);}
+.active-clock{border-color:rgba(228,195,125,.7);box-shadow:0 0 0 .2rem rgba(197,154,82,.18),0 16px 40px rgba(197,154,82,.12);color:var(--brass-light);}
+.captured-row{min-height:1.8rem;color:var(--paper-faint);font-size:1.18rem;letter-spacing:.05em;}
+.move-history{max-height:290px;overflow:auto;scrollbar-width:thin;scrollbar-color:rgba(197,154,82,.42) rgba(241,237,228,.06);}
+.move-pill{display:inline-flex;align-items:center;gap:.18rem;margin:0 .35rem .4rem 0;padding:.32rem .58rem;border-radius:999px;background:rgba(241,237,228,.05);border:1px solid var(--surface-border);font-family:var(--font-mono);font-size:.84rem;color:var(--paper-soft);transition:background .15s ease,border-color .15s ease;}
+.move-pill:hover{background:rgba(197,154,82,.12);border-color:rgba(197,154,82,.3);}
+@media (max-width:575.98px){.game-clock{min-width:110px;font-size:1.08rem;padding:.55rem .75rem;}.chessboard{border-radius:.65rem;}}
