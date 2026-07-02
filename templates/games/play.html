@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}{{ game.white_display_name }} vs {{ game.black_display_name }}{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/games.css' %}">{% endblock %}
 {% block content %}
+<link rel="stylesheet" href="{% static 'css/games.css' %}">
 {{ game_state|json_script:"game-state-data" }}
 <div class="row g-4" x-data="gameClient()" x-init="init()">
   <div class="col-xl-8">
@@ -83,5 +83,5 @@
     </div>
   </div>
 </div>
+<script src="{% static 'js/games.js' %}"></script>
 {% endblock %}
-{% block extra_js %}<script src="{% static 'js/games.js' %}"></script>{% endblock %}

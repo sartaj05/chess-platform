@@ -1,12 +1,23 @@
 {% extends "base.html" %}
+
 {% block title %}LAN Multiplayer{% endblock %}
+
 {% block content %}
+
 <div class="row justify-content-center">
   <div class="col-lg-9">
     <div class="card border-secondary shadow">
-      <div class="card-header"><h1 class="h4 mb-0">Offline LAN Multiplayer</h1></div>
+      <div class="card-header">
+        <h1 class="h4 mb-0">Offline LAN Multiplayer</h1>
+      </div>
+
       <div class="card-body">
-        <p>This platform can run inside a private network without internet. Start Docker on the host machine, create a LAN room, and share the local URL with another computer on the same network.</p>
+        <p>
+          This platform can run inside a private network without internet. Start
+          Docker on the host machine, create a LAN room, and share the local URL
+          with another computer on the same network.
+        </p>
+
         <ol>
           <li>Run the application on the host computer or server.</li>
           <li>Find the host IP address, for example <code>192.168.1.50</code>.</li>
@@ -14,10 +25,17 @@
           <li>Share the generated URL, replacing localhost with the host IP if required.</li>
           <li>The second computer opens the URL and joins through WebSocket communication on the local network.</li>
         </ol>
-        <div class="alert alert-warning">Firewall must allow HTTP/HTTPS and WebSocket traffic to the application port inside the LAN.</div>
-        <a class="btn btn-success" href="{% url 'rooms:create' %}?mode=lan">Create LAN Room</a>
+
+        <div class="alert alert-warning">
+          Firewall must allow HTTP/HTTPS and WebSocket traffic to the application port inside the LAN.
+        </div>
+
+        <a class="btn btn-success" href="{% url 'rooms:create' %}?mode=lan">
+          Create LAN Room
+        </a>
       </div>
     </div>
   </div>
 </div>
+
 {% endblock %}

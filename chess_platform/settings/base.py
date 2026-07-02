@@ -173,14 +173,35 @@ SOCIALACCOUNT_AUTO_SIGNUP = True
 SOCIALACCOUNT_QUERY_EMAIL = True
 SOCIALACCOUNT_EMAIL_VERIFICATION = "optional"
 
+# NOTE: previously this dict was defined twice in the file — once with
+# SCOPE/AUTH_PARAMS and again with APP credentials. The second definition
+# silently overwrote the first (plain Python variable reassignment), so the
+# scope/PKCE settings were being dropped. Merged into a single block below.
+#
+# Read the real client id/secret from your .env file rather than hardcoding
+# them here. Add to .env:
+#   GOOGLE_OAUTH_CLIENT_ID=...
+#   GOOGLE_OAUTH_CLIENT_SECRET=...
+#   GITHUB_OAUTH_CLIENT_ID=...
+#   GITHUB_OAUTH_CLIENT_SECRET=...
 SOCIALACCOUNT_PROVIDERS = {
     "google": {
         "SCOPE": ["profile", "email"],
         "AUTH_PARAMS": {"access_type": "online"},
         "OAUTH_PKCE_ENABLED": True,
+        "APP": {
+            "client_id": env("GOOGLE_OAUTH_CLIENT_ID", default="YOUR_GOOGLE_CLIENT_ID"),
+            "secret": env("GOOGLE_OAUTH_CLIENT_SECRET", default="YOUR_GOOGLE_CLIENT_SECRET"),
+            "key": "",
+        },
     },
     "github": {
         "SCOPE": ["user", "user:email"],
+        "APP": {
+            "client_id": env("GITHUB_OAUTH_CLIENT_ID", default="YOUR_GITHUB_CLIENT_ID"),
+            "secret": env("GITHUB_OAUTH_CLIENT_SECRET", default="YOUR_GITHUB_CLIENT_SECRET"),
+            "key": "",
+        },
     },
 }
 

@@ -1,1 +1,26 @@
-{% extends "base.html" %}{% block content %}<div class="card bg-dark-subtle border-secondary"><div class="card-body"><h1 class="h3">Security</h1><p>2FA: {{ request.user.two_factor_enabled }}</p>{% if not request.user.two_factor_enabled %}<img class="qr-code mb-3" src="data:image/png;base64,{{ totp_qr_data }}" alt="TOTP QR"><p><code>{{ totp_secret }}</code></p><form method="post" action="{% url 'accounts:enable_2fa' %}">{% csrf_token %}{{ enable_form.as_p }}<button class="btn btn-success">Enable 2FA</button></form>{% else %}<form method="post" action="{% url 'accounts:disable_2fa' %}">{% csrf_token %}{{ disable_form.as_p }}<button class="btn btn-danger">Disable 2FA</button></form>{% endif %}</div></div>{% endblock %}
+{% extends "base.html" %}{% block content %}
+<div class="card bg-dark-subtle border-secondary">
+  <div class="card-body">
+    <h1 class="h3">Security</h1>
+    <p>2FA: {{ request.user.two_factor_enabled }}</p>
+    {% if not request.user.two_factor_enabled %}<img
+      class="qr-code mb-3"
+      src="data:image/png;base64,{{ totp_qr_data }}"
+      alt="TOTP QR"
+    />
+    <p><code>{{ totp_secret }}</code></p>
+    <form method="post" action="{% url 'accounts:enable_2fa' %}">
+      {% csrf_token %}{{ enable_form.as_p }}<button class="btn btn-success">
+        Enable 2FA
+      </button>
+    </form>
+    {% else %}
+    <form method="post" action="{% url 'accounts:disable_2fa' %}">
+      {% csrf_token %}{{ disable_form.as_p }}<button class="btn btn-danger">
+        Disable 2FA
+      </button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

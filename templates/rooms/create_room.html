@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Create Room{% endblock %}
-{% block extra_css %}<link rel="stylesheet" href="{% static 'css/rooms.css' %}">{% endblock %}
 {% block content %}
+<link rel="stylesheet" href="{% static 'css/rooms.css' %}">
 <div class="row justify-content-center">
   <div class="col-lg-9">
     <div class="card shadow border-secondary">
       <div class="card-header bg-body-tertiary">
+        <span class="eyebrow mb-2">New Room</span>
         <h1 class="h4 mb-0">Create Chess Room</h1>
       </div>
       <div class="card-body">

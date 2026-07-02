@@ -1,17 +1,31 @@
-{% extends "base.html" %}
-{% block title %}Import FEN{% endblock %}
-{% block content %}
+{% extends "base.html" %} {% block title %}Import FEN{% endblock %} {% block
+content %}
 <div class="row justify-content-center">
   <div class="col-lg-8">
     <div class="card border-secondary shadow-sm">
-      <div class="card-header"><h1 class="h4 mb-0">Import FEN Position</h1></div>
+      <div class="card-header">
+        <h1 class="h4 mb-0">Import FEN Position</h1>
+      </div>
       <div class="card-body">
         <form method="post" class="row g-3">
           {% csrf_token %}
-          <div class="col-12"><label class="form-label">FEN</label>{{ form.fen }}<div class="form-text">Example: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1</div></div>
-          <div class="col-md-6"><label class="form-label">White name</label>{{ form.white_name }}</div>
-          <div class="col-md-6"><label class="form-label">Black name</label>{{ form.black_name }}</div>
-          <div class="col-12"><button class="btn btn-success" type="submit">Import and Play</button></div>
+          <div class="col-12">
+            <label class="form-label">FEN</label>{{ form.fen }}
+            <div class="form-text">
+              Example: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">White name</label>{{ form.white_name }}
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Black name</label>{{ form.black_name }}
+          </div>
+          <div class="col-12">
+            <button class="btn btn-success" type="submit">
+              Import and Play
+            </button>
+          </div>
         </form>
       </div>
     </div>

@@ -1,59 +1,63 @@
-.chessboard {
-  width: min(88vw, 680px);
-  height: min(88vw, 680px);
-  display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  grid-template-rows: repeat(8, 1fr);
-  margin: 0 auto;
-  border: 4px solid #343a40;
-  border-radius: 12px;
-  overflow: hidden;
-  background: #111827;
+.chessboard{
+  width:min(88vw,640px);
+  height:min(88vw,640px);
+  display:grid;
+  grid-template-columns:repeat(8,1fr);
+  grid-template-rows:repeat(8,1fr);
+  margin:0 auto;
+  border:1px solid rgba(234,230,221,.14);
+  border-radius:.5rem;
+  overflow:hidden;
+  background:#0e0f13;
+  box-shadow:0 18px 40px -24px rgba(0,0,0,.6);
 }
-.board-square {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: clamp(2rem, 7vw, 4.7rem);
-  line-height: 1;
-  user-select: none;
-  cursor: pointer;
+.board-square{
+  position:relative;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:clamp(1.9rem,6.5vw,4.3rem);
+  line-height:1;
+  user-select:none;
+  cursor:pointer;
 }
-.board-square.light { background: #e8edf9; color: #111827; }
-.board-square.dark { background: #7b8db8; color: #111827; }
-.board-square.selected { outline: 4px solid #ffc107; outline-offset: -4px; }
-.board-square.legal::after {
-  content: "";
-  width: 24%;
-  height: 24%;
-  border-radius: 50%;
-  background: rgba(25, 135, 84, .55);
-  position: absolute;
+.board-square.light{background:#efe9dc;color:#20211f;}
+.board-square.dark{background:#7c6b52;color:#1a1712;}
+.board-square.selected{outline:3px solid var(--brass);outline-offset:-3px;}
+.board-square.legal::after{
+  content:"";
+  width:22%;
+  height:22%;
+  border-radius:50%;
+  background:rgba(122,148,113,.55);
+  position:absolute;
 }
-.board-square.last { box-shadow: inset 0 0 0 9999px rgba(255, 193, 7, .22); }
-.piece { z-index: 2; text-shadow: 0 1px 2px rgba(0,0,0,.35); }
-.coord-rank, .coord-file {
-  position: absolute;
-  font-size: .72rem;
-  font-weight: 700;
-  opacity: .75;
-  color: #111827;
+.board-square.last{box-shadow:inset 0 0 0 9999px rgba(176,138,78,.20);}
+.piece{z-index:2;text-shadow:0 1px 2px rgba(0,0,0,.3);}
+.coord-rank,.coord-file{
+  position:absolute;
+  font-family:var(--font-mono);
+  font-size:.68rem;
+  font-weight:600;
+  opacity:.65;
 }
-.coord-rank { top: 4px; left: 5px; }
-.coord-file { right: 5px; bottom: 3px; }
-.game-clock {
-  min-width: 132px;
-  text-align: center;
-  border: 1px solid #6c757d;
-  border-radius: 10px;
-  padding: .55rem .9rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-  font-size: 1.35rem;
-  font-weight: 700;
-  background: #212529;
+.board-square.light .coord-rank,.board-square.light .coord-file{color:#7c6b52;}
+.board-square.dark .coord-rank,.board-square.dark .coord-file{color:#efe9dc;}
+.coord-rank{top:4px;left:5px;}
+.coord-file{right:5px;bottom:3px;}
+.game-clock{
+  min-width:128px;
+  text-align:center;
+  border:1px solid var(--bs-border-color);
+  border-radius:.5rem;
+  padding:.55rem .9rem;
+  font-family:var(--font-mono);
+  font-size:1.3rem;
+  font-weight:600;
+  background:var(--ink-900);
+  letter-spacing:.02em;
 }
-.active-clock { border-color: #20c997; box-shadow: 0 0 0 .15rem rgba(32, 201, 151, .25); }
-.captured-row { min-height: 1.7rem; color: #adb5bd; font-size: 1.25rem; }
-.move-history { max-height: 280px; overflow: auto; }
-.move-pill { display: inline-block; margin: 0 .35rem .35rem 0; padding: .25rem .45rem; border-radius: .4rem; background: #212529; border: 1px solid #495057; }
+.active-clock{border-color:var(--brass);box-shadow:0 0 0 .15rem rgba(176,138,78,.18);color:var(--brass-light);}
+.captured-row{min-height:1.7rem;color:var(--paper-faint);font-size:1.15rem;}
+.move-history{max-height:280px;overflow:auto;}
+.move-pill{display:inline-block;margin:0 .35rem .35rem 0;padding:.25rem .5rem;border-radius:.35rem;background:var(--ink-800);border:1px solid var(--bs-border-color);font-family:var(--font-mono);font-size:.85rem;}
