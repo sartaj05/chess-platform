@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}{{ game.white_display_name }} vs {{ game.black_display_name }}{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/games.css' %}">{% endblock %}
+{% block content %}
+{{ game_state|json_script:"game-state-data" }}
+<div class="row g-4" x-data="gameClient()" x-init="init()">
+  <div class="col-xl-8">
+    <div class="card border-secondary shadow-sm">
+      <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <div>
+          <h1 class="h4 mb-0"><span x-text="state.white.name"></span> vs <span x-text="state.black.name"></span></h1>
+          <span class="text-secondary small">Status <span x-text="state.status"></span> · Result <span x-text="state.result"></span> · Turn <span x-text="state.turn"></span></span>
+        </div>
+        <span class="badge" :class="connected ? 'text-bg-success' : 'text-bg-danger'" x-text="connected ? 'Realtime connected' : 'Disconnected'"></span>
+      </div>
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <div><strong x-text="state.black.name"></strong><div class="small text-secondary">Black</div></div>
+          <div class="game-clock" :class="state.turn === 'black' && state.status === 'active' ? 'active-clock' : ''" x-text="formatClock(state.black.time_ms)"></div>
+        </div>
+
+        <div class="captured-row mb-2"><template x-for="piece in state.captured.white"><span x-text="piece"></span></template></div>
+        <div id="chessboard" class="chessboard" :class="boardOrientation">
+          <template x-for="row in boardRows()" :key="row[0].rank">
+            <template x-for="square in row" :key="square.square">
+              <div class="board-square" :class="squareClass(square)" :data-square="square.square" draggable="true" @click="clickSquare(square)" @dragstart="dragStart($event, square)" @dragover.prevent @drop="dropSquare($event, square)">
+                <span class="coord-rank" x-show="square.file === 0" x-text="square.rank"></span>
+                <span class="coord-file" x-show="square.rank === 1" x-text="'abcdefgh'[square.file]"></span>
+                <span class="piece" x-text="square.symbol"></span>
+              </div>
+            </template>
+          </template>
+        </div>
+        <div class="captured-row mt-2"><template x-for="piece in state.captured.black"><span x-text="piece"></span></template></div>
+
+        <div class="d-flex justify-content-between align-items-center mt-2">
+          <div><strong x-text="state.white.name"></strong><div class="small text-secondary">White</div></div>
+          <div class="game-clock" :class="state.turn === 'white' && state.status === 'active' ? 'active-clock' : ''" x-text="formatClock(state.white.time_ms)"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card border-secondary mb-4">
+      <div class="card-header"><h2 class="h5 mb-0">Game Controls</h2></div>
+      <div class="card-body">
+        <div class="alert alert-info py-2" x-show="statusMessage" x-text="statusMessage"></div>
+        <div class="alert alert-warning py-2" x-show="state.draw_offer_by">Draw offered by <span x-text="state.draw_offer_by"></span></div>
+        <div class="d-grid gap-2">
+          <button class="btn btn-outline-warning" type="button" @click="sendAction('game.draw')">Offer / Accept Draw</button>
+          <button class="btn btn-outline-info" type="button" @click="sendAction('game.decline_draw')">Decline Draw</button>
+          <button class="btn btn-outline-danger" type="button" @click="sendAction('game.resign')">Resign</button>
+          <button class="btn btn-outline-secondary" type="button" @click="sendAction('game.abort')">Abort</button>
+        </div>
+        <hr>
+        <div class="d-grid gap-2">
+          <a class="btn btn-primary" href="{% url 'games:pgn' game.pk %}">Download PGN</a>
+          <a class="btn btn-outline-light" href="{% url 'games:fen' game.pk %}">Export FEN</a>
+          <a class="btn btn-outline-light" href="{% url 'games:fen_import' %}">Import FEN</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="card border-secondary mb-4">
+      <div class="card-header"><h2 class="h5 mb-0">Move History</h2></div>
+      <div class="card-body move-history">
+        <template x-for="move in state.moves" :key="move.id">
+          <span class="move-pill"><span x-show="move.color === 'white'" x-text="move.move_number + '.'"></span> <span x-text="move.san"></span></span>
+        </template>
+      </div>
+    </div>
+
+    <div class="card border-secondary">
+      <div class="card-header"><h2 class="h5 mb-0">Current Position</h2></div>
+      <div class="card-body small">
+        <label class="form-label">FEN</label>
+        <textarea class="form-control font-monospace" rows="4" readonly x-text="state.fen"></textarea>
+        <label class="form-label mt-3">Last move</label>
+        <div><span x-text="state.last_move_san || 'None'"></span> <span class="text-secondary" x-text="state.last_move_uci"></span></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/games.js' %}"></script>{% endblock %}

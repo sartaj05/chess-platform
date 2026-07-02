@@ -9,4 +9,5 @@ urlpatterns = [
     path("auth/token/verify/", TokenVerifyView.as_view(), name="token_verify"),
     path("accounts/", include("apps.accounts.api_urls")),
     path("", include(("apps.rooms.api_urls", "rooms-api"), namespace="rooms-api")),
+    path("", include(("apps.games.api_urls", "games-api"), namespace="games-api")),
 ]

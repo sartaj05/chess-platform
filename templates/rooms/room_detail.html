@@ -17,7 +17,7 @@
       <div class="card-body">
         <div class="room-board-placeholder mb-3">
           <div class="display-6">♜ ♞ ♝ ♛ ♚ ♟</div>
-          <p class="mb-0 text-secondary">Chessboard module connects here in Module 3.</p>
+          <p class="mb-0 text-secondary">When two players are ready, start the game and play on the realtime board.</p>
         </div>
         <div class="input-group mb-3">
           <input id="inviteUrl" type="text" class="form-control" value="{{ invite_url }}" readonly>
@@ -26,6 +26,14 @@
         <div class="d-flex flex-wrap gap-2">
           <button class="btn btn-success" type="button" @click="setReady(true)">Ready</button>
           <button class="btn btn-outline-warning" type="button" @click="setReady(false)">Not Ready</button>
+          {% if room.game %}
+            <a class="btn btn-primary" href="{% url 'games:play' room.game.pk %}">Open Game</a>
+          {% else %}
+            <form method="post" action="{% url 'games:start_room_game' room.code %}">
+              {% csrf_token %}
+              <button class="btn btn-primary" type="submit">Start Game</button>
+            </form>
+          {% endif %}
           <form method="post" action="{% url 'rooms:leave' room.code %}">
             {% csrf_token %}
             <button class="btn btn-outline-danger" type="submit">Leave Room</button>

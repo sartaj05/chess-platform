@@ -33,3 +33,16 @@ Create SocialApp records in `/admin/socialaccount/socialapp/` for Google and Git
 ## Module 2: Rooms and Realtime Lobby
 
 Module 2 adds production room creation, private invite URLs, join-by-code, LAN-mode room flow, room participants, room event logs, REST endpoints, WebSocket room chat, ready state, and reconnect-ready room state JSON. See `docs_module2_rooms.md`.
+
+
+## Module 3 - Realtime Gameplay
+
+Module 3 adds server-authoritative chess gameplay using python-chess, WebSocket move broadcasting, drag/drop board UI, clocks, FEN/PGN import/export, resign, abort, draw offer, captured pieces, move history, and REST game endpoints.
+
+Useful URLs:
+
+- `/games/same-pc/new/` - create offline same-computer game
+- `/games/fen/import/` - import a FEN position
+- `/games/<uuid>/` - play/watch a game
+- `/api/games/` - game API list
+- `/ws/games/<uuid>/` - realtime game WebSocket
