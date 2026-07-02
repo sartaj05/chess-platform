@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Live Rooms{% endblock %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+  <div>
+    <h1 class="h3 mb-1">Live Public Rooms</h1>
+    <p class="text-secondary mb-0">Join public rooms or create a private URL room for online or LAN play.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-success" href="{% url 'rooms:create' %}">Create Room</a>
+    <a class="btn btn-outline-light" href="{% url 'rooms:join' %}">Join Code</a>
+  </div>
+</div>
+<div class="row g-3">
+  {% for room in rooms %}
+  <div class="col-md-6 col-xl-4">
+    <div class="card h-100 border-secondary room-card">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start gap-2">
+          <h2 class="h5">{{ room.name }}</h2>
+          <span class="badge text-bg-primary">{{ room.time_control_label }}</span>
+        </div>
+        <p class="text-secondary small mb-2">Code: <strong>{{ room.code }}</strong> · {{ room.get_mode_display }} · {{ room.get_status_display }}</p>
+        <p class="mb-3">{{ room.description|default:"No description." }}</p>
+        <p class="small mb-3">Host: {{ room.host_display_name|default:"Unknown" }} · Players: {{ room.participants.count }}/{{ room.max_players }}</p>
+        <a class="btn btn-outline-success btn-sm" href="{{ room.get_absolute_url }}">Open Room</a>
+      </div>
+    </div>
+  </div>
+  {% empty %}
+  <div class="col-12">
+    <div class="alert alert-info">No public rooms are waiting. Create one and share the URL.</div>
+  </div>
+  {% endfor %}
+</div>
+{% if is_paginated %}
+<nav class="mt-4"><ul class="pagination">
+  {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>{% endif %}
+  <li class="page-item active"><span class="page-link">{{ page_obj.number }}</span></li>
+  {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>{% endif %}
+</ul></nav>
+{% endif %}
+{% endblock %}

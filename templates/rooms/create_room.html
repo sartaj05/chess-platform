@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Create Room{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/rooms.css' %}">{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-lg-9">
+    <div class="card shadow border-secondary">
+      <div class="card-header bg-body-tertiary">
+        <h1 class="h4 mb-0">Create Chess Room</h1>
+      </div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+          <div class="row g-3">
+            <div class="col-md-8">
+              <label class="form-label" for="{{ form.name.id_for_label }}">Room name</label>
+              {{ form.name }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="{{ form.host_display_name.id_for_label }}">Display name</label>
+              {{ form.host_display_name }}
+              <div class="form-text">{{ form.host_display_name.help_text }}</div>
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="{{ form.description.id_for_label }}">Description</label>
+              {{ form.description }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="{{ form.mode.id_for_label }}">Mode</label>
+              {{ form.mode }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="{{ form.visibility.id_for_label }}">Visibility</label>
+              {{ form.visibility }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="{{ form.color_preference.id_for_label }}">Preferred color</label>
+              {{ form.color_preference }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="{{ form.clock_initial_minutes.id_for_label }}">Initial minutes</label>
+              {{ form.clock_initial_minutes }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="{{ form.increment_seconds.id_for_label }}">Increment seconds</label>
+              {{ form.increment_seconds }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label" for="{{ form.delay_seconds.id_for_label }}">Delay seconds</label>
+              {{ form.delay_seconds }}
+            </div>
+            <div class="col-md-4 form-check ms-2">
+              {{ form.allow_guests }}
+              <label class="form-check-label" for="{{ form.allow_guests.id_for_label }}">Allow guest players</label>
+            </div>
+            <div class="col-md-4 form-check ms-2">
+              {{ form.spectator_enabled }}
+              <label class="form-check-label" for="{{ form.spectator_enabled.id_for_label }}">Allow spectators</label>
+            </div>
+            <div class="col-md-3 form-check ms-2">
+              {{ form.rated }}
+              <label class="form-check-label" for="{{ form.rated.id_for_label }}">Rated</label>
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-4">
+            <button class="btn btn-success" type="submit">Create Room</button>
+            <a class="btn btn-outline-light" href="{% url 'rooms:list' %}">View Public Rooms</a>
+            <a class="btn btn-outline-info" href="{% url 'rooms:lan_mode' %}">LAN Help</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

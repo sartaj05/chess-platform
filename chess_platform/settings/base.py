@@ -3,11 +3,8 @@ from __future__ import annotations
 from datetime import timedelta
 from pathlib import Path
 import environ
-import logging
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
-logger = logging.getLogger(__name__)
 
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
@@ -20,8 +17,12 @@ env_file = BASE_DIR / ".env"
 if env_file.exists():
     environ.Env.read_env(env_file)
 
+# -----------------------
+# CORE SETTINGS
+# -----------------------
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="local-development-key-change-before-production")
 DEBUG = env("DJANGO_DEBUG")
+
 ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
 CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
@@ -45,6 +46,7 @@ THIRD_PARTY_APPS = [
     "channels",
     "rest_framework",
     "drf_spectacular",
+
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
@@ -119,16 +121,17 @@ WSGI_APPLICATION = "chess_platform.wsgi.application"
 ASGI_APPLICATION = "chess_platform.asgi.application"
 
 # -----------------------
-# DATABASE (POSTGRES → SQLITE FALLBACK)
+# DATABASE (FIXED)
 # -----------------------
-DATABASE_URL = env("DATABASE_URL", default="")
+DATABASE_URL = env("DATABASE_URL", default="").strip()
 
-if DATABASE_URL and DATABASE_URL.startswith("postgres"):
+if DATABASE_URL and (
+    DATABASE_URL.startswith("postgres://") or DATABASE_URL.startswith("postgresql://")
+):
     DATABASES = {
         "default": env.db("DATABASE_URL")
     }
 else:
-    logger.warning("Postgres not available → using SQLite fallback")
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -136,6 +139,9 @@ else:
         }
     }
 
+# -----------------------
+# DEFAULT AUTO FIELD
+# -----------------------
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # -----------------------
@@ -156,13 +162,16 @@ PASSWORD_HASHERS = [
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 10}},
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 10},
+    },
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
 # -----------------------
-# i18n
+# I18N
 # -----------------------
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Kolkata"
@@ -170,21 +179,23 @@ USE_I18N = True
 USE_TZ = True
 
 # -----------------------
-# STATIC
+# STATIC / MEDIA
 # -----------------------
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
-STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"
-    },
-}
-
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 SITE_ID = 1
 
@@ -196,9 +207,9 @@ LOGIN_REDIRECT_URL = "core:home"
 LOGOUT_REDIRECT_URL = "core:home"
 
 # -----------------------
-# ALLAUTH (FIXED)
+# ALLAUTH (FIXED FOR 64.x)
 # -----------------------
-ACCOUNT_LOGIN_METHOD = "email"
+ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = False
 
@@ -281,13 +292,13 @@ CACHES = {
 
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "BACKEND": "channels_redis.core.ChannelLayer",
         "CONFIG": {"hosts": [CHANNEL_REDIS_URL]},
     }
 }
 
 # -----------------------
-# REST
+# REST FRAMEWORK
 # -----------------------
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -317,6 +328,9 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
 }
 
+# -----------------------
+# CUSTOM CONSTANTS
+# -----------------------
 OTP_CODE_TTL_MINUTES = 10
 MAX_OTP_ATTEMPTS = 5
 USER_ACTIVITY_CACHE_TTL = 180

@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Join Room{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-6 col-lg-5">
+    <div class="card border-secondary shadow">
+      <div class="card-header bg-body-tertiary"><h1 class="h4 mb-0">Join by Room Code</h1></div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+          <div class="mb-3">
+            <label class="form-label" for="{{ form.room_code.id_for_label }}">Room code</label>
+            {{ form.room_code }}
+            {% for error in form.room_code.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label" for="{{ form.display_name.id_for_label }}">Display name</label>
+            {{ form.display_name }}
+            <div class="form-text">{{ form.display_name.help_text }}</div>
+          </div>
+          <div class="form-check mb-3">
+            {{ form.as_spectator }}
+            <label class="form-check-label" for="{{ form.as_spectator.id_for_label }}">Join as spectator</label>
+          </div>
+          <button class="btn btn-success w-100" type="submit">Join Room</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
