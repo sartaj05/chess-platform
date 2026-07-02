@@ -1,0 +1,13 @@
+[tool.ruff]
+line-length = 120
+target-version = "py313"
+src = ["apps", "chess_platform"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "DJ"]
+ignore = ["DJ001", "E501"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "chess_platform.settings.test"
+python_files = ["test_*.py", "*_test.py", "tests.py"]
+addopts = "--reuse-db --strict-markers --disable-warnings"

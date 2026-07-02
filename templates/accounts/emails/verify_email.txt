@@ -1,0 +1,5 @@
+Hello {{ user.display_name }},
+
+Your Chess Platform verification code is {{ code }}. It expires in {{ ttl_minutes }} minutes.
+
+Verify link: {{ verify_url }}

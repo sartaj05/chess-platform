@@ -1,0 +1,64 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: chess_platform
+      POSTGRES_USER: chess
+      POSTGRES_PASSWORD: chess_password
+    ports: ["5432:5432"]
+    volumes: [postgres_data:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chess -d chess_platform"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  web:
+    build: .
+    env_file: .env
+    volumes:
+      - .:/app
+      - static_volume:/app/staticfiles
+      - media_volume:/app/media
+    ports: ["8000:8000"]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  celery_worker:
+    build: .
+    env_file: .env
+    command: celery -A chess_platform worker -l info
+    volumes: [.:/app, media_volume:/app/media]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  celery_beat:
+    build: .
+    env_file: .env
+    command: celery -A chess_platform beat -l info
+    volumes: [.:/app]
+    depends_on:
+      db: {condition: service_healthy}
+      redis: {condition: service_healthy}
+  nginx:
+    image: nginx:1.27-alpine
+    ports: ["80:80"]
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - static_volume:/staticfiles:ro
+      - media_volume:/media:ro
+    depends_on: [web]
+volumes:
+  postgres_data:
+  redis_data:
+  static_volume:
+  media_volume:

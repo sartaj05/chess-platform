@@ -1,0 +1,125 @@
+I’ll start with Module 1 as a runnable foundation: Dockerized Django project with PostgreSQL, Redis, Channels, Celery, Celery Beat, Gunicorn/Nginx config, and a working custom authentication base.
+
+Thought for 11m 55s
+Module 1 delivered: Project Initialization
+
+I generated the complete Module 1 project foundation as a ZIP file:
+
+Download Module 1 ZIP
+
+I used current stable references while preparing the stack: Django 6.0.6 is listed on Django’s official download page, Celery 5.6.3 is the current stable docs series, Django REST Framework 3.17.1 is listed in the official release notes, django-allauth social login support is documented for providers like Google/GitHub, and Bootstrap 5.3.8 is the current Bootstrap 5 release.
+
+What is included
+chess_platform_repo/
+├── apps/
+│   ├── accounts/
+│   ├── users/
+│   ├── games/
+│   ├── rooms/
+│   ├── friends/
+│   ├── chat/
+│   ├── analysis/
+│   ├── stockfish/
+│   ├── puzzles/
+│   ├── tournaments/
+│   ├── notifications/
+│   ├── payments/
+│   ├── dashboard/
+│   ├── core/
+│   ├── blog/
+│   ├── cms/
+│   └── api/
+├── chess_platform/
+│   ├── settings/
+│   │   ├── base.py
+│   │   ├── dev.py
+│   │   ├── prod.py
+│   │   └── test.py
+│   ├── asgi.py
+│   ├── celery.py
+│   ├── routing.py
+│   ├── urls.py
+│   └── wsgi.py
+├── templates/
+├── static/
+├── nginx/
+├── requirements/
+├── scripts/
+├── .github/workflows/
+├── Dockerfile
+├── docker-compose.yml
+├── gunicorn.conf.py
+├── entrypoint.sh
+├── pyproject.toml
+├── pytest.ini
+├── manage.py
+└── README.md
+Module 1 functionality
+
+Included in this module:
+
+Docker + Docker Compose setup
+PostgreSQL service
+Redis service
+Django Channels with Redis channel layer
+Celery worker
+Celery Beat
+Gunicorn production config
+Nginx reverse proxy config
+Custom Django user model
+Email login foundation
+Email verification model
+OTP device model
+2FA-ready user fields
+Avatar field
+Online status middleware
+JWT API login/refresh endpoints
+Django template pages
+Local static asset structure
+Bootstrap/HTMX/Alpine local asset preparation script
+Pytest setup
+GitHub Actions CI workflow
+Production/dev/test settings split
+Initial migration for authentication models
+Run commands
+unzip chess-platform-module1.zip
+cd chess-platform-module1/chess_platform_repo
+
+cp .env.example .env
+
+docker compose up --build
+
+Create admin user:
+
+docker compose exec web python manage.py createsuperuser
+
+Run tests:
+
+docker compose exec web pytest
+
+Run Django checks:
+
+docker compose exec web python manage.py check
+docker compose exec web python manage.py makemigrations --check --dry-run
+docker compose exec web ruff check .
+
+Production check:
+
+docker compose exec web python manage.py check --deploy
+Social login note
+
+Google and GitHub login are wired through django-allauth. Credentials are not hardcoded. Add provider credentials from Django Admin under Social Applications after deployment.
+
+Git commit
+git add .
+git commit -m "Initialize production Django chess platform foundation"
+
+I generated the module files and packaged them. I did not run Docker containers inside this environment, so please run the commands above on your machine/server to verify the full container startup.
+
+Reply continue Module 2 for Rooms, Invite URLs, LAN room flow, and WebSocket room foundation.
+
+continue Module 2
+
+I’ll build Module 2 as an additive update on top of Module 1, focused on rooms, invite URLs, LAN/private room joining, room chat presence foundation, and WebSocket routing/consumers.
+
+Inspecting and listing contents of module1 zip

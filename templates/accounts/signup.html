@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block content %}<div class="auth-card mx-auto"><h1 class="h3 mb-3">Create account</h1><form method="post" novalidate>{% csrf_token %}{{ form.as_p }}<button class="btn btn-success w-100" type="submit">Create Account</button></form><hr><a href="{% url 'accounts:login' %}">Login</a></div>{% endblock %}
