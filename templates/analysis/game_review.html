@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Game Review{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/analysis.css' %}">{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <div>
+    <h1 class="h3 mb-1">Game Review</h1>
+    <div class="text-secondary">{{ game.white_display_name }} vs {{ game.black_display_name }}</div>
+  </div>
+  <a class="btn btn-outline-light" href="{{ game.get_absolute_url }}">Back to Game</a>
+</div>
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card border-secondary">
+      <div class="card-header"><h2 class="h5 mb-0">Start Review</h2></div>
+      <div class="card-body">
+        <form method="post" action="{% url 'analysis:start_game_review' game.pk %}">
+          {% csrf_token %}
+          <label class="form-label">Review Type</label>{{ form.analysis_type }}
+          <label class="form-label mt-3">Depth</label>{{ form.depth }}
+          <button class="btn btn-primary mt-3 w-100" type="submit">Queue Stockfish Review</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-8">
+    <div class="card border-secondary">
+      <div class="card-header"><h2 class="h5 mb-0">Latest Review</h2></div>
+      <div class="card-body">
+        {% if job %}
+          <p>Status: <span class="badge text-bg-info">{{ job.status }}</span> · Progress {{ job.progress }}%</p>
+          <a class="btn btn-outline-primary" href="{{ job.get_absolute_url }}">Open Review Detail</a>
+        {% else %}
+          <p class="text-secondary mb-0">No review has been queued yet.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

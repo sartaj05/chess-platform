@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Analysis Job{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/analysis.css' %}">{% endblock %}
+{% block content %}
+<div x-data="analysisJob('{{ job.pk }}')" x-init="init()">
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+    <div>
+      <h1 class="h3 mb-1">Stockfish Game Review</h1>
+      <div class="text-secondary">{{ job.game.white_display_name }} vs {{ job.game.black_display_name }}</div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-light" href="{% url 'analysis:game_review' job.game.pk %}">Review Page</a>
+      <a class="btn btn-outline-light" href="{{ job.game.get_absolute_url }}">Game</a>
+    </div>
+  </div>
+
+  <div class="card border-secondary mb-4">
+    <div class="card-body">
+      <div class="progress mb-3" role="progressbar"><div class="progress-bar" :style="`width:${state.job.progress || {{ job.progress }}}%`" x-text="(state.job.progress || {{ job.progress }}) + '%' "></div></div>
+      <div>Status <span class="badge text-bg-info" x-text="state.job.status || '{{ job.status }}'"></span></div>
+      {% if job.error_message %}<div class="alert alert-danger mt-3">{{ job.error_message }}</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="card border-secondary mb-4">
+    <div class="card-header"><h2 class="h5 mb-0">Evaluation Graph Data</h2></div>
+    <div class="card-body">
+      <canvas id="evaluationGraph" height="120"></canvas>
+      <p class="text-secondary small mb-0">The graph is drawn from stored Stockfish centipawn scores. Positive means better for White; negative means better for Black.</p>
+    </div>
+  </div>
+
+  <div class="card border-secondary">
+    <div class="card-header"><h2 class="h5 mb-0">Move Review</h2></div>
+    <div class="table-responsive">
+      <table class="table table-dark table-striped mb-0 align-middle">
+        <thead><tr><th>Ply</th><th>Move</th><th>Class</th><th>Best</th><th>Loss</th><th>Comment</th></tr></thead>
+        <tbody>
+          <template x-for="review in state.reviews" :key="review.ply_number">
+            <tr>
+              <td x-text="review.ply_number"></td>
+              <td x-text="review.move_san"></td>
+              <td><span class="badge" :class="classificationClass(review.classification)" x-text="review.classification"></span></td>
+              <td><span x-text="review.bestmove_san"></span> <span class="text-secondary" x-text="review.bestmove_uci"></span></td>
+              <td x-text="review.score_loss_cp"></td>
+              <td x-text="review.comment"></td>
+            </tr>
+          </template>
+          {% for review in reviews %}
+            <tr class="server-review-row"><td>{{ review.ply_number }}</td><td>{{ review.move_san }}</td><td>{{ review.classification }}</td><td>{{ review.bestmove_san }}</td><td>{{ review.score_loss_cp }}</td><td>{{ review.comment }}</td></tr>
+          {% empty %}
+            <tr class="server-review-row"><td colspan="6" class="text-secondary">No move review data yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}<script src="{% static 'js/analysis.js' %}"></script>{% endblock %}

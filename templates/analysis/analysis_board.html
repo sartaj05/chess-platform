@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Analysis Board{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/analysis.css' %}">{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card border-secondary shadow-sm">
+      <div class="card-header"><h1 class="h4 mb-0">Stockfish Analysis Board</h1></div>
+      <div class="card-body">
+        <form method="post" novalidate>
+          {% csrf_token %}
+          <div class="mb-3">
+            <label class="form-label" for="{{ form.fen.id_for_label }}">FEN</label>
+            {{ form.fen }}
+            {% for error in form.fen.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="row g-3">
+            <div class="col-sm-6"><label class="form-label">Depth</label>{{ form.depth }}</div>
+            <div class="col-sm-6"><label class="form-label">Move time ms</label>{{ form.movetime_ms }}</div>
+          </div>
+          <button class="btn btn-primary mt-3" type="submit">Analyse Position</button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="card border-secondary shadow-sm">
+      <div class="card-header"><h2 class="h5 mb-0">Engine Result</h2></div>
+      <div class="card-body">
+        {% if position %}
+          <div class="analysis-result-grid">
+            <div><span class="text-secondary">Best move</span><strong>{{ position.bestmove_san }} {{ position.bestmove_uci }}</strong></div>
+            <div><span class="text-secondary">White eval</span><strong>{{ position.score_white_cp|default:"Mate/Unknown" }}</strong></div>
+            <div><span class="text-secondary">Depth</span><strong>{{ position.depth }}</strong></div>
+            <div><span class="text-secondary">Side to move</span><strong>{{ position.side_to_move }}</strong></div>
+          </div>
+          <hr>
+          <label class="form-label">Principal variation</label>
+          <pre class="analysis-pre">{{ position.pv|join:" " }}</pre>
+        {% else %}
+          <p class="text-secondary mb-0">Submit a FEN to analyse with the local offline Stockfish engine.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

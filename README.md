@@ -46,3 +46,8 @@ Useful URLs:
 - `/games/<uuid>/` - play/watch a game
 - `/api/games/` - game API list
 - `/ws/games/<uuid>/` - realtime game WebSocket
+
+
+## Module 4 - Stockfish Analysis
+
+Adds offline Stockfish integration, analysis board, full-game review jobs, move classification, evaluation graph data, and seeded opening explorer. See `docs_module4_analysis.md`.
