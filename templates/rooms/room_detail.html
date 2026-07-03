@@ -1,7 +1,9 @@
-{% extends "base.html" %} {% load static %} {% block title %}Room {{ room.code
-}}{% endblock %} {% block content %}
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Room {{ room.code }}{% endblock %}
+{% block content %}
 <link rel="stylesheet" href="{% static 'css/rooms.css' %}" />
-{{ room_state|json_script:"room-state-data"}}
+{{ room_state|json_script:"room-state-data" }}
 <div class="row g-4" x-data="roomClient()" x-init="init()">
   <div class="col-lg-8">
     <div class="card border-secondary shadow-sm">
@@ -13,8 +15,7 @@
           <span
             class="small"
             style="color: var(--paper-dim); font-family: var(--font-mono)"
-            >{{ room.code }} · {{ room.get_mode_display }} · {{
-            room.time_control_label }}</span
+            >{{ room.code }} · {{ room.get_mode_display }} · {{ room.time_control_label }}</span
           >
         </div>
         <span
@@ -88,13 +89,13 @@
       <div class="card-header"><h2 class="h5 mb-0">Room Chat</h2></div>
       <div class="card-body">
         <div class="room-chat-log" id="roomChatLog">
-          {% for event in recent_events reversed %} {% if event.event_type ==
-          'chat.message' %}
+          {% for event in recent_events reversed %}
+          {% if event.event_type == 'chat.message' %}
           <div class="small mb-2">
-            <strong>{{ event.actor_display_name }}:</strong> {{
-            event.payload.message }}
+            <strong>{{ event.actor_display_name }}:</strong> {{ event.payload.message }}
           </div>
-          {% endif %} {% endfor %}
+          {% endif %}
+          {% endfor %}
         </div>
         <form class="input-group mt-3" @submit.prevent="sendChat()">
           <input
@@ -144,16 +145,13 @@
         <p><strong>Visibility:</strong> {{ room.get_visibility_display }}</p>
         <p><strong>Rated:</strong> {{ room.rated|yesno:"Yes,No" }}</p>
         <p>
-          <strong>Guests:</strong> {{ room.allow_guests|yesno:"Allowed,Not
-          allowed" }}
+          <strong>Guests:</strong> {{ room.allow_guests|yesno:"Allowed,Not allowed" }}
         </p>
         <p>
-          <strong>Spectators:</strong> {{
-          room.spectator_enabled|yesno:"Allowed,Not allowed" }}
+          <strong>Spectators:</strong> {{ room.spectator_enabled|yesno:"Allowed,Not allowed" }}
         </p>
         <p class="mb-0">
-          <strong>Description:</strong> {{ room.description|default:"No
-          description." }}
+          <strong>Description:</strong> {{ room.description|default:"No description." }}
         </p>
       </div>
     </div>
