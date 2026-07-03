@@ -8,7 +8,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
-    DJANGO_ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
+    DJANGO_ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1","192.168.11.47"]),
     CSRF_TRUSTED_ORIGINS=(list, []),
     CORS_ALLOWED_ORIGINS=(list, []),
 )
@@ -24,7 +24,11 @@ if env_file.exists():
 SECRET_KEY = env("DJANGO_SECRET_KEY", default="dev-secret-key")
 DEBUG = env("DJANGO_DEBUG", default=True)
 
-ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS")
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "192.168.11.47",
+]
 CSRF_TRUSTED_ORIGINS = env("CSRF_TRUSTED_ORIGINS")
 CORS_ALLOWED_ORIGINS = env("CORS_ALLOWED_ORIGINS")
 
@@ -238,3 +242,6 @@ USE_TZ = True
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SITE_ID = 1
+CSRF_TRUSTED_ORIGINS = [
+    "http://192.168.11.47:8000",
+]
