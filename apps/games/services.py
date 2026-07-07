@@ -66,9 +66,25 @@ def actor_from_request(request: HttpRequest, game: Any) -> GameActor:
 
 def actor_from_scope(scope: dict[str, Any], game: Any) -> GameActor:
     identity = identity_from_scope(scope)
-    color = color_for_identity(game, identity)
-    return GameActor(identity=identity, color=color, display_name=identity.display_name)
 
+    metadata = getattr(game, "metadata", None) or {}
+
+    if metadata.get("mode") == "same_pc" or metadata.get("source") == "fen_import":
+        board = board_from_fen(game.current_fen)
+        color = color_from_board(board)
+        return GameActor(
+            identity=identity,
+            color=color,
+            display_name=identity.display_name,
+        )
+
+    color = color_for_identity(game, identity)
+
+    return GameActor(
+        identity=identity,
+        color=color,
+        display_name=identity.display_name,
+    )
 
 def color_for_identity(game: Any, identity: ParticipantIdentity) -> str | None:
     if identity.user is not None:

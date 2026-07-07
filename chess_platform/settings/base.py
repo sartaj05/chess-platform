@@ -73,12 +73,7 @@ THIRD_PARTY_APPS = [
     "allauth.socialaccount",
     "allauth.socialaccount.providers.google",
     "allauth.socialaccount.providers.github",
-
-    # ⚠️ IMPORTANT:
-    # DO NOT add "ratelimit" here
-    # it is NOT a Django app
 ]
-
 LOCAL_APPS = [
     "apps.core",
     "apps.accounts",
@@ -99,7 +94,7 @@ LOCAL_APPS = [
     "apps.api",
 ]
 
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+INSTALLED_APPS = ["daphne"] + DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 
 # -----------------------------
 # MIDDLEWARE
@@ -145,6 +140,12 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "chess_platform.wsgi.application"
 ASGI_APPLICATION = "chess_platform.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer",
+    }
+}
 
 # -----------------------------
 # AUTH
