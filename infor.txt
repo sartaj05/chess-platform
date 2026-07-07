@@ -123,3 +123,15 @@ continue Module 2
 I’ll build Module 2 as an additive update on top of Module 1, focused on rooms, invite URLs, LAN/private room joining, room chat presence foundation, and WebSocket routing/consumers.
 
 Inspecting and listing contents of module1 zip
+
+
+
+
+
+
+python manage.py shell -c "from apps.games.models import Game; from django.utils import timezone; g=Game.objects.get(pk='e8b4188a-55b3-4e66-b93a-2915cebb9d7b'); g.white_time_ms=300000; g.black_time_ms=300000; g.clock_initial_ms=300000; g.clock_started_at=timezone.now(); g.status='active'; g.result='*'; g.termination='none'; g.draw_offer_by=''; g.draw_offer_at=None; g.save(); print('Game reset successfully')"
+
+
+
+
+python manage.py shell -c "from apps.games.models import Game; from django.utils import timezone; g=Game.objects.get(pk='e8b4188a-55b3-4e66-b93a-2915cebb9d7b'); g.white_time_ms=1800000; g.black_time_ms=1800000; g.clock_initial_ms=1800000; g.clock_started_at=timezone.now(); g.status='active'; g.result='*'; g.termination='none'; g.draw_offer_by=''; g.draw_offer_at=None; g.save(); print('Game reset successfully')"

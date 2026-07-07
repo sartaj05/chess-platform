@@ -10,6 +10,8 @@
 
       state: {
         id: '',
+        mode: '',
+        source: '',
         status: '',
         result: '',
         turn: '',
@@ -59,6 +61,10 @@
         }
 
         this.clockTimer = window.setInterval(() => this.tickClock(), 1000);
+      },
+
+      isSameBrowserGame() {
+        return this.state.mode === 'same_pc' || this.state.source === 'fen_import';
       },
 
       websocketUrl() {
@@ -117,12 +123,18 @@
       },
 
       replaceState(nextState) {
-        const viewer = this.state.viewer || nextState.viewer;
+        const oldViewer = this.state.viewer;
 
         this.state = nextState;
 
-        if (viewer && !this.state.viewer) {
-          this.state.viewer = viewer;
+        if (this.isSameBrowserGame()) {
+          this.state.viewer = {
+            color: this.state.turn,
+            name: this.state.turn === 'white' ? this.state.white.name : this.state.black.name,
+            can_move: true
+          };
+        } else if (oldViewer && !this.state.viewer) {
+          this.state.viewer = oldViewer;
         }
 
         this.selectedSquare = '';
@@ -190,10 +202,14 @@
       },
 
       isOwnPiece(square) {
+        if (this.isSameBrowserGame()) {
+          return square.color === this.state.turn;
+        }
+
         const viewerColor = this.state.viewer ? this.state.viewer.color : null;
 
         if (!viewerColor && this.state.white.name === 'White' && this.state.black.name === 'Black') {
-          return true;
+          return square.color === this.state.turn;
         }
 
         return square.color === viewerColor && this.state.turn === viewerColor;
