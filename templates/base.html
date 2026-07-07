@@ -1,27 +1,44 @@
-{% load static %} <!doctype html>
+{% load static %}
+<!doctype html>
 <html lang="en" data-bs-theme="dark">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
     <title>{% block title %}{{ site_name }}{% endblock %}</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
     <link
       href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,560;9..144,650&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
       rel="stylesheet"
     />
+
     <link
       rel="stylesheet"
       href="{% static 'vendor/bootstrap/bootstrap.min.css' %}"
     />
+
     <link rel="stylesheet" href="{% static 'css/site.css' %}" />
+
+    <style>
+      [x-cloak] {
+        display: none !important;
+      }
+    </style>
+
+    {% block extra_css %}{% endblock %}
   </head>
+
   <body>
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
       <div class="container">
-        <a class="navbar-brand fw-bold" href="{% url 'core:home' %}"
-          ><span class="brand-mark">♞</span>{{ site_name }}</a
-        ><button
+        <a class="navbar-brand fw-bold" href="{% url 'core:home' %}">
+          <span class="brand-mark">♞</span>{{ site_name }}
+        </a>
+
+        <button
           class="navbar-toggler"
           type="button"
           data-bs-toggle="collapse"
@@ -29,90 +46,115 @@
         >
           <span class="navbar-toggler-icon"></span>
         </button>
+
         <div class="collapse navbar-collapse" id="mainNavbar">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             <li class="nav-item">
               <a class="nav-link" href="{% url 'rooms:list' %}">Live Rooms</a>
             </li>
+
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'rooms:create' %}"
-                >Create Room</a
-              >
+              <a class="nav-link" href="{% url 'rooms:create' %}">
+                Create Room
+              </a>
             </li>
+
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'rooms:lan_mode' %}">LAN Mode</a>
+              <a class="nav-link" href="{% url 'rooms:lan_mode' %}">
+                LAN Mode
+              </a>
             </li>
+
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'core:offline_mode' %}"
-                >Offline Mode</a
-              >
+              <a class="nav-link" href="{% url 'core:offline_mode' %}">
+                Offline Mode
+              </a>
             </li>
+
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'games:same_pc_new' %}"
-                >Same PC</a
-              >
+              <a class="nav-link" href="{% url 'games:same_pc_new' %}">
+                Same PC
+              </a>
             </li>
+
             {% if request.user.is_authenticated %}
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'core:member_home' %}"
-                >Dashboard</a
-              >
+              <a class="nav-link" href="{% url 'core:member_home' %}">
+                Dashboard
+              </a>
             </li>
             {% endif %}
           </ul>
+
           <div class="d-flex gap-2 align-items-center">
-            {% if request.user.is_authenticated %}<a
+            {% if request.user.is_authenticated %}
+            <a
               class="btn btn-outline-light btn-sm"
               href="{% url 'accounts:profile' %}"
-              >{{ request.user.display_name }}</a
             >
+              {{ request.user.display_name }}
+            </a>
+
             <form method="post" action="{% url 'accounts:logout' %}">
-              {% csrf_token %}<button
-                class="btn btn-warning btn-sm"
-                type="submit"
-              >
+              {% csrf_token %}
+              <button class="btn btn-warning btn-sm" type="submit">
                 Logout
               </button>
             </form>
-            {% else %}<a
+            {% else %}
+            <a
               class="btn btn-outline-light btn-sm"
               href="{% url 'accounts:login' %}"
-              >Login</a
-            ><a
+            >
+              Login
+            </a>
+
+            <a
               class="btn btn-success btn-sm"
               href="{% url 'accounts:signup' %}"
-              >Create Account</a
-            >{% endif %}
+            >
+              Create Account
+            </a>
+            {% endif %}
           </div>
         </div>
       </div>
     </nav>
+
     <main class="py-4">
       <div class="container">
-        {% if messages %}{% for message in messages %}
-        <div
-          class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show"
-          role="alert"
-        >
-          {{ message }}<button
-            type="button"
-            class="btn-close"
-            data-bs-dismiss="alert"
-          ></button>
-        </div>
-        {% endfor %}{% endif %}{% block content %}{% endblock %}
+        {% if messages %}
+          {% for message in messages %}
+          <div
+            class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show"
+            role="alert"
+          >
+            {{ message }}
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="alert"
+            ></button>
+          </div>
+          {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
       </div>
     </main>
+
     <footer class="text-center">
-      <small
-        >© {% now "Y" %} {{ site_name }} — built for the quiet study of the
-        game</small
-      >
+      <small>
+        © {% now "Y" %} {{ site_name }} — built for the quiet study of the game
+      </small>
     </footer>
+
     <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
-    <script src="{% static 'vendor/alpine/alpine.min.js' %}" defer></script>
     <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>
     <script src="{% static 'js/site.js' %}"></script>
+
     {% block extra_js %}{% endblock %}
+
+    <script defer src="{% static 'vendor/alpine/alpine.min.js' %}"></script>
   </body>
 </html>
