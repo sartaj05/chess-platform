@@ -1,4 +1,40 @@
 /* Enhanced games.css — drop-in replacement: static/css/games.css */
+.chessboard-wrap{position:relative;}
+.board-square:focus-visible{outline:3px solid var(--brass-light);outline-offset:-3px;z-index:3;}
+.promotion-overlay{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:rgba(8,9,13,.72);
+  backdrop-filter:blur(2px);
+  border-radius:1rem;
+  z-index:5;
+}
+.promotion-picker{
+  width:min(88%,260px);
+  padding:1.1rem;
+  border:1px solid var(--surface-border-strong);
+  border-radius:.9rem;
+  background:linear-gradient(180deg,rgba(28,31,42,.98),rgba(17,19,26,.99));
+  box-shadow:var(--shadow-soft);
+  text-align:center;
+}
+.promotion-picker-label{margin:0 0 .75rem;font-family:var(--font-mono);font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--paper-dim);}
+.promotion-picker-options{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;}
+.promotion-option{
+  aspect-ratio:1;
+  border:1px solid var(--surface-border);
+  border-radius:.65rem;
+  background:rgba(241,237,228,.04);
+  color:var(--paper);
+  font-size:1.8rem;
+  cursor:pointer;
+  transition:background .15s ease,border-color .15s ease,transform .15s ease;
+}
+.promotion-option:hover{background:rgba(197,154,82,.18);border-color:rgba(228,195,125,.5);transform:translateY(-2px);}
+
 .chessboard{
   width:min(88vw,650px);
   height:min(88vw,650px);

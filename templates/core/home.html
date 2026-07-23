@@ -4,7 +4,7 @@
   <div class="row align-items-center g-4">
     <div class="col-lg-7">
       <h1 class="display-5 mb-3">A quieter place<br>to play serious chess.</h1>
-      <p class="lead mb-4" style="max-width:34rem;">Real-time games, offline LAN play, engine analysis, and account security &mdash; built on Django, PostgreSQL, Redis, and Channels.</p>
+      <p class="lead mb-4 lead-measure">Real-time games, offline LAN play, engine analysis, and account security &mdash; built on Django, PostgreSQL, Redis, and Channels.</p>
       {% if request.user.is_authenticated %}
         <a class="btn btn-success" href="{% url 'core:member_home' %}">Open Dashboard</a>
       {% else %}
@@ -14,7 +14,7 @@
     </div>
     <div class="col-lg-5">
       <div class="status-card p-4">
-        <h2 class="h6 text-uppercase mb-3" style="letter-spacing:.08em;color:var(--paper-dim);">System Online</h2>
+        <h2 class="h6 text-uppercase mb-3 eyebrow-tight">System Online</h2>
         <ul class="stack-list">
           <li>Django Templates</li>
           <li>PostgreSQL</li>
@@ -31,17 +31,17 @@
 <div class="row g-0 feature-row mb-4">
   <div class="col-md-4 feature-col">
     <h2 class="h5 mb-2">Create a Room</h2>
-    <p class="mb-3" style="color:var(--paper-dim);">Start an online, LAN, offline, or same-PC chess room in seconds.</p>
+    <p class="mb-3 text-dim">Start an online, LAN, offline, or same-PC chess room in seconds.</p>
     <a class="feature-link" href="{% url 'rooms:create' %}">Create Room &rarr;</a>
   </div>
   <div class="col-md-4 feature-col">
     <h2 class="h5 mb-2">Join by Code</h2>
-    <p class="mb-3" style="color:var(--paper-dim);">Use a private room code or invite URL from your opponent.</p>
+    <p class="mb-3 text-dim">Use a private room code or invite URL from your opponent.</p>
     <a class="feature-link" href="{% url 'rooms:join' %}">Join Room &rarr;</a>
   </div>
   <div class="col-md-4 feature-col">
     <h2 class="h5 mb-2">LAN Mode</h2>
-    <p class="mb-3" style="color:var(--paper-dim);">Play inside a local network with no internet connection required.</p>
+    <p class="mb-3 text-dim">Play inside a local network with no internet connection required.</p>
     <a class="feature-link" href="{% url 'rooms:lan_mode' %}">LAN Instructions &rarr;</a>
   </div>
 </div>

@@ -224,6 +224,15 @@ REST_FRAMEWORK = {
 }
 
 # -----------------------------
+# ACCOUNT SECURITY / EMAIL
+# -----------------------------
+# Keep these values available in every settings environment.  The account
+# tasks read them directly when generating verification emails.
+OTP_CODE_TTL_MINUTES = env.int("OTP_CODE_TTL_MINUTES", default=10)
+MAX_OTP_ATTEMPTS = env.int("MAX_OTP_ATTEMPTS", default=5)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@chessplatform.local")
+
+# -----------------------------
 # STATIC / MEDIA
 # -----------------------------
 STATIC_URL = "/static/"

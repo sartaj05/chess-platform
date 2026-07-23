@@ -10,7 +10,7 @@
   <div>
     <span class="eyebrow mb-2">Rooms</span>
     <h1 class="h3 mb-1">Live Public Rooms</h1>
-    <p class="mb-0" style="color: var(--paper-dim)">
+    <p class="mb-0 text-dim">
       Join public rooms or create a private URL room for online or LAN play.
     </p>
   </div>
@@ -34,13 +34,13 @@
           </span>
         </div>
 
-        <p class="small mb-2" style="color: var(--paper-dim); font-family: var(--font-mono)">
+        <p class="small mb-2 text-dim-mono">
           {{ room.code }} · {{ room.get_mode_display }} · {{ room.get_status_display }}
         </p>
 
         <p class="mb-3">{{ room.description|default:"No description." }}</p>
 
-        <p class="small mb-3" style="color: var(--paper-dim)">
+        <p class="small mb-3 text-dim">
           Host: {{ room.host_display_name|default:"Unknown" }} ·
           Players: {{ room.participants.count }}/{{ room.max_players }}
         </p>

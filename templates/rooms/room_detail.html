@@ -4,7 +4,7 @@
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/rooms.css' %}" />
 {{ room_state|json_script:"room-state-data" }}
-<div class="row g-4" x-data="roomClient()" x-init="init()">
+<div class="row g-4" x-data="roomClient()" x-init="init()" x-cloak>
   <div class="col-lg-8">
     <div class="card border-secondary shadow-sm">
       <div
@@ -12,17 +12,15 @@
       >
         <div>
           <h1 class="h4 mb-0">{{ room.name }}</h1>
-          <span
-            class="small"
-            style="color: var(--paper-dim); font-family: var(--font-mono)"
+          <span class="small text-dim-mono"
             >{{ room.code }} · {{ room.get_mode_display }} · {{ room.time_control_label }}</span
           >
         </div>
         <span
           class="badge"
           :class="connected ? 'text-bg-success' : 'text-bg-danger'"
-          x-text="connected ? 'Realtime connected' : 'Disconnected'"
-        ></span>
+          role="status"
+        ><span class="status-dot" aria-hidden="true"></span><span x-text="connected ? 'Realtime connected' : 'Disconnected'"></span></span>
       </div>
       <div class="card-body">
         <div class="room-board-placeholder mb-3">
@@ -88,13 +86,15 @@
     <div class="card border-secondary mt-4">
       <div class="card-header"><h2 class="h5 mb-0">Room Chat</h2></div>
       <div class="card-body">
-        <div class="room-chat-log" id="roomChatLog">
+        <div class="room-chat-log scroll-thin" id="roomChatLog">
           {% for event in recent_events reversed %}
           {% if event.event_type == 'chat.message' %}
           <div class="small mb-2">
             <strong>{{ event.actor_display_name }}:</strong> {{ event.payload.message }}
           </div>
           {% endif %}
+          {% empty %}
+          <p class="empty-state mb-0">No messages yet. Say hello.</p>
           {% endfor %}
         </div>
         <form class="input-group mt-3" @submit.prevent="sendChat()">

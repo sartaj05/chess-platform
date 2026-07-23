@@ -33,8 +33,8 @@
         <span
           class="badge"
           :class="connected ? 'text-bg-success' : 'text-bg-danger'"
-          x-text="connected ? 'Realtime connected' : 'Disconnected'"
-        ></span>
+          role="status"
+        ><span class="status-dot" aria-hidden="true"></span><span x-text="connected ? 'Realtime connected' : 'Disconnected'"></span></span>
       </div>
 
       <div class="card-body">
@@ -57,35 +57,59 @@
           </template>
         </div>
 
-        <div id="chessboard" class="chessboard" :class="boardOrientation">
-          <template x-for="row in boardRows()" :key="row[0].rank">
-            <template x-for="square in row" :key="square.square">
-              <div
-                class="board-square"
-                :class="squareClass(square)"
-                :data-square="square.square"
-                draggable="true"
-                @click="clickSquare(square)"
-                @dragstart="dragStart($event, square)"
-                @dragover.prevent
-                @drop="dropSquare($event, square)"
-              >
-                <span
-                  class="coord-rank"
-                  x-show="square.file === 0"
-                  x-text="square.rank"
-                ></span>
+        <div class="chessboard-wrap">
+          <div id="chessboard" class="chessboard" :class="boardOrientation">
+            <template x-for="row in boardRows()" :key="row[0].rank">
+              <template x-for="square in row" :key="square.square">
+                <div
+                  class="board-square"
+                  :class="squareClass(square)"
+                  :data-square="square.square"
+                  draggable="true"
+                  tabindex="0"
+                  @click="clickSquare(square)"
+                  @keydown.enter="clickSquare(square)"
+                  @dragstart="dragStart($event, square)"
+                  @dragover.prevent
+                  @drop="dropSquare($event, square)"
+                >
+                  <span
+                    class="coord-rank"
+                    x-show="square.file === 0"
+                    x-text="square.rank"
+                  ></span>
 
-                <span
-                  class="coord-file"
-                  x-show="square.rank === 1"
-                  x-text="'abcdefgh'[square.file]"
-                ></span>
+                  <span
+                    class="coord-file"
+                    x-show="square.rank === 1"
+                    x-text="'abcdefgh'[square.file]"
+                  ></span>
 
-                <span class="piece" x-text="square.symbol"></span>
-              </div>
+                  <span class="piece" x-text="square.symbol"></span>
+                </div>
+              </template>
             </template>
-          </template>
+          </div>
+
+          <div class="promotion-overlay" x-show="promotionChoice" x-cloak>
+            <div class="promotion-picker" role="dialog" aria-label="Choose promotion piece">
+              <p class="promotion-picker-label">Promote to</p>
+              <div class="promotion-picker-options">
+                <template x-for="option in promotionOptions()" :key="option.piece">
+                  <button
+                    type="button"
+                    class="promotion-option"
+                    @click="confirmPromotion(option.piece)"
+                    :aria-label="option.label"
+                    x-text="option.symbol"
+                  ></button>
+                </template>
+              </div>
+              <button type="button" class="btn btn-outline-light btn-sm mt-2 w-100" @click="cancelPromotion()">
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
 
         <div class="captured-row mt-2">
@@ -121,6 +145,8 @@
           class="alert alert-info py-2"
           x-show="statusMessage"
           x-text="statusMessage"
+          role="status"
+          aria-live="polite"
         ></div>
 
         <div

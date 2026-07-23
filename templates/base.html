@@ -22,16 +22,12 @@
 
     <link rel="stylesheet" href="{% static 'css/site.css' %}" />
 
-    <style>
-      [x-cloak] {
-        display: none !important;
-      }
-    </style>
-
     {% block extra_css %}{% endblock %}
   </head>
 
   <body>
+    <a class="skip-link" href="#mainContent">Skip to content</a>
+
     <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
       <div class="container">
         <a class="navbar-brand fw-bold" href="{% url 'core:home' %}">
@@ -121,7 +117,7 @@
       </div>
     </nav>
 
-    <main class="py-4">
+    <main class="py-4" id="mainContent">
       <div class="container">
         {% if messages %}
           {% for message in messages %}
@@ -148,6 +144,8 @@
         © {% now "Y" %} {{ site_name }} — built for the quiet study of the game
       </small>
     </footer>
+
+    <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="false"></div>
 
     <script src="{% static 'vendor/htmx/htmx.min.js' %}"></script>
     <script src="{% static 'vendor/bootstrap/bootstrap.bundle.min.js' %}"></script>

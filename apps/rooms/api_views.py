@@ -1,15 +1,24 @@
 from __future__ import annotations
 
-from rest_framework import generics, permissions, response, status, views
+from rest_framework import generics, pagination, permissions, response, status, views
 
 from apps.rooms.models import Room
 from apps.rooms.serializers import CreateRoomSerializer, JoinRoomSerializer, RoomParticipantSerializer, RoomSerializer
+
+
+class PublicRoomPagination(pagination.PageNumberPagination):
+    """Provide a stable, metadata-bearing response for public room discovery."""
+
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
 
 
 class RoomListCreateAPIView(generics.ListCreateAPIView):
     """List public rooms or create a room for web/mobile clients."""
 
     permission_classes = [permissions.AllowAny]
+    pagination_class = PublicRoomPagination
 
     def get_queryset(self):
         return Room.objects.active().public().prefetch_related("participants").recently_active()

@@ -17,7 +17,7 @@
 
   <div class="card border-secondary mb-4">
     <div class="card-body">
-      <div class="progress mb-3" role="progressbar"><div class="progress-bar" :style="`width:${state.job.progress || {{ job.progress }}}%`" x-text="(state.job.progress || {{ job.progress }}) + '%' "></div></div>
+      <div class="progress mb-3" role="progressbar" :aria-valuenow="state.job.progress || {{ job.progress }}" aria-valuemin="0" aria-valuemax="100"><div class="progress-bar" :style="{ '--progress-value': (state.job.progress || {{ job.progress }}) + '%' }" x-text="(state.job.progress || {{ job.progress }}) + '%' "></div></div>
       <div>Status <span class="badge text-bg-info" x-text="state.job.status || '{{ job.status }}'"></span></div>
       {% if job.error_message %}<div class="alert alert-danger mt-3">{{ job.error_message }}</div>{% endif %}
     </div>
