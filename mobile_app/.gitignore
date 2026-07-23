@@ -2,6 +2,7 @@
 .packages
 build/
 .idea/
+*.iml
 .android/
 .flutter-plugins
 .flutter-plugins-dependencies
