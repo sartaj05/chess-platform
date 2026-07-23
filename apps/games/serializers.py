@@ -67,3 +67,12 @@ class MoveInputSerializer(serializers.Serializer):
 
 class GameActionSerializer(serializers.Serializer):
     action = serializers.ChoiceField(choices=["resign", "abort", "draw", "decline_draw"])
+
+
+class OfflineGameSyncSerializer(serializers.Serializer):
+    sync_id = serializers.UUIDField()
+    initial_fen = serializers.CharField(max_length=150)
+    current_fen = serializers.CharField(max_length=150)
+    pgn = serializers.CharField(max_length=100000, allow_blank=True)
+    mode = serializers.ChoiceField(choices=["same_device", "local_ai"])
+    metadata = serializers.JSONField(required=False, default=dict)
