@@ -105,6 +105,15 @@ class _OfflineLobbyPageState extends State<OfflineLobbyPage> {
             _message =
                 'Joined room ${_roomCode.text.trim().toUpperCase()} as ${participant['role'] ?? 'player'}.';
           });
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => RoomLobbyPage(
+                serverUrl: _server.text,
+                roomCode: _roomCode.text.trim().toUpperCase(),
+                sessionCookie: _sessionCookie,
+              ),
+            ),
+          );
         }
       });
 
@@ -236,6 +245,103 @@ class _OfflineLobbyPageState extends State<OfflineLobbyPage> {
           ),
         ),
       );
+}
+
+class RoomLobbyPage extends StatefulWidget {
+  const RoomLobbyPage(
+      {super.key,
+      required this.serverUrl,
+      required this.roomCode,
+      this.sessionCookie});
+
+  final String serverUrl;
+  final String roomCode;
+  final String? sessionCookie;
+
+  @override
+  State<RoomLobbyPage> createState() => _RoomLobbyPageState();
+}
+
+class _RoomLobbyPageState extends State<RoomLobbyPage> {
+  WebSocket? _socket;
+  Map<String, dynamic>? _room;
+  String? _error;
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _connect();
+  }
+
+  Future<void> _connect() async {
+    final base = Uri.parse(widget.serverUrl);
+    final uri = base.replace(
+        scheme: base.scheme == 'https' ? 'wss' : 'ws',
+        path: '/ws/rooms/${widget.roomCode}/');
+    try {
+      final socket = await WebSocket.connect(uri.toString(),
+          headers: widget.sessionCookie == null
+              ? null
+              : {HttpHeaders.cookieHeader: widget.sessionCookie!});
+      _socket = socket;
+      socket.listen((message) {
+        final data = jsonDecode(message as String) as Map<String, dynamic>;
+        if (data['room'] is Map && mounted)
+          setState(
+              () => _room = Map<String, dynamic>.from(data['room'] as Map));
+        if (data['type'] == 'error' && mounted)
+          setState(() => _error = data['message'] as String?);
+      }, onError: (_) {
+        if (mounted) setState(() => _error = 'Lost connection to the room.');
+      });
+    } on SocketException {
+      if (mounted)
+        setState(() => _error = 'Cannot connect to the local room server.');
+    }
+  }
+
+  @override
+  void dispose() {
+    _socket?.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final participants =
+        (_room?['participants'] as List? ?? const []).cast<Map>();
+    return Scaffold(
+      appBar: AppBar(title: Text('Room ${widget.roomCode}')),
+      body: ListView(padding: const EdgeInsets.all(16), children: [
+        Text(_room?['name'] as String? ?? 'Connecting...',
+            style: Theme.of(context).textTheme.headlineSmall),
+        Text(
+            '${_room?['time_control'] ?? '-'} | ${_room?['status'] ?? 'waiting'}'),
+        if (_error != null)
+          Padding(
+              padding: const EdgeInsets.only(top: 12), child: Text(_error!)),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Ready to play'),
+          value: _ready,
+          onChanged: _socket == null
+              ? null
+              : (ready) {
+                  _socket!
+                      .add(jsonEncode({'type': 'room.ready', 'ready': ready}));
+                  setState(() => _ready = ready);
+                },
+        ),
+        const Divider(),
+        const Text('Participants',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+        ...participants.map((item) => ListTile(
+            title: Text(item['display_name'] as String? ?? 'Guest'),
+            trailing: Text(item['role'] as String? ?? ''))),
+      ]),
+    );
+  }
 }
 
 class OfflineApi {
