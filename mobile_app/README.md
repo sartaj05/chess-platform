@@ -16,6 +16,7 @@ The first Flutter build needs the Android SDK and locally cached Flutter artifac
 
 - Configure a LAN server address.
 - Sign in using Django's existing JWT endpoint.
-- List public rooms and create a public LAN room.
+- List public rooms, create a public LAN room, and join any room by its code.
+- Join as either a player or spectator; guest session identity is retained for later room requests.
 
 Next mobile screens should be game board/WebSocket play, room joining, account profile, local notifications, PGN history, and Stockfish analysis.

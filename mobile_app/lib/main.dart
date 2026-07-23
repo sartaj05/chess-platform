@@ -10,13 +10,13 @@ class ChessPlatformApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-    title: 'Chess Platform',
-    theme: ThemeData(
-      colorSchemeSeed: const Color(0xff1b5e20),
-      useMaterial3: true,
-    ),
-    home: const OfflineLobbyPage(),
-  );
+        title: 'Chess Platform',
+        theme: ThemeData(
+          colorSchemeSeed: const Color(0xff1b5e20),
+          useMaterial3: true,
+        ),
+        home: const OfflineLobbyPage(),
+      );
 }
 
 class OfflineLobbyPage extends StatefulWidget {
@@ -32,8 +32,13 @@ class _OfflineLobbyPageState extends State<OfflineLobbyPage> {
   final _password = TextEditingController();
   final _roomName = TextEditingController();
   final _hostName = TextEditingController();
+  final _roomCode = TextEditingController();
+  final _joinName = TextEditingController();
   String? _accessToken;
+  String? _sessionCookie;
   List<Map<String, dynamic>> _rooms = [];
+  Map<String, dynamic>? _joinedParticipant;
+  bool _joinAsSpectator = false;
   bool _loading = false;
   String? _message;
 
@@ -44,6 +49,8 @@ class _OfflineLobbyPageState extends State<OfflineLobbyPage> {
     _password.dispose();
     _roomName.dispose();
     _hostName.dispose();
+    _roomCode.dispose();
+    _joinName.dispose();
     super.dispose();
   }
 
@@ -53,7 +60,9 @@ class _OfflineLobbyPageState extends State<OfflineLobbyPage> {
       _message = null;
     });
     try {
-      await action(OfflineApi(_server.text, _accessToken));
+      final api = OfflineApi(_server.text, _accessToken, _sessionCookie);
+      await action(api);
+      _sessionCookie = api.sessionCookie ?? _sessionCookie;
     } on SocketException {
       _message =
           'Cannot reach the server. Check the LAN IP address and that Django is running.';
@@ -68,112 +77,174 @@ class _OfflineLobbyPageState extends State<OfflineLobbyPage> {
   }
 
   Future<void> _login() => _run((api) async {
-    _accessToken = await api.login(_email.text, _password.text);
-    if (mounted) setState(() => _message = 'Signed in to your local server.');
-  });
+        _accessToken = await api.login(_email.text, _password.text);
+        if (mounted)
+          setState(() => _message = 'Signed in to your local server.');
+      });
 
   Future<void> _loadRooms() => _run((api) async {
-    final rooms = await api.publicRooms();
-    if (mounted) setState(() => _rooms = rooms);
-  });
+        final rooms = await api.publicRooms();
+        if (mounted) setState(() => _rooms = rooms);
+      });
 
   Future<void> _createRoom() => _run((api) async {
-    await api.createRoom(name: _roomName.text, hostName: _hostName.text);
-    _roomName.clear();
-    await _loadRooms();
-  });
+        await api.createRoom(name: _roomName.text, hostName: _hostName.text);
+        _roomName.clear();
+        await _loadRooms();
+      });
+
+  Future<void> _joinRoom() => _run((api) async {
+        final participant = await api.joinRoom(
+          code: _roomCode.text,
+          displayName: _joinName.text,
+          asSpectator: _joinAsSpectator,
+        );
+        if (mounted) {
+          setState(() {
+            _joinedParticipant = participant;
+            _message =
+                'Joined room ${_roomCode.text.trim().toUpperCase()} as ${participant['role'] ?? 'player'}.';
+          });
+        }
+      });
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Chess Platform — Offline LAN')),
-    body: SafeArea(
-      child: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          const Text(
-            'Local server',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          TextField(
-            controller: _server,
-            keyboardType: TextInputType.url,
-            decoration: const InputDecoration(
-              hintText: 'http://192.168.x.x:8000',
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Sign in (optional for public rooms)',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          TextField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(labelText: 'Email'),
-          ),
-          TextField(
-            controller: _password,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'Password'),
-          ),
-          FilledButton(
-            onPressed: _loading ? null : _login,
-            child: const Text('Sign in locally'),
-          ),
-          const Divider(height: 32),
-          TextField(
-            controller: _roomName,
-            decoration: const InputDecoration(labelText: 'New room name'),
-          ),
-          TextField(
-            controller: _hostName,
-            decoration: const InputDecoration(labelText: 'Your display name'),
-          ),
-          FilledButton.tonal(
-            onPressed: _loading ? null : _createRoom,
-            child: const Text('Create public room'),
-          ),
-          const SizedBox(height: 8),
-          OutlinedButton(
-            onPressed: _loading ? null : _loadRooms,
-            child: const Text('Refresh public rooms'),
-          ),
-          if (_loading)
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.all(12),
-                child: CircularProgressIndicator(),
+        appBar: AppBar(title: const Text('Chess Platform — Offline LAN')),
+        body: SafeArea(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              const Text(
+                'Local server',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
-            ),
-          if (_message != null)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(_message!),
-            ),
-          const SizedBox(height: 8),
-          ..._rooms.map(
-            (room) => Card(
-              child: ListTile(
-                title: Text(room['name'] as String? ?? 'Untitled room'),
-                subtitle: Text(
-                  '${room['time_control'] ?? '—'} • Host: ${room['host_display_name'] ?? 'Guest'}',
+              TextField(
+                controller: _server,
+                keyboardType: TextInputType.url,
+                decoration: const InputDecoration(
+                  hintText: 'http://192.168.x.x:8000',
                 ),
-                trailing: Text(room['code'] as String? ?? ''),
               ),
-            ),
+              const SizedBox(height: 16),
+              const Text(
+                'Sign in (optional for public rooms)',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              TextField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: 'Email'),
+              ),
+              TextField(
+                controller: _password,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Password'),
+              ),
+              FilledButton(
+                onPressed: _loading ? null : _login,
+                child: const Text('Sign in locally'),
+              ),
+              const Divider(height: 32),
+              TextField(
+                controller: _roomName,
+                decoration: const InputDecoration(labelText: 'New room name'),
+              ),
+              TextField(
+                controller: _hostName,
+                decoration:
+                    const InputDecoration(labelText: 'Your display name'),
+              ),
+              FilledButton.tonal(
+                onPressed: _loading ? null : _createRoom,
+                child: const Text('Create public room'),
+              ),
+              const Divider(height: 32),
+              const Text(
+                'Join a room by code',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              TextField(
+                controller: _roomCode,
+                textCapitalization: TextCapitalization.characters,
+                maxLength: 12,
+                decoration: const InputDecoration(labelText: 'Room code'),
+              ),
+              TextField(
+                controller: _joinName,
+                decoration:
+                    const InputDecoration(labelText: 'Your display name'),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Join as spectator'),
+                value: _joinAsSpectator,
+                onChanged: _loading
+                    ? null
+                    : (value) => setState(() => _joinAsSpectator = value),
+              ),
+              FilledButton(
+                onPressed: _loading ? null : _joinRoom,
+                child: const Text('Join room'),
+              ),
+              if (_joinedParticipant != null)
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.check_circle_outline),
+                    title: Text(
+                        _joinedParticipant!['display_name'] as String? ??
+                            'Joined'),
+                    subtitle: Text(
+                        'Role: ${_joinedParticipant!['role'] ?? 'player'}'),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: _loading ? null : _loadRooms,
+                child: const Text('Refresh public rooms'),
+              ),
+              if (_loading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(12),
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              if (_message != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(_message!),
+                ),
+              const SizedBox(height: 8),
+              ..._rooms.map(
+                (room) => Card(
+                  child: ListTile(
+                    title: Text(room['name'] as String? ?? 'Untitled room'),
+                    subtitle: Text(
+                      '${room['time_control'] ?? '—'} • Host: ${room['host_display_name'] ?? 'Guest'}',
+                    ),
+                    trailing: TextButton(
+                      onPressed: () => setState(
+                        () => _roomCode.text = room['code'] as String? ?? '',
+                      ),
+                      child: Text(room['code'] as String? ?? ''),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-    ),
-  );
+        ),
+      );
 }
 
 class OfflineApi {
-  OfflineApi(String baseUrl, this.token)
-    : _baseUri = Uri.parse(baseUrl.endsWith('/') ? baseUrl : '$baseUrl/');
+  OfflineApi(String baseUrl, this.token, this.sessionCookie)
+      : _baseUri = Uri.parse(baseUrl.endsWith('/') ? baseUrl : '$baseUrl/');
 
   final Uri _baseUri;
   final String? token;
+  String? sessionCookie;
 
   Future<String> login(String email, String password) async {
     final body = await _request('POST', 'api/auth/token/', {
@@ -217,6 +288,24 @@ class OfflineApi {
     });
   }
 
+  Future<Map<String, dynamic>> joinRoom({
+    required String code,
+    required String displayName,
+    required bool asSpectator,
+  }) async {
+    final cleanCode = code.trim().toUpperCase();
+    if (cleanCode.isEmpty) throw const HttpException('Enter a room code.');
+    final body = await _request('POST', 'api/rooms/$cleanCode/join/', {
+      'display_name': displayName.trim(),
+      'as_spectator': asSpectator,
+    });
+    if (body is! Map) {
+      throw const HttpException(
+          'Unexpected join response from the local server.');
+    }
+    return Map<String, dynamic>.from(body);
+  }
+
   Future<dynamic> _request(
     String method,
     String path, [
@@ -227,10 +316,18 @@ class OfflineApi {
       final request = await client.openUrl(method, _baseUri.resolve(path));
       request.headers.contentType = ContentType.json;
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      if (sessionCookie != null) {
+        request.headers.set(HttpHeaders.cookieHeader, sessionCookie!);
+      }
       if (token != null)
         request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
       if (payload != null) request.write(jsonEncode(payload));
       final response = await request.close();
+      final session = response.cookies
+          .where((cookie) => cookie.name == 'sessionid')
+          .toList();
+      if (session.isNotEmpty)
+        sessionCookie = 'sessionid=${session.first.value}';
       final text = await utf8.decodeStream(response);
       final decoded = text.isEmpty ? <String, dynamic>{} : jsonDecode(text);
       if (response.statusCode < 200 || response.statusCode >= 300) {
