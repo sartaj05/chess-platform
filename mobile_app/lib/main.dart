@@ -268,6 +268,23 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
   String? _error;
   bool _ready = false;
 
+  Future<void> _startGame() async {
+    try {
+      final api = OfflineApi(widget.serverUrl, null, widget.sessionCookie);
+      final game = await api.startRoomGame(widget.roomCode);
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => GameStatePage(game: game)),
+        );
+      }
+    } on HttpException catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    } on SocketException {
+      if (mounted)
+        setState(() => _error = 'Cannot reach the local game server.');
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -333,6 +350,11 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
                   setState(() => _ready = ready);
                 },
         ),
+        FilledButton.icon(
+          onPressed: _socket == null ? null : _startGame,
+          icon: const Icon(Icons.play_arrow),
+          label: const Text('Start game'),
+        ),
         const Divider(),
         const Text('Participants',
             style: TextStyle(fontWeight: FontWeight.bold)),
@@ -342,6 +364,34 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
       ]),
     );
   }
+}
+
+class GameStatePage extends StatelessWidget {
+  const GameStatePage({super.key, required this.game});
+
+  final Map<String, dynamic> game;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Game started')),
+        body: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                  '${game['white_display_name'] ?? 'White'} vs ${game['black_display_name'] ?? 'Black'}',
+                  style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 12),
+              Text('Status: ${game['status'] ?? 'in progress'}'),
+              Text('Turn: ${game['turn'] ?? 'white'}'),
+              const SizedBox(height: 16),
+              const Text(
+                  'The interactive chessboard is the next mobile update.'),
+            ],
+          ),
+        ),
+      );
 }
 
 class OfflineApi {
@@ -409,6 +459,15 @@ class OfflineApi {
       throw const HttpException(
           'Unexpected join response from the local server.');
     }
+    return Map<String, dynamic>.from(body);
+  }
+
+  Future<Map<String, dynamic>> startRoomGame(String code) async {
+    final body =
+        await _request('POST', 'api/rooms/${code.trim().toUpperCase()}/start/');
+    if (body is! Map)
+      throw const HttpException(
+          'Unexpected game response from the local server.');
     return Map<String, dynamic>.from(body);
   }
 

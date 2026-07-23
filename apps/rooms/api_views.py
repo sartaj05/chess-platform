@@ -4,6 +4,7 @@ from rest_framework import generics, pagination, permissions, response, status, 
 
 from apps.rooms.models import Room
 from apps.rooms.serializers import CreateRoomSerializer, JoinRoomSerializer, RoomParticipantSerializer, RoomSerializer
+from apps.games.services import create_game_from_room, serialize_game
 
 
 class PublicRoomPagination(pagination.PageNumberPagination):
@@ -59,3 +60,14 @@ class JoinRoomAPIView(views.APIView):
         serializer.is_valid(raise_exception=True)
         participant = serializer.save()
         return response.Response(RoomParticipantSerializer(participant).data, status=status.HTTP_200_OK)
+
+
+class StartRoomGameAPIView(views.APIView):
+    """Start a room game for mobile and other API clients."""
+
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, code: str):
+        room = generics.get_object_or_404(Room.objects.prefetch_related("participants"), code=code.upper())
+        game = create_game_from_room(room=room, request=request)
+        return response.Response(serialize_game(game, request=request), status=status.HTTP_201_CREATED)
