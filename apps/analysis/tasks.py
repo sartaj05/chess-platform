@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from celery import shared_task
-
 from apps.analysis.models import GameAnalysisJob
 from apps.analysis.services import run_game_review
+from celery import shared_task
 
 
 @shared_task(bind=True, autoretry_for=(ConnectionError,), retry_backoff=True, retry_kwargs={"max_retries": 3})

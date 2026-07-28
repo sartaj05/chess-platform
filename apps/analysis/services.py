@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import io
 from collections import Counter
-from decimal import Decimal
 from typing import Any
 
 import chess
@@ -84,7 +83,9 @@ def analyse_position(
     )
 
 
-def classify_move(*, played_uci: str, best_uci: str, mover_color: str, before_white_cp: int | None, after_white_cp: int | None) -> tuple[str, int, str]:
+def classify_move(
+    *, played_uci: str, best_uci: str, mover_color: str, before_white_cp: int | None, after_white_cp: int | None
+) -> tuple[str, int, str]:
     if before_white_cp is None or after_white_cp is None:
         return MoveReview.Classification.UNKNOWN, 0, "Engine score unavailable for this move."
     if best_uci and played_uci == best_uci:
@@ -104,7 +105,13 @@ def classify_move(*, played_uci: str, best_uci: str, mover_color: str, before_wh
 
 
 @transaction.atomic
-def create_analysis_job(*, game: Game, requested_by: Any | None = None, analysis_type: str = GameAnalysisJob.AnalysisType.QUICK, depth: int | None = None) -> GameAnalysisJob:
+def create_analysis_job(
+    *,
+    game: Game,
+    requested_by: Any | None = None,
+    analysis_type: str = GameAnalysisJob.AnalysisType.QUICK,
+    depth: int | None = None,
+) -> GameAnalysisJob:
     profile = StockfishEngineProfile.default_profile()
     selected_depth = int(depth or getattr(settings, "ANALYSIS_REVIEW_DEPTH", profile.default_depth))
     selected_depth = min(selected_depth, int(getattr(settings, "ANALYSIS_MAX_DEPTH", 18)))
@@ -172,7 +179,14 @@ def run_game_review(*, job: GameAnalysisJob) -> dict[str, Any]:
                 },
             )
             summary_counter[classification] += 1
-            evaluation_points.append({"ply": move.ply_number, "move": move.san, "score_white_cp": after_position.score_white_cp, "classification": classification})
+            evaluation_points.append(
+                {
+                    "ply": move.ply_number,
+                    "move": move.san,
+                    "score_white_cp": after_position.score_white_cp,
+                    "classification": classification,
+                }
+            )
             job.progress = min(99, int((index / total) * 100))
             job.save(update_fields=["progress", "updated_at"])
         summary = {"counts": dict(summary_counter), "moves": len(moves), "evaluation": evaluation_points}
@@ -227,7 +241,9 @@ def parse_pgn_moves_to_uci(pgn_text: str) -> list[str]:
     return moves
 
 
-def search_openings(*, moves_uci: list[str], user: Any | None = None, request: Any | None = None) -> list[OpeningBookLine]:
+def search_openings(
+    *, moves_uci: list[str], user: Any | None = None, request: Any | None = None
+) -> list[OpeningBookLine]:
     queryset = OpeningBookLine.objects.filter(is_active=True)
     if moves_uci:
         queryset = queryset.filter(moves_uci__contains=moves_uci)

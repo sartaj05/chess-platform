@@ -22,13 +22,7 @@ class RoomListView(ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        return (
-            Room.objects.active()
-            .public()
-            .select_related("host")
-            .prefetch_related("participants")
-            .recently_active()
-        )
+        return Room.objects.active().public().select_related("host").prefetch_related("participants").recently_active()
 
 
 class CreateRoomView(FormView):

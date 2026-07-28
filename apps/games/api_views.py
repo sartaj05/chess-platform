@@ -13,15 +13,15 @@ from apps.games.serializers import (
     OfflineGameSyncSerializer,
 )
 from apps.games.services import (
-    actor_from_request,
     abort_game,
+    actor_from_request,
+    board_from_fen,
+    color_from_board,
     decline_draw,
     offer_or_accept_draw,
     play_uci_move,
     resign_game,
     serialize_game,
-    board_from_fen,
-    color_from_board,
 )
 
 
@@ -50,20 +50,32 @@ class GameViewSet(viewsets.ReadOnlyModelViewSet):
         existing = Game.objects.filter(metadata__offline_sync_id=sync_id).first()
         if existing:
             return Response({"game": serialize_game(existing, request=request), "created": False})
-        initial = board_from_fen(data["initial_fen"])
+        board_from_fen(data["initial_fen"])
         current = board_from_fen(data["current_fen"])
-        identity = actor_from_request(request, Game(white_display_name="Offline", black_display_name="Offline")) .identity
+        identity = actor_from_request(
+            request, Game(white_display_name="Offline", black_display_name="Offline")
+        ).identity
         metadata = {"source": "offline_sync", "offline_sync_id": sync_id, "mode": data["mode"], **data["metadata"]}
         game = Game.objects.create(
-            status=Game.Status.FINISHED, termination=Game.Termination.IMPORTED,
-            white_user=identity.user, white_guest_key=identity.guest_key,
-            white_display_name=identity.display_name, black_display_name="Offline opponent",
-            initial_fen=data["initial_fen"], current_fen=data["current_fen"],
-            cached_pgn=data["pgn"], initial_pgn=data["pgn"], turn=color_from_board(current),
-            fullmove_number=current.fullmove_number, ply_count=max(0, (current.fullmove_number - 1) * 2),
-            result=Game.Result.ONGOING, metadata=metadata,
+            status=Game.Status.FINISHED,
+            termination=Game.Termination.IMPORTED,
+            white_user=identity.user,
+            white_guest_key=identity.guest_key,
+            white_display_name=identity.display_name,
+            black_display_name="Offline opponent",
+            initial_fen=data["initial_fen"],
+            current_fen=data["current_fen"],
+            cached_pgn=data["pgn"],
+            initial_pgn=data["pgn"],
+            turn=color_from_board(current),
+            fullmove_number=current.fullmove_number,
+            ply_count=max(0, (current.fullmove_number - 1) * 2),
+            result=Game.Result.ONGOING,
+            metadata=metadata,
         )
-        return Response({"game": serialize_game(game, request=request), "created": True}, status=status.HTTP_201_CREATED)
+        return Response(
+            {"game": serialize_game(game, request=request), "created": True}, status=status.HTTP_201_CREATED
+        )
 
     @drf_action(detail=True, methods=["post"])
     def move(self, request, pk=None):

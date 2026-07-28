@@ -206,9 +206,7 @@ class MoveReview(TimeStampedModel):
             models.Index(fields=["game", "ply_number"], name="an_rev_gp_idx"),
             models.Index(fields=["classification", "created_at"], name="an_rev_cl_time"),
         ]
-        constraints = [
-            models.UniqueConstraint(fields=["job", "ply_number"], name="analysis_unique_review_job_ply")
-        ]
+        constraints = [models.UniqueConstraint(fields=["job", "ply_number"], name="analysis_unique_review_job_ply")]
 
     def __str__(self) -> str:
         return f"{self.move_san} {self.classification}"
@@ -236,9 +234,7 @@ class OpeningBookLine(TimeStampedModel):
             models.Index(fields=["is_active", "eco"], name="an_open_eco_idx"),
             models.Index(fields=["is_active", "name"], name="an_open_name_idx"),
         ]
-        constraints = [
-            models.UniqueConstraint(fields=["eco", "pgn_prefix"], name="analysis_unique_eco_prefix")
-        ]
+        constraints = [models.UniqueConstraint(fields=["eco", "pgn_prefix"], name="analysis_unique_eco_prefix")]
 
     def __str__(self) -> str:
         return f"{self.eco} {self.name}"

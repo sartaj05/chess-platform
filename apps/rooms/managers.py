@@ -7,16 +7,18 @@ from django.utils import timezone
 class RoomQuerySet(models.QuerySet):
     """Reusable filters for chess rooms."""
 
-    def active(self) -> "RoomQuerySet":
-        return self.exclude(status__in=[self.model.Status.FINISHED, self.model.Status.ABORTED, self.model.Status.EXPIRED])
+    def active(self) -> RoomQuerySet:
+        return self.exclude(
+            status__in=[self.model.Status.FINISHED, self.model.Status.ABORTED, self.model.Status.EXPIRED]
+        )
 
-    def waiting(self) -> "RoomQuerySet":
+    def waiting(self) -> RoomQuerySet:
         return self.filter(status=self.model.Status.WAITING)
 
-    def public(self) -> "RoomQuerySet":
+    def public(self) -> RoomQuerySet:
         return self.filter(visibility=self.model.Visibility.PUBLIC)
 
-    def recently_active(self) -> "RoomQuerySet":
+    def recently_active(self) -> RoomQuerySet:
         return self.order_by("-last_activity_at", "-created_at")
 
 

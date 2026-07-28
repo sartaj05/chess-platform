@@ -1,6 +1,14 @@
 from django.urls import path
 
-from apps.rooms.views import CreateRoomView, JoinRoomByCodeView, LanModeView, LeaveRoomView, RoomDetailView, RoomListView, RoomStateView
+from apps.rooms.views import (
+    CreateRoomView,
+    JoinRoomByCodeView,
+    LanModeView,
+    LeaveRoomView,
+    RoomDetailView,
+    RoomListView,
+    RoomStateView,
+)
 
 app_name = "rooms"
 

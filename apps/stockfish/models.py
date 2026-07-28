@@ -36,7 +36,7 @@ class StockfishEngineProfile(TimeStampedModel):
         return self.name
 
     @classmethod
-    def default_profile(cls) -> "StockfishEngineProfile":
+    def default_profile(cls) -> StockfishEngineProfile:
         profile, _created = cls.objects.get_or_create(
             name="Default Offline Stockfish",
             defaults={
@@ -60,7 +60,9 @@ class StockfishRun(TimeStampedModel):
         UNAVAILABLE = "unavailable", "Unavailable"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    profile = models.ForeignKey(StockfishEngineProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name="runs")
+    profile = models.ForeignKey(
+        StockfishEngineProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name="runs"
+    )
     game = models.ForeignKey("games.Game", on_delete=models.SET_NULL, null=True, blank=True, related_name="engine_runs")
     fen = models.CharField(max_length=180)
     command_type = models.CharField(max_length=40, default="position_analysis")

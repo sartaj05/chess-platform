@@ -10,7 +10,6 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.http import HttpRequest
 from django.urls import reverse
-from django.utils import timezone
 
 ROOM_CODE_ALPHABET = string.ascii_uppercase + string.digits
 GUEST_SESSION_KEY = "chess_guest_key"

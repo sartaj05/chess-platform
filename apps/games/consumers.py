@@ -33,23 +33,33 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
                 return
             if event_type == "game.move":
                 payload = await self._play_move(str(content.get("uci", "")), int(content.get("client_lag_ms", 0) or 0))
-                await self.channel_layer.group_send(self.group_name, {"type": "broadcast_game", "event": "move.played", "game": payload})
+                await self.channel_layer.group_send(
+                    self.group_name, {"type": "broadcast_game", "event": "move.played", "game": payload}
+                )
                 return
             if event_type == "game.resign":
                 payload = await self._resign()
-                await self.channel_layer.group_send(self.group_name, {"type": "broadcast_game", "event": "game.resigned", "game": payload})
+                await self.channel_layer.group_send(
+                    self.group_name, {"type": "broadcast_game", "event": "game.resigned", "game": payload}
+                )
                 return
             if event_type == "game.abort":
                 payload = await self._abort()
-                await self.channel_layer.group_send(self.group_name, {"type": "broadcast_game", "event": "game.aborted", "game": payload})
+                await self.channel_layer.group_send(
+                    self.group_name, {"type": "broadcast_game", "event": "game.aborted", "game": payload}
+                )
                 return
             if event_type == "game.draw":
                 payload = await self._draw()
-                await self.channel_layer.group_send(self.group_name, {"type": "broadcast_game", "event": "draw.updated", "game": payload})
+                await self.channel_layer.group_send(
+                    self.group_name, {"type": "broadcast_game", "event": "draw.updated", "game": payload}
+                )
                 return
             if event_type == "game.decline_draw":
                 payload = await self._decline_draw()
-                await self.channel_layer.group_send(self.group_name, {"type": "broadcast_game", "event": "draw.declined", "game": payload})
+                await self.channel_layer.group_send(
+                    self.group_name, {"type": "broadcast_game", "event": "draw.declined", "game": payload}
+                )
                 return
         except PermissionDenied as exc:
             await self.send_json({"type": "error", "message": str(exc)})
@@ -69,14 +79,22 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
     def _get_game(self):
         from apps.games.models import Game
 
-        return Game.objects.select_related("room", "white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
+        return (
+            Game.objects.select_related("room", "white_user", "black_user")
+            .prefetch_related("moves")
+            .get(pk=self.game_id)
+        )
 
     @database_sync_to_async
     def _state(self) -> dict[str, Any]:
         from apps.games.models import Game
         from apps.games.services import serialize_game
 
-        game = Game.objects.select_related("room", "white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
+        game = (
+            Game.objects.select_related("room", "white_user", "black_user")
+            .prefetch_related("moves")
+            .get(pk=self.game_id)
+        )
         return serialize_game(game)
 
     @database_sync_to_async
@@ -87,7 +105,11 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         game = Game.objects.select_related("white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
         actor = actor_from_scope(self.scope, game)
         play_uci_move(game=game, actor=actor, uci=uci, client_lag_ms=client_lag_ms)
-        game = Game.objects.select_related("room", "white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
+        game = (
+            Game.objects.select_related("room", "white_user", "black_user")
+            .prefetch_related("moves")
+            .get(pk=self.game_id)
+        )
         return serialize_game(game)
 
     @database_sync_to_async
@@ -104,7 +126,7 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def _abort(self) -> dict[str, Any]:
         from apps.games.models import Game
-        from apps.games.services import actor_from_scope, abort_game, serialize_game
+        from apps.games.services import abort_game, actor_from_scope, serialize_game
 
         game = Game.objects.select_related("white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
         actor = actor_from_scope(self.scope, game)

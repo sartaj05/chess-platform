@@ -10,7 +10,10 @@ from apps.stockfish.models import StockfishEngineProfile, StockfishRun
 
 
 def engine_available(binary_path: str | None = None) -> bool:
-    return StockfishClient.resolve_binary(binary_path or getattr(settings, "STOCKFISH_BINARY", "/usr/games/stockfish")) is not None
+    return (
+        StockfishClient.resolve_binary(binary_path or getattr(settings, "STOCKFISH_BINARY", "/usr/games/stockfish"))
+        is not None
+    )
 
 
 def analyse_fen_with_stockfish(

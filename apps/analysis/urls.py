@@ -1,6 +1,14 @@
 from django.urls import path
 
-from apps.analysis.views import AnalysisBoardView, AnalysisJobDetailView, AnalysisJobStateView, GameReviewView, OpeningExplorerJsonView, OpeningExplorerView, StartGameAnalysisView
+from apps.analysis.views import (
+    AnalysisBoardView,
+    AnalysisJobDetailView,
+    AnalysisJobStateView,
+    GameReviewView,
+    OpeningExplorerJsonView,
+    OpeningExplorerView,
+    StartGameAnalysisView,
+)
 
 app_name = "analysis"
 

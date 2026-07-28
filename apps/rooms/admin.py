@@ -14,7 +14,17 @@ class RoomParticipantInline(admin.TabularInline):
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ("code", "name", "mode", "visibility", "status", "time_control_label", "rated", "host_display_name", "last_activity_at")
+    list_display = (
+        "code",
+        "name",
+        "mode",
+        "visibility",
+        "status",
+        "time_control_label",
+        "rated",
+        "host_display_name",
+        "last_activity_at",
+    )
     list_filter = ("mode", "visibility", "status", "time_category", "rated", "allow_guests")
     search_fields = ("code", "name", "host_display_name", "host__email")
     readonly_fields = ("id", "created_at", "updated_at", "last_activity_at")

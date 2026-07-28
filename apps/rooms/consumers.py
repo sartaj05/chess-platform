@@ -32,7 +32,9 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
 
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
-        await self.send_json({"type": "connection.accepted", "room": payload["room"], "participant": payload["participant"]})
+        await self.send_json(
+            {"type": "connection.accepted", "room": payload["room"], "participant": payload["participant"]}
+        )
         await self.channel_layer.group_send(
             self.group_name,
             {"type": "broadcast_state", "event": "participant.connected", "room": payload["room"]},
@@ -97,10 +99,13 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
         identity = identity_from_scope(self.scope)
         session = self.scope.get("session")
         if session is None or not hasattr(session, "modified"):
+
             class FallbackSession(dict):
                 modified = False
 
-            session = FallbackSession({GUEST_SESSION_KEY: identity.guest_key, GUEST_NAME_SESSION_KEY: identity.display_name})
+            session = FallbackSession(
+                {GUEST_SESSION_KEY: identity.guest_key, GUEST_NAME_SESSION_KEY: identity.display_name}
+            )
         scope_request = SimpleNamespace(user=identity.user, session=session)
 
         participant = join_room(request=scope_request, room=room, display_name=identity.display_name)

@@ -56,7 +56,16 @@ class RoomSerializer(serializers.ModelSerializer):
             "last_activity_at",
             "created_at",
         ]
-        read_only_fields = ["id", "code", "status", "time_category", "participants", "invite_url", "last_activity_at", "created_at"]
+        read_only_fields = [
+            "id",
+            "code",
+            "status",
+            "time_category",
+            "participants",
+            "invite_url",
+            "last_activity_at",
+            "created_at",
+        ]
 
     def get_invite_url(self, obj: Room) -> str:
         request = self.context.get("request")
@@ -74,7 +83,9 @@ class CreateRoomSerializer(serializers.Serializer):
     clock_initial_minutes = serializers.IntegerField(min_value=0, max_value=10080, default=5)
     increment_seconds = serializers.IntegerField(min_value=0, max_value=120, default=0)
     delay_seconds = serializers.IntegerField(min_value=0, max_value=120, default=0)
-    color_preference = serializers.ChoiceField(choices=Room.ColorPreference.choices, default=Room.ColorPreference.RANDOM)
+    color_preference = serializers.ChoiceField(
+        choices=Room.ColorPreference.choices, default=Room.ColorPreference.RANDOM
+    )
     rated = serializers.BooleanField(default=False)
     allow_guests = serializers.BooleanField(default=True)
     spectator_enabled = serializers.BooleanField(default=True)

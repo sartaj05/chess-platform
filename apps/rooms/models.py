@@ -68,7 +68,9 @@ class Room(TimeStampedModel):
     allow_guests = models.BooleanField(default=True)
     spectator_enabled = models.BooleanField(default=True)
     max_players = models.PositiveSmallIntegerField(default=2)
-    time_category = models.CharField(max_length=16, choices=TimeCategory.choices, default=TimeCategory.BLITZ, db_index=True)
+    time_category = models.CharField(
+        max_length=16, choices=TimeCategory.choices, default=TimeCategory.BLITZ, db_index=True
+    )
     clock_initial_seconds = models.PositiveIntegerField(default=300)
     increment_seconds = models.PositiveSmallIntegerField(default=0)
     delay_seconds = models.PositiveSmallIntegerField(default=0)
@@ -120,7 +122,11 @@ class Room(TimeStampedModel):
     def time_control_label(self) -> str:
         minutes = self.clock_initial_seconds // 60
         seconds = self.clock_initial_seconds % 60
-        base = f"{minutes}+{self.increment_seconds}" if seconds == 0 else f"{minutes}:{seconds:02d}+{self.increment_seconds}"
+        base = (
+            f"{minutes}+{self.increment_seconds}"
+            if seconds == 0
+            else f"{minutes}:{seconds:02d}+{self.increment_seconds}"
+        )
         if self.delay_seconds:
             return f"{base} delay {self.delay_seconds}s"
         return base

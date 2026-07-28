@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import pytest
-from django.urls import reverse
-
 from apps.rooms.models import Room, RoomParticipant
+from django.urls import reverse
 
 
 @pytest.mark.django_db

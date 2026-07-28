@@ -6,7 +6,9 @@ from apps.analysis.models import GameAnalysisJob, MoveReview, OpeningBookLine, P
 
 
 class StartAnalysisSerializer(serializers.Serializer):
-    analysis_type = serializers.ChoiceField(choices=GameAnalysisJob.AnalysisType.choices, default=GameAnalysisJob.AnalysisType.QUICK)
+    analysis_type = serializers.ChoiceField(
+        choices=GameAnalysisJob.AnalysisType.choices, default=GameAnalysisJob.AnalysisType.QUICK
+    )
     depth = serializers.IntegerField(min_value=1, max_value=18, default=10)
 
 
@@ -19,13 +21,36 @@ class PositionAnalysisSerializer(serializers.Serializer):
 class PositionAnalysisResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = PositionAnalysis
-        fields = ["id", "fen", "side_to_move", "depth", "bestmove_uci", "bestmove_san", "score_cp", "score_white_cp", "mate_score", "pv", "created_at"]
+        fields = [
+            "id",
+            "fen",
+            "side_to_move",
+            "depth",
+            "bestmove_uci",
+            "bestmove_san",
+            "score_cp",
+            "score_white_cp",
+            "mate_score",
+            "pv",
+            "created_at",
+        ]
 
 
 class MoveReviewSerializer(serializers.ModelSerializer):
     class Meta:
         model = MoveReview
-        fields = ["ply_number", "move_uci", "move_san", "classification", "before_score_white_cp", "after_score_white_cp", "bestmove_uci", "bestmove_san", "score_loss_cp", "comment"]
+        fields = [
+            "ply_number",
+            "move_uci",
+            "move_san",
+            "classification",
+            "before_score_white_cp",
+            "after_score_white_cp",
+            "bestmove_uci",
+            "bestmove_san",
+            "score_loss_cp",
+            "comment",
+        ]
 
 
 class GameAnalysisJobSerializer(serializers.ModelSerializer):
@@ -33,10 +58,34 @@ class GameAnalysisJobSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = GameAnalysisJob
-        fields = ["id", "game", "analysis_type", "status", "depth", "movetime_ms", "progress", "summary", "error_message", "created_at", "started_at", "completed_at", "reviews"]
+        fields = [
+            "id",
+            "game",
+            "analysis_type",
+            "status",
+            "depth",
+            "movetime_ms",
+            "progress",
+            "summary",
+            "error_message",
+            "created_at",
+            "started_at",
+            "completed_at",
+            "reviews",
+        ]
 
 
 class OpeningBookLineSerializer(serializers.ModelSerializer):
     class Meta:
         model = OpeningBookLine
-        fields = ["eco", "name", "moves_uci", "moves_san", "fen_after", "frequency", "white_win_rate", "draw_rate", "black_win_rate"]
+        fields = [
+            "eco",
+            "name",
+            "moves_uci",
+            "moves_san",
+            "fen_after",
+            "frequency",
+            "white_win_rate",
+            "draw_rate",
+            "black_win_rate",
+        ]

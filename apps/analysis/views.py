@@ -7,7 +7,14 @@ from django.views.generic import FormView, TemplateView, View
 
 from apps.analysis.forms import OpeningExplorerForm, PositionAnalysisForm, StartAnalysisForm
 from apps.analysis.models import GameAnalysisJob
-from apps.analysis.services import analyse_position, create_analysis_job, opening_to_dict, search_openings, serialize_job, serialize_move_review
+from apps.analysis.services import (
+    analyse_position,
+    create_analysis_job,
+    opening_to_dict,
+    search_openings,
+    serialize_job,
+    serialize_move_review,
+)
 from apps.analysis.tasks import run_game_analysis_job
 from apps.games.models import Game
 
@@ -63,7 +70,9 @@ class AnalysisJobDetailView(TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        job = get_object_or_404(GameAnalysisJob.objects.select_related("game").prefetch_related("move_reviews"), pk=kwargs["pk"])
+        job = get_object_or_404(
+            GameAnalysisJob.objects.select_related("game").prefetch_related("move_reviews"), pk=kwargs["pk"]
+        )
         context["job"] = job
         context["reviews"] = job.move_reviews.all()
         return context
@@ -72,7 +81,9 @@ class AnalysisJobDetailView(TemplateView):
 class AnalysisJobStateView(View):
     def get(self, request: HttpRequest, pk: str) -> JsonResponse:
         job = get_object_or_404(GameAnalysisJob.objects.prefetch_related("move_reviews"), pk=pk)
-        return JsonResponse({"job": serialize_job(job), "reviews": [serialize_move_review(item) for item in job.move_reviews.all()]})
+        return JsonResponse(
+            {"job": serialize_job(job), "reviews": [serialize_move_review(item) for item in job.move_reviews.all()]}
+        )
 
 
 class OpeningExplorerView(FormView):

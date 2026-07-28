@@ -6,7 +6,9 @@ from apps.analysis.models import GameAnalysisJob
 
 
 class StartAnalysisForm(forms.Form):
-    analysis_type = forms.ChoiceField(choices=GameAnalysisJob.AnalysisType.choices, initial=GameAnalysisJob.AnalysisType.QUICK)
+    analysis_type = forms.ChoiceField(
+        choices=GameAnalysisJob.AnalysisType.choices, initial=GameAnalysisJob.AnalysisType.QUICK
+    )
     depth = forms.IntegerField(min_value=1, max_value=18, initial=10)
 
 

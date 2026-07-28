@@ -5,8 +5,8 @@ import re
 import shutil
 import subprocess
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 
 class StockfishUnavailableError(RuntimeError):
@@ -73,7 +73,7 @@ class StockfishClient:
                 return found
         return None
 
-    def __enter__(self) -> "StockfishClient":
+    def __enter__(self) -> StockfishClient:
         self.start()
         return self
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import random
 from dataclasses import dataclass
 from typing import Any
@@ -17,7 +16,6 @@ from apps.rooms.services import (
     ensure_guest_identity,
     identity_from_scope,
 )
-
 
 PIECE_SYMBOLS = {
     "P": "♙",
@@ -175,13 +173,7 @@ def board_matrix(fen: str) -> list[list[dict[str, Any]]]:
                     "square": chess.square_name(square),
                     "piece": piece.symbol() if piece else "",
                     "symbol": PIECE_SYMBOLS.get(piece.symbol(), "") if piece else "",
-                    "color": (
-                        "white"
-                        if piece and piece.color == chess.WHITE
-                        else "black"
-                        if piece
-                        else ""
-                    ),
+                    "color": ("white" if piece and piece.color == chess.WHITE else "black" if piece else ""),
                     "file": file_index,
                     "rank": rank + 1,
                 }
@@ -224,9 +216,7 @@ def generate_pgn(game: Any) -> str:
     pgn_game.headers["White"] = game.white_display_name
     pgn_game.headers["Black"] = game.black_display_name
     pgn_game.headers["Result"] = game.result
-    pgn_game.headers["TimeControl"] = (
-        f"{game.clock_initial_ms // 1000}+{game.increment_ms // 1000}"
-    )
+    pgn_game.headers["TimeControl"] = f"{game.clock_initial_ms // 1000}+{game.increment_ms // 1000}"
 
     starting_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
@@ -583,11 +573,7 @@ def play_uci_move(
 
 def _timeout_game(game: Any, loser_color: str) -> None:
     game.status = game.Status.FINISHED
-    game.result = (
-        game.Result.BLACK_WIN
-        if loser_color == "white"
-        else game.Result.WHITE_WIN
-    )
+    game.result = game.Result.BLACK_WIN if loser_color == "white" else game.Result.WHITE_WIN
     game.winner_color = opponent(loser_color)
     game.termination = game.Termination.TIMEOUT
     game.ended_at = timezone.now()
@@ -838,6 +824,7 @@ def serialize_move(move: Any) -> dict[str, Any]:
         "played_by": move.played_by_display_name,
         "played_at": move.created_at.isoformat(),
     }
+
 
 def serialize_game(
     game: Any,
