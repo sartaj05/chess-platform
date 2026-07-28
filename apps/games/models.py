@@ -10,7 +10,6 @@ from django.utils import timezone
 
 from apps.core.models import TimeStampedModel
 
-
 STARTING_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 
@@ -124,9 +123,9 @@ class Game(TimeStampedModel):
             models.Index(fields=["room"], name="games_game_room_idx"),
         ]
         constraints = [
-            models.CheckConstraint(check=Q(clock_initial_ms__gte=0), name="games_clock_initial_nonnegative"),
-            models.CheckConstraint(check=Q(white_time_ms__gte=0), name="games_white_time_nonnegative"),
-            models.CheckConstraint(check=Q(black_time_ms__gte=0), name="games_black_time_nonnegative"),
+            models.CheckConstraint(condition=Q(clock_initial_ms__gte=0), name="games_clock_initial_nonnegative"),
+            models.CheckConstraint(condition=Q(white_time_ms__gte=0), name="games_white_time_nonnegative"),
+            models.CheckConstraint(condition=Q(black_time_ms__gte=0), name="games_black_time_nonnegative"),
         ]
 
     def __str__(self) -> str:

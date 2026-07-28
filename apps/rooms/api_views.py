@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import generics, pagination, permissions, response, status, views
 
+from apps.games.serializers import GameSerializer
+from apps.games.services import create_game_from_room, serialize_game
 from apps.rooms.models import Room
 from apps.rooms.serializers import CreateRoomSerializer, JoinRoomSerializer, RoomParticipantSerializer, RoomSerializer
-from apps.games.services import create_game_from_room, serialize_game
 
 
 class PublicRoomPagination(pagination.PageNumberPagination):
@@ -54,6 +56,7 @@ class JoinRoomAPIView(views.APIView):
 
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(request=JoinRoomSerializer, responses=RoomParticipantSerializer)
     def post(self, request, code: str):
         room = generics.get_object_or_404(Room, code=code.upper())
         serializer = JoinRoomSerializer(data=request.data, context={"request": request, "room": room})
@@ -67,6 +70,7 @@ class StartRoomGameAPIView(views.APIView):
 
     permission_classes = [permissions.AllowAny]
 
+    @extend_schema(request=None, responses={status.HTTP_201_CREATED: GameSerializer})
     def post(self, request, code: str):
         room = generics.get_object_or_404(Room.objects.prefetch_related("participants"), code=code.upper())
         game = create_game_from_room(room=room, request=request)

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from datetime import timedelta
 from pathlib import Path
+
 import environ
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 env = environ.Env(
     DJANGO_DEBUG=(bool, False),
-    DJANGO_ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1","192.168.11.47"]),
+    DJANGO_ALLOWED_HOSTS=(list, ["localhost", "127.0.0.1"]),
     CSRF_TRUSTED_ORIGINS=(list, []),
     CORS_ALLOWED_ORIGINS=(list, []),
 )
@@ -39,7 +39,6 @@ DATABASE_URL = env("DATABASE_URL", default="").strip()
 if DATABASE_URL:
     DATABASES = {"default": env.db("DATABASE_URL")}
 else:
-    # SAFE FALLBACK → SQLite
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -66,7 +65,6 @@ THIRD_PARTY_APPS = [
     "channels",
     "rest_framework",
     "drf_spectacular",
-
     "allauth",
     "allauth.account",
     "allauth.socialaccount",
@@ -102,14 +100,12 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
-
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-
     "allauth.account.middleware.AccountMiddleware",
-
+    "apps.accounts.middleware.UserActivityMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django_htmx.middleware.HtmxMiddleware",
@@ -140,11 +136,37 @@ TEMPLATES = [
 WSGI_APPLICATION = "chess_platform.wsgi.application"
 ASGI_APPLICATION = "chess_platform.asgi.application"
 
-CHANNEL_LAYERS = {
-    "default": {
-        "BACKEND": "channels.layers.InMemoryChannelLayer",
+REDIS_URL = env("REDIS_URL", default="").strip()
+CHANNEL_REDIS_URL = env("CHANNEL_REDIS_URL", default=REDIS_URL).strip()
+
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.redis.RedisCache",
+            "LOCATION": REDIS_URL,
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "chess-platform",
+        }
+    }
+
+if CHANNEL_REDIS_URL:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels_redis.core.RedisChannelLayer",
+            "CONFIG": {"hosts": [CHANNEL_REDIS_URL]},
+        }
+    }
+else:
+    CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer",
+        }
+    }
 
 # -----------------------------
 # AUTH
@@ -220,6 +242,16 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Chess Platform API",
+    "DESCRIPTION": "REST API for accounts, rooms, games, and chess analysis.",
+    "VERSION": "1.0.0",
+    "ENUM_NAME_OVERRIDES": {
+        "ChessColorEnum": [("white", "White"), ("black", "Black")],
+    },
 }
 
 # -----------------------------
@@ -230,6 +262,11 @@ REST_FRAMEWORK = {
 OTP_CODE_TTL_MINUTES = env.int("OTP_CODE_TTL_MINUTES", default=10)
 MAX_OTP_ATTEMPTS = env.int("MAX_OTP_ATTEMPTS", default=5)
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="noreply@chessplatform.local")
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND",
+    default="django.core.mail.backends.console.EmailBackend",
+)
+USER_ACTIVITY_CACHE_TTL = env.int("USER_ACTIVITY_CACHE_TTL", default=180)
 
 # -----------------------------
 # STATIC / MEDIA
@@ -249,8 +286,21 @@ TIME_ZONE = "Asia/Kolkata"
 USE_I18N = True
 USE_TZ = True
 
+# -----------------------------
+# BACKGROUND TASKS
+# -----------------------------
+CELERY_BROKER_URL = env(
+    "CELERY_BROKER_URL",
+    default=REDIS_URL or "memory://",
+)
+CELERY_RESULT_BACKEND = env(
+    "CELERY_RESULT_BACKEND",
+    default=REDIS_URL or "cache+memory://",
+)
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = TIME_ZONE
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 SITE_ID = 1
-CSRF_TRUSTED_ORIGINS = [
-    "http://192.168.11.47:8000",
-]

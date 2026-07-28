@@ -13,6 +13,16 @@ docker compose up --build
 
 Open: `http://localhost`, `http://localhost/admin/`, `http://localhost/api/docs/`, `http://localhost/health/`.
 
+For a local Python environment, use Python 3.13 and install `requirements.txt`.
+That file points to the maintained development dependency set:
+
+```bash
+python -m venv .venv
+.venv/Scripts/python -m pip install -r requirements.txt
+.venv/Scripts/python manage.py migrate
+.venv/Scripts/python manage.py runserver
+```
+
 ## Admin
 
 ```bash

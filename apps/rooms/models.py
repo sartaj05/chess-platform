@@ -91,8 +91,8 @@ class Room(TimeStampedModel):
         ]
         constraints = [
             models.UniqueConstraint(fields=["code"], name="rooms_room_code_unique"),
-            models.CheckConstraint(check=Q(max_players__gte=2), name="rooms_room_min_players"),
-            models.CheckConstraint(check=Q(clock_initial_seconds__gte=0), name="rooms_room_clock_nonnegative"),
+            models.CheckConstraint(condition=Q(max_players__gte=2), name="rooms_room_min_players"),
+            models.CheckConstraint(condition=Q(clock_initial_seconds__gte=0), name="rooms_room_clock_nonnegative"),
         ]
 
     def __str__(self) -> str:
