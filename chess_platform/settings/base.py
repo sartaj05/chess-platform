@@ -241,6 +241,13 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "DEFAULT_THROTTLE_RATES": {
+        "room_write_anon": env("API_THROTTLE_ROOM_WRITE_ANON", default="60/hour"),
+        "room_write_user": env("API_THROTTLE_ROOM_WRITE_USER", default="180/hour"),
+        "analysis_anon": env("API_THROTTLE_ANALYSIS_ANON", default="10/hour"),
+        "analysis_user": env("API_THROTTLE_ANALYSIS_USER", default="60/hour"),
+        "offline_sync": env("API_THROTTLE_OFFLINE_SYNC", default="120/hour"),
+    },
 }
 
 SPECTACULAR_SETTINGS = {

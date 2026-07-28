@@ -111,6 +111,7 @@ class Game(TimeStampedModel):
     draw_offer_at = models.DateTimeField(null=True, blank=True)
     takeback_offer_by = models.CharField(max_length=5, choices=Color.choices, blank=True)
     takeback_offer_at = models.DateTimeField(null=True, blank=True)
+    offline_sync_id = models.UUIDField(null=True, blank=True, db_index=True)
     metadata = models.JSONField(default=dict, blank=True)
 
     class Meta:
@@ -126,6 +127,11 @@ class Game(TimeStampedModel):
             models.CheckConstraint(condition=Q(clock_initial_ms__gte=0), name="games_clock_initial_nonnegative"),
             models.CheckConstraint(condition=Q(white_time_ms__gte=0), name="games_white_time_nonnegative"),
             models.CheckConstraint(condition=Q(black_time_ms__gte=0), name="games_black_time_nonnegative"),
+            models.UniqueConstraint(
+                fields=["white_user", "offline_sync_id"],
+                condition=Q(offline_sync_id__isnull=False),
+                name="games_user_offline_sync_unique",
+            ),
         ]
 
     def __str__(self) -> str:

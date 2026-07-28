@@ -8,13 +8,16 @@ import chess
 import chess.pgn
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.db.models import Q
 from django.http import HttpRequest
 from django.utils import timezone
 
 from apps.rooms.services import (
+    GUEST_SESSION_KEY,
     ParticipantIdentity,
     ensure_guest_identity,
     identity_from_scope,
+    require_room_host,
 )
 
 PIECE_SYMBOLS = {
@@ -130,6 +133,25 @@ def color_for_identity(game: Any, identity: ParticipantIdentity) -> str | None:
             return "black"
 
     return None
+
+
+def visible_games_for_request(request: HttpRequest):
+    """Return games the caller may discover or retrieve through the API."""
+
+    from apps.games.models import Game
+    from apps.rooms.models import Room
+
+    visibility = Q(room__visibility=Room.Visibility.PUBLIC, allow_spectators=True)
+    user = getattr(request, "user", None)
+    if user is not None and user.is_authenticated:
+        visibility |= Q(white_user=user) | Q(black_user=user)
+
+    session = getattr(request, "session", None)
+    guest_key = session.get(GUEST_SESSION_KEY, "") if session is not None else ""
+    if guest_key:
+        visibility |= Q(white_guest_key=guest_key) | Q(black_guest_key=guest_key)
+
+    return Game.objects.filter(visibility).distinct()
 
 
 def user_for_color(game: Any, color: str):
@@ -283,9 +305,11 @@ def _assign_colors(room: Any, player_a: Any, player_b: Any) -> tuple[Any, Any]:
 
 
 @transaction.atomic
-def create_game_from_room(*, room: Any, request: HttpRequest | None = None):
+def create_game_from_room(*, room: Any, request: HttpRequest):
     from apps.games.models import Game, GameEvent
     from apps.rooms.models import Room
+
+    require_room_host(request, room)
 
     existing_game = getattr(room, "game", None)
 

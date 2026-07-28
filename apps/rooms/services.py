@@ -100,6 +100,20 @@ def classify_time_category(initial_seconds: int, increment_seconds: int) -> str:
     return Room.TimeCategory.CLASSICAL
 
 
+def require_room_host(request: HttpRequest, room: Any) -> ParticipantIdentity:
+    """Return the caller identity or reject callers that do not own the room."""
+
+    identity = ensure_guest_identity(request)
+    if room.host_id is not None:
+        is_host = identity.user is not None and identity.user.id == room.host_id
+    else:
+        is_host = bool(identity.guest_key and identity.guest_key == room.host_guest_key)
+
+    if not is_host:
+        raise PermissionDenied("Only the room host can start this game.")
+    return identity
+
+
 @transaction.atomic
 def create_room(*, request: HttpRequest, cleaned_data: dict[str, Any]):
     """Create a room and host participant in a single transaction."""

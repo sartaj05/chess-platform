@@ -16,23 +16,25 @@ from apps.analysis.serializers import (
 )
 from apps.analysis.services import analyse_position, create_analysis_job, search_openings
 from apps.analysis.tasks import run_game_analysis_job
-from apps.games.models import Game
+from apps.api.throttles import AnalysisAnonRateThrottle, AnalysisUserRateThrottle
+from apps.games.services import visible_games_for_request
 
 
 class StartGameAnalysisApiView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AnalysisAnonRateThrottle, AnalysisUserRateThrottle]
 
     @extend_schema(
         request=StartAnalysisSerializer,
         responses={status.HTTP_202_ACCEPTED: GameAnalysisJobSerializer},
     )
     def post(self, request, pk: str):
-        game = get_object_or_404(Game, pk=pk)
+        game = get_object_or_404(visible_games_for_request(request), pk=pk)
         serializer = StartAnalysisSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         job = create_analysis_job(
             game=game,
-            requested_by=request.user,
+            requested_by=request.user if request.user.is_authenticated else None,
             analysis_type=serializer.validated_data["analysis_type"],
             depth=serializer.validated_data["depth"],
         )
@@ -45,12 +47,18 @@ class GameAnalysisJobApiView(APIView):
 
     @extend_schema(responses=GameAnalysisJobSerializer)
     def get(self, request, pk: str):
-        job = get_object_or_404(GameAnalysisJob.objects.prefetch_related("move_reviews"), pk=pk)
+        job = get_object_or_404(
+            GameAnalysisJob.objects.filter(game__in=visible_games_for_request(request)).prefetch_related(
+                "move_reviews"
+            ),
+            pk=pk,
+        )
         return Response(GameAnalysisJobSerializer(job).data)
 
 
 class PositionAnalysisApiView(APIView):
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [AnalysisAnonRateThrottle, AnalysisUserRateThrottle]
 
     @extend_schema(
         request=PositionAnalysisSerializer,

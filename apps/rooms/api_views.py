@@ -3,6 +3,7 @@ from __future__ import annotations
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, pagination, permissions, response, status, views
 
+from apps.api.throttles import RoomWriteAnonRateThrottle, RoomWriteUserRateThrottle
 from apps.games.serializers import GameSerializer
 from apps.games.services import create_game_from_room, serialize_game
 from apps.rooms.models import Room
@@ -22,6 +23,11 @@ class RoomListCreateAPIView(generics.ListCreateAPIView):
 
     permission_classes = [permissions.AllowAny]
     pagination_class = PublicRoomPagination
+
+    def get_throttles(self):
+        if self.request.method == "POST":
+            return [RoomWriteAnonRateThrottle(), RoomWriteUserRateThrottle()]
+        return []
 
     def get_queryset(self):
         return Room.objects.active().public().prefetch_related("participants").recently_active()
@@ -55,6 +61,7 @@ class JoinRoomAPIView(views.APIView):
     """Join room by invite URL code using session, JWT, or guest identity."""
 
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [RoomWriteAnonRateThrottle, RoomWriteUserRateThrottle]
 
     @extend_schema(request=JoinRoomSerializer, responses=RoomParticipantSerializer)
     def post(self, request, code: str):
@@ -69,6 +76,7 @@ class StartRoomGameAPIView(views.APIView):
     """Start a room game for mobile and other API clients."""
 
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [RoomWriteAnonRateThrottle, RoomWriteUserRateThrottle]
 
     @extend_schema(request=None, responses={status.HTTP_201_CREATED: GameSerializer})
     def post(self, request, code: str):
