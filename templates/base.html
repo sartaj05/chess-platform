@@ -91,6 +91,13 @@
             {% if request.user.is_authenticated %}
             <a
               class="btn btn-outline-light btn-sm"
+              href="{% url 'notifications:list' %}"
+            >
+              Notifications{% if unread_notification_count %} ({{ unread_notification_count }}){% endif %}
+            </a>
+
+            <a
+              class="btn btn-outline-light btn-sm"
               href="{% url 'accounts:profile' %}"
             >
               {{ request.user.display_name }}

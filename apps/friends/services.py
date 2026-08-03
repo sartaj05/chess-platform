@@ -5,6 +5,8 @@ from django.db import transaction
 from django.db.models import Q
 
 from apps.accounts.models import User
+from apps.notifications.models import Notification
+from apps.notifications.services import notify
 
 from .models import Friendship
 
@@ -30,8 +32,16 @@ def send_friend_request(*, requester: User, email: str) -> Friendship:
         existing.addressee = addressee
         existing.status = Friendship.Status.PENDING
         existing.save(update_fields=["requester", "addressee", "status", "updated_at"])
-        return existing
-    return Friendship.objects.create(requester=requester, addressee=addressee)
+        friendship = existing
+    else:
+        friendship = Friendship.objects.create(requester=requester, addressee=addressee)
+    notify(
+        recipient=addressee,
+        kind=Notification.Kind.FRIEND_REQUEST,
+        title=f"{requester.display_name} sent you a friend request",
+        target_url="/friends/",
+    )
+    return friendship
 
 
 def respond_to_request(*, friendship: Friendship, actor: User, accept: bool) -> Friendship:
@@ -39,6 +49,12 @@ def respond_to_request(*, friendship: Friendship, actor: User, accept: bool) -> 
         raise PermissionDenied("This friend request cannot be changed.")
     friendship.status = Friendship.Status.ACCEPTED if accept else Friendship.Status.DECLINED
     friendship.save(update_fields=["status", "updated_at"])
+    notify(
+        recipient=friendship.requester,
+        kind=Notification.Kind.FRIEND_ACCEPTED if accept else Notification.Kind.FRIEND_DECLINED,
+        title=f"{actor.display_name} {'accepted' if accept else 'declined'} your friend request",
+        target_url="/friends/",
+    )
     return friendship
 
 

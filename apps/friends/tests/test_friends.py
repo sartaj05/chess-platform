@@ -5,6 +5,7 @@ from django.urls import reverse
 
 from apps.accounts.models import User
 from apps.friends.models import Friendship
+from apps.notifications.models import Notification
 
 
 @pytest.fixture
@@ -27,12 +28,14 @@ def test_send_and_accept_friend_request(client, users):
     assert response.status_code == 302
     friendship = Friendship.objects.get(requester=first, addressee=second)
     assert friendship.status == Friendship.Status.PENDING
+    assert Notification.objects.filter(recipient=second, kind=Notification.Kind.FRIEND_REQUEST).exists()
 
     client.force_login(second)
     response = client.post(reverse("friends:accept", args=[friendship.pk]))
     assert response.status_code == 302
     friendship.refresh_from_db()
     assert friendship.status == Friendship.Status.ACCEPTED
+    assert Notification.objects.filter(recipient=first, kind=Notification.Kind.FRIEND_ACCEPTED).exists()
 
 
 def test_cannot_friend_self_or_duplicate(client, users):
