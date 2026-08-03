@@ -1,4 +1,9 @@
 name: Django CI
+permissions:
+  contents: read
+concurrency:
+  group: django-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 on:
   push: {branches: ["master", "main", "develop"]}
   pull_request: {branches: ["master", "main", "develop"]}
@@ -34,4 +39,10 @@ jobs:
       - run: ruff check .
       - run: python manage.py check
       - run: python manage.py makemigrations --check --dry-run
-      - run: pytest --cov=apps --cov=chess_platform
+      - run: pytest --cov=apps --cov=chess_platform --cov-fail-under=45
+
+  container-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build --tag chess-platform:ci .
