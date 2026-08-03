@@ -10,6 +10,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("", include("apps.core.urls")),
     path("accounts/", include("apps.accounts.urls")),
+    path("friends/", include("apps.friends.urls")),
     path("", include("apps.rooms.urls")),
     path("", include("apps.games.urls")),
     path("", include("apps.analysis.urls")),
