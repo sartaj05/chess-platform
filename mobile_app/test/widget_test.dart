@@ -9,5 +9,13 @@ void main() {
 
     expect(find.text('Refresh public rooms'), findsOneWidget);
     expect(find.text('Join room'), findsOneWidget);
+    expect(find.text('Play offline on this device'), findsOneWidget);
+
+    await tester.tap(find.text('Play offline on this device'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Offline same-device chess'), findsOneWidget);
+    expect(find.text('White to move'), findsOneWidget);
+    expect(find.text('Save offline game'), findsOneWidget);
   });
 }

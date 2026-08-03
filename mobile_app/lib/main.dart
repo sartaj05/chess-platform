@@ -3,6 +3,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import 'offline_board_page.dart';
+
 void main() => runApp(const ChessPlatformApp());
 
 class ChessPlatformApp extends StatelessWidget {
@@ -207,6 +209,18 @@ class _OfflineLobbyPageState extends State<OfflineLobbyPage> {
                         'Role: ${_joinedParticipant!['role'] ?? 'player'}'),
                   ),
                 ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: _loading
+                    ? null
+                    : () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const OfflineBoardPage(),
+                          ),
+                        ),
+                icon: const Icon(Icons.sports_esports),
+                label: const Text('Play offline on this device'),
+              ),
               const SizedBox(height: 8),
               OutlinedButton(
                 onPressed: _loading ? null : _loadRooms,
