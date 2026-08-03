@@ -1,6 +1,16 @@
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *  # noqa: F403
 
 DEBUG = False
+
+if SECRET_KEY == "dev-secret-key" or len(SECRET_KEY) < 50:  # noqa: F405
+    raise ImproperlyConfigured("DJANGO_SECRET_KEY must be a strong production secret.")
+if not DATABASE_URL:  # noqa: F405
+    raise ImproperlyConfigured("DATABASE_URL is required in production.")
+if not REDIS_URL:  # noqa: F405
+    raise ImproperlyConfigured("REDIS_URL is required in production.")
+
 EMAIL_BACKEND = env(  # noqa: F405
     "EMAIL_BACKEND",
     default="django.core.mail.backends.smtp.EmailBackend",
@@ -12,3 +22,5 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SECURE_HSTS_SECONDS = 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"

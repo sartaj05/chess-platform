@@ -35,6 +35,20 @@ docker compose exec web python manage.py createsuperuser
 docker compose exec web pytest
 ```
 
+## Production configuration
+
+Copy `.env.production.example` to `.env.production`, replace every placeholder,
+and deploy with both Compose files:
+
+```bash
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml exec web python manage.py check --deploy
+```
+
+The production override removes public PostgreSQL/Redis ports and source-code
+bind mounts. Terminate TLS at the reverse proxy or load balancer before enabling
+the included HTTPS security settings.
+
 ## Social login
 
 Create SocialApp records in `/admin/socialaccount/socialapp/` for Google and GitHub. Callback paths are `/social/google/login/callback/` and `/social/github/login/callback/`.
