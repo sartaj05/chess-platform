@@ -25,7 +25,10 @@
         {% for friend in friends %}
           <div class="list-group-item d-flex justify-content-between align-items-center gap-3">
             <div><strong>{{ friend.user.display_name }}</strong><div class="text-dim">{{ friend.user.email }}</div></div>
-            <form method="post" action="{% url 'friends:remove' friend.relationship.pk %}">{% csrf_token %}<button class="btn btn-outline-danger btn-sm" type="submit">Remove</button></form>
+            <div class="d-flex gap-2">
+              <form method="post" action="{% url 'chat:start' friend.user.pk %}">{% csrf_token %}<button class="btn btn-outline-success btn-sm" type="submit">Message</button></form>
+              <form method="post" action="{% url 'friends:remove' friend.relationship.pk %}">{% csrf_token %}<button class="btn btn-outline-danger btn-sm" type="submit">Remove</button></form>
+            </div>
           </div>
         {% empty %}<div class="empty-state">No friends yet. Send your first request.</div>{% endfor %}
       </div>

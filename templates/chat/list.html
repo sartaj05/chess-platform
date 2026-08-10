@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Messages | {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4"><h1 class="h3 mb-1">Messages</h1><p class="text-dim mb-0">Private conversations with your friends.</p></div>
+<div class="card"><div class="list-group list-group-flush">
+  {% for item in conversations %}
+    <a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center gap-3" href="{% url 'chat:thread' item.conversation.pk %}">
+      <div><strong>{{ item.other.display_name }}</strong>{% if item.latest %}<div class="text-dim">{{ item.latest.body|truncatechars:80 }}</div>{% endif %}</div>
+      {% if item.unread %}<span class="badge text-bg-success">{{ item.unread }}</span>{% endif %}
+    </a>
+  {% empty %}<div class="empty-state">No conversations yet. Open Friends and message someone.</div>{% endfor %}
+</div></div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}Chat with {{ other.display_name }} | {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><div><a class="text-dim" href="{% url 'chat:list' %}">Back to messages</a><h1 class="h3 mt-2 mb-0">{{ other.display_name }}</h1></div></div>
+<div class="card mb-3"><div class="card-body scroll-thin" style="max-height: 55vh; overflow-y: auto;">
+  {% for message in chat_messages %}
+    <div class="mb-3 {% if message.sender_id == request.user.id %}text-end{% endif %}">
+      <div class="d-inline-block rounded px-3 py-2 {% if message.sender_id == request.user.id %}bg-success text-white{% else %}bg-dark{% endif %}" style="max-width: 75%; text-align: left; white-space: pre-wrap;">{{ message.body }}</div>
+      <div class="text-faint"><small>{{ message.created_at|date:"M j, H:i" }}</small></div>
+    </div>
+  {% empty %}<div class="empty-state">Start the conversation.</div>{% endfor %}
+</div></div>
+<form method="post">{% csrf_token %}{{ message_form.body }}<button class="btn btn-success mt-2" type="submit">Send message</button></form>
+{% endblock %}

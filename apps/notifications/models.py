@@ -12,6 +12,7 @@ class Notification(TimeStampedModel):
         FRIEND_REQUEST = "friend_request", "Friend request"
         FRIEND_ACCEPTED = "friend_accepted", "Friend accepted"
         FRIEND_DECLINED = "friend_declined", "Friend declined"
+        DIRECT_MESSAGE = "direct_message", "Direct message"
         SYSTEM = "system", "System"
 
     recipient = models.ForeignKey(
