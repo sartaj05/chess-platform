@@ -13,6 +13,7 @@ class Notification(TimeStampedModel):
         FRIEND_ACCEPTED = "friend_accepted", "Friend accepted"
         FRIEND_DECLINED = "friend_declined", "Friend declined"
         DIRECT_MESSAGE = "direct_message", "Direct message"
+        TOURNAMENT = "tournament", "Tournament"
         SYSTEM = "system", "System"
 
     recipient = models.ForeignKey(

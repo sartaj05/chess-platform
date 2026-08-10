@@ -79,6 +79,12 @@
               </a>
             </li>
 
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'tournaments:list' %}">
+                Tournaments
+              </a>
+            </li>
+
             {% if request.user.is_authenticated %}
             <li class="nav-item">
               <a class="nav-link" href="{% url 'friends:list' %}">
