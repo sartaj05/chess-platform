@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center gap-3 mb-4"><div><h1 class="h3 mb-1">Welcome back, {{ request.user.display_name }}</h1><p class="text-dim mb-0">Your chess activity at a glance.</p></div><a class="btn btn-success" href="{% url 'rooms:create' %}">Start a game</a></div>
+
+<div class="row g-3 mb-4">
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="text-dim">Games</div><div class="display-6">{{ game_stats.total }}</div><small>{{ game_stats.active }} active</small></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="text-dim">Record</div><div class="h4 mt-2 mb-1">{{ game_stats.wins }}W · {{ game_stats.losses }}L · {{ game_stats.draws }}D</div><small>Finished games</small></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="text-dim">Puzzles</div><div class="display-6">{{ puzzle_stats.solved }}</div><small>{{ puzzle_stats.attempted }} attempted</small></div></div></div>
+  <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body"><div class="text-dim">Friends</div><div class="display-6">{{ friend_count }}</div><small>{{ unread_message_count }} unread message{{ unread_message_count|pluralize }}</small></div></div></div>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-7"><div class="card h-100"><div class="card-header d-flex justify-content-between align-items-center"><h2 class="h5 mb-0">Recent games</h2><a href="{% url 'rooms:list' %}">Find a game</a></div><div class="list-group list-group-flush">{% for game in recent_games %}<a class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" href="{{ game.get_absolute_url }}"><div><strong>{{ game.white_display_name }} vs {{ game.black_display_name }}</strong><div class="text-dim">{{ game.get_status_display }} · {{ game.created_at|timesince }} ago</div></div><span>{{ game.result }}</span></a>{% empty %}<div class="empty-state">No games yet. Create a room to play your first one.</div>{% endfor %}</div></div></div>
+  <div class="col-lg-5"><div class="card h-100"><div class="card-header d-flex justify-content-between align-items-center"><h2 class="h5 mb-0">Your tournaments</h2><a href="{% url 'tournaments:list' %}">Browse</a></div><div class="list-group list-group-flush">{% for entry in upcoming_tournaments %}<a class="list-group-item list-group-item-action" href="{{ entry.tournament.get_absolute_url }}"><strong>{{ entry.tournament.name }}</strong><div class="text-dim">{{ entry.tournament.get_status_display }} · {{ entry.tournament.starts_at|date:"M j, H:i" }}</div></a>{% empty %}<div class="empty-state">You have no upcoming tournaments.</div>{% endfor %}</div></div></div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mt-4"><a class="btn btn-outline-light" href="{% url 'puzzles:list' %}">Train puzzles</a><a class="btn btn-outline-light" href="{% url 'friends:list' %}">Friends</a><a class="btn btn-outline-light" href="{% url 'chat:list' %}">Messages{% if unread_message_count %} ({{ unread_message_count }}){% endif %}</a><a class="btn btn-outline-light" href="{% url 'accounts:profile' %}">Edit profile</a><a class="btn btn-outline-warning" href="{% url 'accounts:security' %}">Security</a></div>
+{% endblock %}

@@ -2,15 +2,16 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import JsonResponse
 from django.shortcuts import render
 from django.views import View
-from django.views.generic import TemplateView
+from django.views.generic import RedirectView, TemplateView
 
 
 class HomeView(TemplateView):
     template_name = "core/home.html"
 
 
-class MemberHomeView(LoginRequiredMixin, TemplateView):
-    template_name = "core/member_home.html"
+class MemberHomeView(LoginRequiredMixin, RedirectView):
+    pattern_name = "dashboard:home"
+    permanent = False
 
 
 def health_check(request):

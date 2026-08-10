@@ -15,6 +15,7 @@ urlpatterns = [
     path("chat/", include("apps.chat.urls")),
     path("puzzles/", include("apps.puzzles.urls")),
     path("tournaments/", include("apps.tournaments.urls")),
+    path("dashboard/", include("apps.dashboard.urls")),
     path("", include("apps.rooms.urls")),
     path("", include("apps.games.urls")),
     path("", include("apps.analysis.urls")),
