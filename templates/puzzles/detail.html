@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+
+{% block title %}{{ puzzle.title }} | {{ site_name }}{% endblock %}
+
+{% block content %}
+<div class="row g-4"><div class="col-lg-8"><div class="card"><div class="card-header"><div class="d-flex justify-content-between"><h1 class="h4 mb-0">{{ puzzle.title }}</h1><span>{{ puzzle.rating }}</span></div></div><div class="card-body"><p>Current position (FEN)</p><pre class="p-3 rounded bg-dark">{{ attempt.current_fen }}</pre><p class="text-dim">Enter moves in UCI notation: starting square followed by destination, such as <code>e2e4</code>.</p>{% if attempt.status == 'solved' %}<div class="alert alert-success">Solved with {{ attempt.mistakes }} mistake{{ attempt.mistakes|pluralize }}.</div>{% if puzzle.explanation %}<p>{{ puzzle.explanation }}</p>{% endif %}{% else %}<form method="post">{% csrf_token %}{{ move_form.move }}<button class="btn btn-success mt-3" type="submit">Submit move</button></form>{% endif %}</div></div></div><div class="col-lg-4"><div class="card"><div class="card-body"><p><strong>Difficulty:</strong> {{ puzzle.get_difficulty_display }}</p><p><strong>Themes:</strong> {{ puzzle.themes|join:", "|default:"Tactics" }}</p><p><strong>Mistakes:</strong> {{ attempt.mistakes }}</p><form method="post" action="{% url 'puzzles:reset' puzzle.pk %}">{% csrf_token %}<button class="btn btn-outline-light" type="submit">Reset attempt</button></form></div></div></div></div>
+{% endblock %}

@@ -1,0 +1,92 @@
+from __future__ import annotations
+
+import chess
+import pytest
+from django.core.exceptions import ValidationError
+from django.urls import reverse
+
+from apps.accounts.models import User
+from apps.games.models import STARTING_FEN
+from apps.puzzles.models import Puzzle, PuzzleAttempt
+
+
+@pytest.fixture
+def puzzle_user(db):
+    return User.objects.create_user(email="solver@example.com", password="test-pass-123")
+
+
+@pytest.fixture
+def puzzle(db):
+    return Puzzle.objects.create(
+        title="Opening development",
+        initial_fen=STARTING_FEN,
+        solution_moves=["e2e4", "e7e5", "g1f3"],
+        rating=800,
+        difficulty=Puzzle.Difficulty.BEGINNER,
+        themes=["development"],
+    )
+
+
+def test_puzzles_require_login(client, puzzle):
+    assert client.get(reverse("puzzles:list")).status_code == 302
+    assert client.get(reverse("puzzles:detail", args=[puzzle.pk])).status_code == 302
+
+
+def test_puzzle_validates_fen_and_solution(db):
+    invalid = Puzzle(title="Invalid", initial_fen="not-a-fen", solution_moves=["e2e4"])
+    with pytest.raises(ValidationError):
+        invalid.full_clean()
+
+    illegal = Puzzle(title="Illegal", initial_fen=STARTING_FEN, solution_moves=["e2e5"])
+    with pytest.raises(ValidationError):
+        illegal.full_clean()
+
+
+def test_correct_moves_advance_and_solve(client, puzzle_user, puzzle):
+    client.force_login(puzzle_user)
+    response = client.post(reverse("puzzles:detail", args=[puzzle.pk]), {"move": "e2e4"})
+    assert response.status_code == 302
+    attempt = PuzzleAttempt.objects.get(user=puzzle_user, puzzle=puzzle)
+    assert attempt.next_move_index == 2
+    assert attempt.status == PuzzleAttempt.Status.IN_PROGRESS
+    board = chess.Board(attempt.current_fen)
+    assert board.piece_at(chess.E4) == chess.Piece(chess.PAWN, chess.WHITE)
+    assert board.piece_at(chess.E5) == chess.Piece(chess.PAWN, chess.BLACK)
+
+    client.post(reverse("puzzles:detail", args=[puzzle.pk]), {"move": "g1f3"})
+    attempt.refresh_from_db()
+    assert attempt.status == PuzzleAttempt.Status.SOLVED
+    assert attempt.solved_at is not None
+
+
+def test_wrong_move_records_mistake_without_advancing(client, puzzle_user, puzzle):
+    client.force_login(puzzle_user)
+    client.post(reverse("puzzles:detail", args=[puzzle.pk]), {"move": "d2d4"})
+    attempt = PuzzleAttempt.objects.get(user=puzzle_user, puzzle=puzzle)
+    assert attempt.mistakes == 1
+    assert attempt.next_move_index == 0
+    assert attempt.current_fen == puzzle.initial_fen
+
+
+def test_reset_clears_progress(client, puzzle_user, puzzle):
+    attempt = PuzzleAttempt.objects.create(
+        user=puzzle_user,
+        puzzle=puzzle,
+        current_fen=puzzle.initial_fen,
+        next_move_index=2,
+        mistakes=3,
+    )
+    client.force_login(puzzle_user)
+    response = client.post(reverse("puzzles:reset", args=[puzzle.pk]))
+    assert response.status_code == 302
+    attempt.refresh_from_db()
+    assert attempt.next_move_index == 0
+    assert attempt.mistakes == 0
+    assert attempt.status == PuzzleAttempt.Status.IN_PROGRESS
+
+
+def test_unpublished_puzzle_is_not_accessible(client, puzzle_user, puzzle):
+    puzzle.is_published = False
+    puzzle.save(update_fields=["is_published"])
+    client.force_login(puzzle_user)
+    assert client.get(reverse("puzzles:detail", args=[puzzle.pk])).status_code == 404

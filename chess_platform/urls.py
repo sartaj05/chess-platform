@@ -13,6 +13,7 @@ urlpatterns = [
     path("friends/", include("apps.friends.urls")),
     path("notifications/", include("apps.notifications.urls")),
     path("chat/", include("apps.chat.urls")),
+    path("puzzles/", include("apps.puzzles.urls")),
     path("", include("apps.rooms.urls")),
     path("", include("apps.games.urls")),
     path("", include("apps.analysis.urls")),

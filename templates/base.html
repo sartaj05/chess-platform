@@ -73,6 +73,12 @@
               </a>
             </li>
 
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'puzzles:list' %}">
+                Puzzles
+              </a>
+            </li>
+
             {% if request.user.is_authenticated %}
             <li class="nav-item">
               <a class="nav-link" href="{% url 'friends:list' %}">
