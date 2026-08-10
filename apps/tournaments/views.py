@@ -11,8 +11,8 @@ from django.views import View
 from django.views.generic import CreateView, DetailView, ListView
 
 from .forms import TournamentForm
-from .models import Tournament
-from .services import join_tournament, start_tournament, withdraw_from_tournament
+from .models import Tournament, TournamentPairing
+from .services import join_tournament, report_pairing_result, start_tournament, withdraw_from_tournament
 
 
 class TournamentListView(ListView):
@@ -44,7 +44,11 @@ class TournamentDetailView(DetailView):
     context_object_name = "tournament"
 
     def get_queryset(self):
-        queryset = Tournament.objects.select_related("organizer").prefetch_related("entries__user")
+        queryset = Tournament.objects.select_related("organizer").prefetch_related(
+            "entries__user",
+            "rounds__pairings__white_entry__user",
+            "rounds__pairings__black_entry__user",
+        )
         if self.request.user.is_authenticated:
             return queryset.filter(models.Q(is_public=True) | models.Q(organizer=self.request.user))
         return queryset.filter(is_public=True)
@@ -85,3 +89,20 @@ class WithdrawTournamentView(TournamentActionView):
 
 class StartTournamentView(TournamentActionView):
     action = "start"
+
+
+class ReportPairingResultView(LoginRequiredMixin, View):
+    def post(self, request: HttpRequest, pk: int, pairing_pk: int) -> HttpResponse:
+        tournament = get_object_or_404(Tournament, pk=pk)
+        pairing = get_object_or_404(TournamentPairing, pk=pairing_pk)
+        try:
+            report_pairing_result(
+                tournament=tournament,
+                pairing=pairing,
+                actor=request.user,
+                result=request.POST.get("result", ""),
+            )
+            messages.success(request, "Pairing result recorded.")
+        except (PermissionDenied, ValidationError) as exc:
+            messages.error(request, "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
+        return redirect(tournament.get_absolute_url())

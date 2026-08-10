@@ -62,3 +62,49 @@ class TournamentEntry(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.user} in {self.tournament}"
+
+
+class TournamentRound(TimeStampedModel):
+    class Status(models.TextChoices):
+        ACTIVE = "active", "In progress"
+        COMPLETED = "completed", "Completed"
+
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="rounds")
+    number = models.PositiveSmallIntegerField()
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.ACTIVE, db_index=True)
+
+    class Meta:
+        ordering = ["number"]
+        constraints = [models.UniqueConstraint(fields=["tournament", "number"], name="tournament_unique_round")]
+
+    def __str__(self) -> str:
+        return f"{self.tournament} - Round {self.number}"
+
+
+class TournamentPairing(TimeStampedModel):
+    class Result(models.TextChoices):
+        PENDING = "pending", "Pending"
+        WHITE_WIN = "white_win", "White wins"
+        BLACK_WIN = "black_win", "Black wins"
+        DRAW = "draw", "Draw"
+        BYE = "bye", "Bye"
+
+    round = models.ForeignKey(TournamentRound, on_delete=models.CASCADE, related_name="pairings")
+    board_number = models.PositiveSmallIntegerField()
+    white_entry = models.ForeignKey(TournamentEntry, on_delete=models.CASCADE, related_name="pairings_as_white")
+    black_entry = models.ForeignKey(
+        TournamentEntry,
+        on_delete=models.CASCADE,
+        related_name="pairings_as_black",
+        blank=True,
+        null=True,
+    )
+    result = models.CharField(max_length=16, choices=Result.choices, default=Result.PENDING, db_index=True)
+
+    class Meta:
+        ordering = ["round__number", "board_number"]
+        constraints = [models.UniqueConstraint(fields=["round", "board_number"], name="tournament_unique_board")]
+
+    def __str__(self) -> str:
+        opponent = self.black_entry.user if self.black_entry_id else "Bye"
+        return f"Board {self.board_number}: {self.white_entry.user} vs {opponent}"

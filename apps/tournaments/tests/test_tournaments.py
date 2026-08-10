@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.notifications.models import Notification
-from apps.tournaments.models import Tournament, TournamentEntry
+from apps.tournaments.models import Tournament, TournamentEntry, TournamentPairing, TournamentRound
 
 
 @pytest.fixture
@@ -85,6 +85,10 @@ def test_only_organizer_can_start_tournament(client, tournament_users, tournamen
     tournament.refresh_from_db()
     assert tournament.status == Tournament.Status.ACTIVE
     assert list(tournament.entries.order_by("seed").values_list("seed", flat=True)) == [1, 2]
+    tournament_round = TournamentRound.objects.get(tournament=tournament, number=1)
+    pairing = TournamentPairing.objects.get(round=tournament_round)
+    assert pairing.white_entry.user == organizer
+    assert pairing.black_entry.user == player
     assert Notification.objects.filter(kind=Notification.Kind.TOURNAMENT, title__contains="has started").count() == 2
 
 
@@ -108,3 +112,64 @@ def test_private_tournament_hidden_from_non_organizer(client, tournament_users, 
     assert client.get(tournament.get_absolute_url()).status_code == 404
     client.force_login(organizer)
     assert client.get(tournament.get_absolute_url()).status_code == 200
+
+
+def test_organizer_reports_result_and_updates_standings(client, tournament_users, tournament):
+    organizer, player, outsider = tournament_users
+    first = TournamentEntry.objects.create(tournament=tournament, user=organizer)
+    second = TournamentEntry.objects.create(tournament=tournament, user=player)
+    tournament.status = Tournament.Status.ACTIVE
+    tournament.save(update_fields=["status"])
+    tournament_round = TournamentRound.objects.create(tournament=tournament, number=1)
+    pairing = TournamentPairing.objects.create(
+        round=tournament_round,
+        board_number=1,
+        white_entry=first,
+        black_entry=second,
+    )
+
+    client.force_login(outsider)
+    client.post(
+        reverse("tournaments:report_result", args=[tournament.pk, pairing.pk]),
+        {"result": TournamentPairing.Result.WHITE_WIN},
+    )
+    pairing.refresh_from_db()
+    assert pairing.result == TournamentPairing.Result.PENDING
+
+    client.force_login(organizer)
+    client.post(
+        reverse("tournaments:report_result", args=[tournament.pk, pairing.pk]),
+        {"result": TournamentPairing.Result.DRAW},
+    )
+    pairing.refresh_from_db()
+    first.refresh_from_db()
+    second.refresh_from_db()
+    tournament_round.refresh_from_db()
+    assert pairing.result == TournamentPairing.Result.DRAW
+    assert first.score == second.score == 0.5
+    assert tournament_round.status == TournamentRound.Status.COMPLETED
+
+    client.post(
+        reverse("tournaments:report_result", args=[tournament.pk, pairing.pk]),
+        {"result": TournamentPairing.Result.WHITE_WIN},
+    )
+    first.refresh_from_db()
+    assert first.score == 0.5
+
+
+def test_odd_player_receives_automatic_bye(client, tournament_users):
+    organizer, player, outsider = tournament_users
+    tournament = Tournament.objects.create(
+        name="Odd Swiss",
+        organizer=organizer,
+        starts_at=timezone.now() + timedelta(days=1),
+        max_players=4,
+    )
+    for user in (organizer, player, outsider):
+        TournamentEntry.objects.create(tournament=tournament, user=user)
+    client.force_login(organizer)
+    client.post(reverse("tournaments:start", args=[tournament.pk]))
+    bye = TournamentPairing.objects.get(result=TournamentPairing.Result.BYE)
+    assert bye.black_entry is None
+    bye.white_entry.refresh_from_db()
+    assert bye.white_entry.score == 1

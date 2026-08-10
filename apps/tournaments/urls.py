@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     JoinTournamentView,
+    ReportPairingResultView,
     StartTournamentView,
     TournamentCreateView,
     TournamentDetailView,
@@ -17,4 +18,5 @@ urlpatterns = [
     path("<int:pk>/join/", JoinTournamentView.as_view(), name="join"),
     path("<int:pk>/withdraw/", WithdrawTournamentView.as_view(), name="withdraw"),
     path("<int:pk>/start/", StartTournamentView.as_view(), name="start"),
+    path("<int:pk>/pairings/<int:pairing_pk>/result/", ReportPairingResultView.as_view(), name="report_result"),
 ]
