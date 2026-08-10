@@ -61,7 +61,7 @@ class SignUpView(FormView):
 class LoginView(FormView):
     template_name = "accounts/login.html"
     form_class = EmailLoginForm
-    success_url = reverse_lazy("core:member_home")
+    success_url = reverse_lazy("dashboard:home")
 
     def form_valid(self, form: EmailLoginForm) -> HttpResponse:
         user = form.get_user()
@@ -154,7 +154,7 @@ class ResendVerificationView(View):
 class TwoFactorVerifyView(FormView):
     template_name = "accounts/two_factor_verify.html"
     form_class = EnableTwoFactorForm
-    success_url = reverse_lazy("core:member_home")
+    success_url = reverse_lazy("dashboard:home")
 
     def dispatch(self, request: HttpRequest, *args, **kwargs):
         self.pending_user = User.objects.filter(id=request.session.get("pre_2fa_user_id"), is_active=True).first()

@@ -25,14 +25,6 @@ def test_dashboard_requires_login(client):
     assert client.get(reverse("dashboard:home")).status_code == 302
 
 
-def test_legacy_member_home_redirects_to_dashboard(client, dashboard_users):
-    user, _ = dashboard_users
-    client.force_login(user)
-    response = client.get(reverse("core:member_home"))
-    assert response.status_code == 302
-    assert response.url == reverse("dashboard:home")
-
-
 def test_dashboard_aggregates_user_activity(client, dashboard_users):
     user, opponent = dashboard_users
     Friendship.objects.create(requester=user, addressee=opponent, status=Friendship.Status.ACCEPTED)

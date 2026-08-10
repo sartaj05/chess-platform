@@ -74,7 +74,6 @@ THIRD_PARTY_APPS = [
 LOCAL_APPS = [
     "apps.core",
     "apps.accounts",
-    "apps.users",
     "apps.games",
     "apps.rooms",
     "apps.friends",
@@ -84,10 +83,7 @@ LOCAL_APPS = [
     "apps.puzzles",
     "apps.tournaments",
     "apps.notifications",
-    "apps.payments",
     "apps.dashboard",
-    "apps.blog",
-    "apps.cms",
     "apps.api",
 ]
 
