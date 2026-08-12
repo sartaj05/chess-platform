@@ -19,5 +19,10 @@ The first Flutter build needs the Android SDK and locally cached Flutter artifac
 - List public rooms, create a public LAN room, and join any room by its code.
 - Join as either a player or spectator; guest session identity is retained for later room requests.
 - Play a legal same-device chess game offline and save it locally for later synchronization.
+- Play online games on an interactive board with live WebSocket moves, clocks,
+  move history, reconnect handling, draw offers, resign, and abort actions.
+- Store access and refresh tokens in Android encrypted storage, restore login on
+  app restart, and automatically refresh expired access tokens.
 
-Next mobile screens should be WebSocket game play, account profile, local notifications, PGN history, and Stockfish analysis.
+Next mobile screens should be account profile, local notifications, PGN history,
+and Stockfish analysis.

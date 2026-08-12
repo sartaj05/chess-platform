@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'offline_board_page.dart';
+import 'mobile_session.dart';
+import 'online_game_page.dart';
 
 enum PlayerSide { white, black, random }
 
@@ -26,6 +28,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
   final _password = TextEditingController();
   final _name = TextEditingController();
   final _code = TextEditingController();
+  final _session = MobileSession();
   String? _token;
   String? _cookie;
   String? _message;
@@ -36,6 +39,34 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
   PlayerSide _side = PlayerSide.random;
 
   bool get _signedIn => _token != null;
+
+  @override
+  void initState() {
+    super.initState();
+    _restoreSession();
+  }
+
+  Future<void> _restoreSession() async {
+    await _session.restore();
+    if (_session.serverUrl?.isNotEmpty == true) _server.text = _session.serverUrl!;
+    if (!_session.isSignedIn) return;
+    _token = _session.accessToken;
+    try {
+      final api = _MobileApi(_server.text, _token, _cookie, session: _session);
+      final profile = await api.profile();
+      if (!mounted) return;
+      setState(() {
+        _token = _session.accessToken;
+        _botLevel = profile['bot_level'] as int? ?? 1;
+        _selectedBotLevel = _botLevel;
+        _displayName = profile['display_name'] as String?;
+        _name.text = _displayName ?? '';
+      });
+    } catch (_) {
+      await _session.clear();
+      if (mounted) setState(() => _token = null);
+    }
+  }
 
   @override
   void dispose() {
@@ -53,7 +84,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
       _message = null;
     });
     try {
-      final api = _MobileApi(_server.text, _token, _cookie);
+      final api = _MobileApi(_server.text, _token, _cookie, session: _session);
       await action(api);
       _cookie = api.cookie ?? _cookie;
     } on SocketException {
@@ -71,9 +102,15 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
         if (_email.text.trim().isEmpty || _password.text.isEmpty) {
           throw const HttpException('Enter your email and password.');
         }
-        _token = await api.login(_email.text.trim(), _password.text);
+        final tokens = await api.login(_email.text.trim(), _password.text);
+        await _session.saveTokens(
+          access: tokens['access']!,
+          refresh: tokens['refresh']!,
+          server: _server.text.trim(),
+        );
+        _token = _session.accessToken;
         final profile =
-            await _MobileApi(_server.text, _token, _cookie).profile();
+            await _MobileApi(_server.text, _token, _cookie, session: _session).profile();
         if (mounted) {
           setState(() {
             _botLevel = profile['bot_level'] as int? ?? 1;
@@ -95,7 +132,9 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
     }
   }
 
-  void _logout() {
+  Future<void> _logout() async {
+    await _session.clear();
+    if (!mounted) return;
     setState(() {
       _token = null;
       _cookie = null;
@@ -115,7 +154,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
 
   Future<int> _recordBotVictory(int level) async {
     if (!_signedIn) return level;
-    final api = _MobileApi(_server.text, _token, _cookie);
+    final api = _MobileApi(_server.text, _token, _cookie, session: _session);
     final unlocked = await api.recordBotVictory(level);
     if (mounted) setState(() => _botLevel = unlocked);
     return unlocked;
@@ -135,6 +174,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
             displayName: _name.text.trim(),
             token: _token,
             cookie: api.cookie,
+            session: _session,
           ),
         ));
       });
@@ -151,6 +191,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
             displayName: _name.text.trim(),
             token: _token,
             cookie: api.cookie,
+            session: _session,
           ),
         ));
       });
@@ -514,25 +555,91 @@ class ShareCodePage extends StatefulWidget {
       required this.roomCode,
       required this.displayName,
       this.token,
-      this.cookie});
+      this.cookie,
+      required this.session});
   final String serverUrl;
   final String roomCode;
   final String displayName;
   final String? token;
   final String? cookie;
+  final MobileSession session;
 
   @override
   State<ShareCodePage> createState() => _ShareCodePageState();
 }
 
 class _ShareCodePageState extends State<ShareCodePage> {
+  WebSocket? _roomSocket;
   Map<String, dynamic>? _room;
   String? _error;
   bool _busy = false;
+  bool _openingGame = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+    _connectLobby();
+  }
+
+  Future<void> _connectLobby() async {
+    try {
+      final api = _MobileApi(widget.serverUrl, widget.token, widget.cookie,
+          session: widget.session);
+      final token = await api.validAccessToken();
+      final base = Uri.parse(widget.serverUrl);
+      final uri = base.replace(
+          scheme: base.scheme == 'https' ? 'wss' : 'ws',
+          path: '/ws/rooms/${widget.roomCode}/');
+      final headers = <String, dynamic>{};
+      if (token != null) {
+        headers[HttpHeaders.authorizationHeader] = 'Bearer $token';
+      }
+      if (widget.cookie != null) {
+        headers[HttpHeaders.cookieHeader] = widget.cookie!;
+      }
+      final socket = await WebSocket.connect(uri.toString(),
+          headers: headers.isEmpty ? null : headers);
+      _roomSocket = socket;
+      socket.listen((message) {
+        final data = jsonDecode(message as String) as Map<String, dynamic>;
+        if (data['room'] is Map && mounted) {
+          setState(
+              () => _room = Map<String, dynamic>.from(data['room'] as Map));
+        }
+        if (data['type'] == 'game.started' && data['game'] is Map) {
+          _openGame(Map<String, dynamic>.from(data['game'] as Map), api);
+        }
+      }, onError: (_) {
+        if (mounted) {
+          setState(() => _error = 'Lobby connection lost. Refresh to retry.');
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() =>
+            _error = 'Live lobby unavailable. You can still refresh manually.');
+      }
+    }
+  }
+
+  Future<void> _openGame(Map<String, dynamic> game, _MobileApi api) async {
+    if (_openingGame || !mounted) return;
+    _openingGame = true;
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => OnlineGamePage(
+        serverUrl: widget.serverUrl,
+        initialGame: game,
+        sessionCookie: api.cookie ?? widget.cookie,
+        accessTokenProvider: api.validAccessToken,
+      ),
+    ));
+    _openingGame = false;
+  }
 
   Future<void> _refresh() async {
     try {
-      final api = _MobileApi(widget.serverUrl, widget.token, widget.cookie);
+      final api = _MobileApi(widget.serverUrl, widget.token, widget.cookie, session: widget.session);
       final room = await api.room(widget.roomCode);
       if (mounted) setState(() => _room = room);
     } catch (error) {
@@ -543,14 +650,9 @@ class _ShareCodePageState extends State<ShareCodePage> {
   Future<void> _start() async {
     setState(() => _busy = true);
     try {
-      final api = _MobileApi(widget.serverUrl, widget.token, widget.cookie);
+      final api = _MobileApi(widget.serverUrl, widget.token, widget.cookie, session: widget.session);
       final game = await api.start(widget.roomCode);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text(
-              'Game started: ${game['white_display_name']} vs ${game['black_display_name']}'),
-        ));
-      }
+      await _openGame(game, api);
     } catch (error) {
       if (mounted) setState(() => _error = '$error');
     } finally {
@@ -559,9 +661,9 @@ class _ShareCodePageState extends State<ShareCodePage> {
   }
 
   @override
-  void initState() {
-    super.initState();
-    _refresh();
+  void dispose() {
+    _roomSocket?.close();
+    super.dispose();
   }
 
   @override
@@ -609,16 +711,34 @@ class _ShareCodePageState extends State<ShareCodePage> {
 }
 
 class _MobileApi {
-  _MobileApi(String baseUrl, this.token, this.cookie)
+  _MobileApi(String baseUrl, this.token, this.cookie, {this.session})
       : base = Uri.parse(baseUrl.endsWith('/') ? baseUrl : '$baseUrl/');
   final Uri base;
   final String? token;
   String? cookie;
+  final MobileSession? session;
 
-  Future<String> login(String email, String password) async {
+  Future<Map<String, String>> login(String email, String password) async {
     final data = await _request(
         'POST', 'api/auth/token/', {'email': email, 'password': password});
-    return data['access'] as String;
+    return {'access': data['access'] as String, 'refresh': data['refresh'] as String};
+  }
+
+  Future<String?> validAccessToken() async {
+    if (session?.refreshToken == null) return session?.accessToken ?? token;
+    try {
+      await _refreshAccess();
+    } catch (_) {
+      return session?.accessToken ?? token;
+    }
+    return session?.accessToken;
+  }
+
+  Future<void> _refreshAccess() async {
+    final refresh = session?.refreshToken;
+    if (refresh == null) throw const HttpException('Your session has expired. Please log in again.');
+    final data = await _request('POST', 'api/auth/token/refresh/', {'refresh': refresh}, false);
+    await session!.updateAccess(data['access'] as String);
   }
 
   Future<Map<String, dynamic>> profile() async => Map<String, dynamic>.from(
@@ -668,14 +788,15 @@ class _MobileApi {
           await _request('POST', 'api/rooms/$code/start/') as Map);
 
   Future<dynamic> _request(String method, String path,
-      [Map<String, dynamic>? body]) async {
+      [Map<String, dynamic>? body, bool retryAfterRefresh = true]) async {
     final client = HttpClient();
     try {
       final request = await client.openUrl(method, base.resolve(path));
       request.headers.contentType = ContentType.json;
       request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-      if (token != null) {
-        request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+      final access = session?.accessToken ?? token;
+      if (access != null) {
+        request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $access');
       }
       if (cookie != null) {
         request.headers.set(HttpHeaders.cookieHeader, cookie!);
@@ -693,6 +814,11 @@ class _MobileApi {
       }
       final text = await utf8.decodeStream(response);
       final data = text.isEmpty ? <String, dynamic>{} : jsonDecode(text);
+      if (response.statusCode == HttpStatus.unauthorized &&
+          retryAfterRefresh && session?.refreshToken != null) {
+        await _refreshAccess();
+        return _request(method, path, body, false);
+      }
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw HttpException(_errorMessage(data, response.statusCode));
       }

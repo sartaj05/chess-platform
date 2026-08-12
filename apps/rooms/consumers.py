@@ -90,6 +90,9 @@ class RoomConsumer(AsyncJsonWebsocketConsumer):
     async def broadcast_chat(self, event: dict[str, Any]) -> None:
         await self.send_json({"type": "room.chat", "chat": event["chat"]})
 
+    async def broadcast_game_started(self, event: dict[str, Any]) -> None:
+        await self.send_json({"type": "game.started", "game": event["game"]})
+
     @database_sync_to_async
     def _connect_participant(self) -> dict[str, Any]:
         from apps.rooms.models import Room

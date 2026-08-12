@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, pagination, permissions, response, status, views
 
@@ -82,4 +84,9 @@ class StartRoomGameAPIView(views.APIView):
     def post(self, request, code: str):
         room = generics.get_object_or_404(Room.objects.prefetch_related("participants"), code=code.upper())
         game = create_game_from_room(room=room, request=request)
+        channel_layer = get_channel_layer()
+        async_to_sync(channel_layer.group_send)(
+            f"room_{room.code.lower()}",
+            {"type": "broadcast_game_started", "game": serialize_game(game)},
+        )
         return response.Response(serialize_game(game, request=request), status=status.HTTP_201_CREATED)

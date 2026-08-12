@@ -75,6 +75,18 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
     async def broadcast_game(self, event: dict[str, Any]) -> None:
         await self.send_json({"type": "game.state", "event": event.get("event"), "game": event["game"]})
 
+    def _serialized_for_viewer(self, game: Any) -> dict[str, Any]:
+        from apps.games.services import actor_from_scope, serialize_game
+
+        actor = actor_from_scope(self.scope, game)
+        payload = serialize_game(game)
+        payload["viewer"] = {
+            "color": actor.color,
+            "name": actor.display_name,
+            "can_move": actor.color == game.turn,
+        }
+        return payload
+
     @database_sync_to_async
     def _get_game(self):
         from apps.games.models import Game
@@ -88,19 +100,17 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def _state(self) -> dict[str, Any]:
         from apps.games.models import Game
-        from apps.games.services import serialize_game
-
         game = (
             Game.objects.select_related("room", "white_user", "black_user")
             .prefetch_related("moves")
             .get(pk=self.game_id)
         )
-        return serialize_game(game)
+        return self._serialized_for_viewer(game)
 
     @database_sync_to_async
     def _play_move(self, uci: str, client_lag_ms: int) -> dict[str, Any]:
         from apps.games.models import Game
-        from apps.games.services import actor_from_scope, play_local_bot_reply, play_uci_move, serialize_game
+        from apps.games.services import actor_from_scope, play_local_bot_reply, play_uci_move
 
         game = Game.objects.select_related("white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
         actor = actor_from_scope(self.scope, game)
@@ -112,48 +122,48 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
             .prefetch_related("moves")
             .get(pk=self.game_id)
         )
-        return serialize_game(game)
+        return self._serialized_for_viewer(game)
 
     @database_sync_to_async
     def _resign(self) -> dict[str, Any]:
         from apps.games.models import Game
-        from apps.games.services import actor_from_scope, resign_game, serialize_game
+        from apps.games.services import actor_from_scope, resign_game
 
         game = Game.objects.select_related("white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
         actor = actor_from_scope(self.scope, game)
         resign_game(game=game, actor=actor)
         game.refresh_from_db()
-        return serialize_game(game)
+        return self._serialized_for_viewer(game)
 
     @database_sync_to_async
     def _abort(self) -> dict[str, Any]:
         from apps.games.models import Game
-        from apps.games.services import abort_game, actor_from_scope, serialize_game
+        from apps.games.services import abort_game, actor_from_scope
 
         game = Game.objects.select_related("white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
         actor = actor_from_scope(self.scope, game)
         abort_game(game=game, actor=actor)
         game.refresh_from_db()
-        return serialize_game(game)
+        return self._serialized_for_viewer(game)
 
     @database_sync_to_async
     def _draw(self) -> dict[str, Any]:
         from apps.games.models import Game
-        from apps.games.services import actor_from_scope, offer_or_accept_draw, serialize_game
+        from apps.games.services import actor_from_scope, offer_or_accept_draw
 
         game = Game.objects.select_related("white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
         actor = actor_from_scope(self.scope, game)
         offer_or_accept_draw(game=game, actor=actor)
         game.refresh_from_db()
-        return serialize_game(game)
+        return self._serialized_for_viewer(game)
 
     @database_sync_to_async
     def _decline_draw(self) -> dict[str, Any]:
         from apps.games.models import Game
-        from apps.games.services import actor_from_scope, decline_draw, serialize_game
+        from apps.games.services import actor_from_scope, decline_draw
 
         game = Game.objects.select_related("white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
         actor = actor_from_scope(self.scope, game)
         decline_draw(game=game, actor=actor)
         game.refresh_from_db()
-        return serialize_game(game)
+        return self._serialized_for_viewer(game)
