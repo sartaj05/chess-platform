@@ -6,13 +6,18 @@
 {% block content %}
 <div class="web-app-shell">
   <header class="web-app-header">
-    <span>Chess Platform</span>
+    <div>
+      <span>Chess Platform</span>
+      <small>Play your way</small>
+    </div>
     {% if request.user.is_authenticated %}
       <form method="post" action="{% url 'accounts:logout' %}">
         {% csrf_token %}<button type="submit" class="app-text-button">Logout</button>
       </form>
     {% endif %}
   </header>
+
+  <div class="web-app-grid">
 
   {% if not request.user.is_authenticated %}
   <section class="app-section login-section">
@@ -32,7 +37,7 @@
   <div class="signed-in-note">Signed in as <strong>{{ request.user.display_name|default:request.user.email }}</strong></div>
   {% endif %}
 
-  <form method="post" id="quickPlayForm">
+  <form method="post" id="quickPlayForm" class="quick-play-form">
     {% csrf_token %}
     <section class="app-section player-section">
       <label class="sr-only" for="displayName">Your name</label>
@@ -71,5 +76,6 @@
       </div>
     </section>
   </form>
+  </div>
 </div>
 {% endblock %}
