@@ -7,8 +7,8 @@
 <div class="web-app-shell">
   <header class="web-app-header">
     <div>
-      <span>Chess Platform</span>
-      <small>Play your way</small>
+      <span>Play Chess</span>
+      <small>Choose how you want to play</small>
     </div>
     {% if request.user.is_authenticated %}
       <form method="post" action="{% url 'accounts:logout' %}">
