@@ -27,6 +27,8 @@ from .models import EmailOTP, User
 from .tasks import send_email_verification
 from .tokens import read_email_verification_token
 
+EMAIL_AUTH_BACKEND = "django.contrib.auth.backends.ModelBackend"
+
 
 def _client_ip(request: HttpRequest) -> str | None:
     fwd = request.META.get("HTTP_X_FORWARDED_FOR")
@@ -69,7 +71,7 @@ class LoginView(FormView):
             self.request.session["pre_2fa_user_id"] = str(user.id)
             self.request.session.set_expiry(300)
             return redirect("accounts:two_factor_verify")
-        login(self.request, user)
+        login(self.request, user, backend=EMAIL_AUTH_BACKEND)
         if not form.cleaned_data.get("remember_me"):
             self.request.session.set_expiry(0)
         messages.success(self.request, _("Welcome back."))
@@ -169,7 +171,7 @@ class TwoFactorVerifyView(FormView):
         return kwargs
 
     def form_valid(self, form: EnableTwoFactorForm) -> HttpResponse:
-        login(self.request, self.pending_user)
+        login(self.request, self.pending_user, backend=EMAIL_AUTH_BACKEND)
         self.request.session.pop("pre_2fa_user_id", None)
         messages.success(self.request, _("Two-factor verification successful."))
         return super().form_valid(form)

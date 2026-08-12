@@ -11,6 +11,33 @@ def test_create_user_with_email():
     assert user.check_password("StrongPass123!")
 
 
+def test_login_page_displays_email_password_form(client):
+    response = client.get(reverse("accounts:login"))
+
+    assert response.status_code == 200
+    assert b'name="email"' in response.content
+    assert b'name="password"' in response.content
+    assert b"Sign in via" not in response.content
+
+
+@pytest.mark.django_db
+def test_verified_user_can_login_from_email_form(client):
+    User.objects.create_user(
+        email="verified@example.com",
+        password="StrongPass123!",
+        is_email_verified=True,
+    )
+
+    response = client.post(
+        reverse("accounts:login"),
+        {"email": "verified@example.com", "password": "StrongPass123!"},
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse("dashboard:home")
+    assert "_auth_user_id" in client.session
+
+
 @pytest.mark.django_db
 def test_signup_creates_inactive_user_and_otp(client):
     response = client.post(

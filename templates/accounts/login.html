@@ -1,27 +1,42 @@
 {% extends "base.html" %}
-{% load i18n %}
 
-{% block title %}{% blocktrans with provider=account.get_provider.name %}Sign In Via {{ provider }}{% endblocktrans %}{% endblock %}
+{% block title %}Login | {{ site_name }}{% endblock %}
 
 {% block content %}
 <div class="auth-card mx-auto">
-  <h1 class="h3 mb-3">
-    {% blocktrans with provider=account.get_provider.name %}Sign in via {{ provider }}{% endblocktrans %}
-  </h1>
+  <h1 class="h3 mb-2">Welcome back</h1>
+  <p class="text-dim mb-4">Sign in with your Chess Platform account.</p>
 
-  <p class="text-dim mb-4">
-    {% blocktrans with provider=account.get_provider.name %}You're about to sign in using your {{ provider }} account.{% endblocktrans %}
-  </p>
-
-  <form method="post">
+  <form method="post" novalidate>
     {% csrf_token %}
-    {% if redirect_field_value %}
-    <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger" role="alert">{{ form.non_field_errors }}</div>
     {% endif %}
-    <button class="btn btn-success w-100" type="submit">Continue</button>
+
+    <div class="mb-3">
+      <label class="form-label" for="{{ form.email.id_for_label }}">Email</label>
+      {{ form.email }}
+      {% for error in form.email.errors %}<div class="text-danger small mt-2">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="mb-3">
+      <div class="d-flex justify-content-between align-items-center">
+        <label class="form-label" for="{{ form.password.id_for_label }}">Password</label>
+        <a class="small" href="{% url 'accounts:password_reset' %}">Forgot password?</a>
+      </div>
+      {{ form.password }}
+      {% for error in form.password.errors %}<div class="text-danger small mt-2">{{ error }}</div>{% endfor %}
+    </div>
+
+    <div class="form-check mb-3">
+      {{ form.remember_me }}
+      <label class="form-check-label" for="{{ form.remember_me.id_for_label }}">Keep me signed in</label>
+    </div>
+
+    <button class="btn btn-success w-100" type="submit">Login</button>
   </form>
 
-  <hr />
-  <a href="{% url 'accounts:login' %}">Use a different sign-in method</a>
+  <hr>
+  <p class="mb-0 text-center">New to Chess Platform? <a href="{% url 'accounts:signup' %}">Create an account</a></p>
 </div>
 {% endblock %}

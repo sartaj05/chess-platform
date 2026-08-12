@@ -42,7 +42,10 @@ class EmailLoginForm(forms.Form):
     password = forms.CharField(
         widget=forms.PasswordInput(attrs={"class": "form-control", "autocomplete": "current-password"})
     )
-    remember_me = forms.BooleanField(required=False)
+    remember_me = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"}),
+    )
     user_cache: User | None = None
 
     def clean(self) -> dict:
