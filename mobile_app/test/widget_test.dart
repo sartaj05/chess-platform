@@ -10,13 +10,13 @@ void main() {
 
     expect(find.text('Login'), findsWidgets);
     expect(find.text('Create Account'), findsOneWidget);
-    expect(find.text('Choose your side'), findsOneWidget);
     await tester.scrollUntilVisible(
       find.text('Play with Friend'),
       300,
       scrollable: find.byType(Scrollable).first,
     );
-    expect(find.text('Play with Bot'), findsOneWidget);
+    expect(find.text('Choose your side'), findsOneWidget);
+    expect(find.text('Bot Challenge'), findsOneWidget);
     expect(find.text('Play with Friend'), findsOneWidget);
 
     await tester.tap(find.text('Play with Friend'));

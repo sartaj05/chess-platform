@@ -88,3 +88,16 @@ def test_mobile_registration_and_email_verification(client, monkeypatch):
     user.refresh_from_db()
     assert user.is_active is True
     assert user.is_email_verified is True
+
+
+@pytest.mark.django_db
+def test_mobile_bot_victory_advances_current_level(client):
+    user = User.objects.create_user(email="mobile-bot@example.com", password="StrongPass123!")
+    client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
+    response = client.post(
+        reverse("api:accounts_api:bot-victory"),
+        {"level": 1},
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    assert response.data["bot_level"] == 2

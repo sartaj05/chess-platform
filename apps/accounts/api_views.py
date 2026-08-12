@@ -58,3 +58,18 @@ class MobileVerifyEmailAPIView(APIView):
         user.is_email_verified = True
         user.save(update_fields=["is_active", "is_email_verified"])
         return Response({"detail": "Email verified. You can now log in."})
+
+
+class MobileBotVictoryAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        try:
+            completed_level = int(request.data.get("level", 0))
+        except (TypeError, ValueError):
+            completed_level = 0
+        user = request.user
+        if completed_level == user.bot_level and user.bot_level < 10:
+            user.bot_level += 1
+            user.save(update_fields=["bot_level"])
+        return Response({"bot_level": user.bot_level})

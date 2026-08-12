@@ -30,6 +30,9 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
   String? _cookie;
   String? _message;
   bool _busy = false;
+  int _botLevel = 1;
+  int _selectedBotLevel = 1;
+  String? _displayName;
   PlayerSide _side = PlayerSide.random;
 
   bool get _signedIn => _token != null;
@@ -69,7 +72,17 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
           throw const HttpException('Enter your email and password.');
         }
         _token = await api.login(_email.text.trim(), _password.text);
-        if (mounted) setState(() => _message = 'Login successful.');
+        final profile =
+            await _MobileApi(_server.text, _token, _cookie).profile();
+        if (mounted) {
+          setState(() {
+            _botLevel = profile['bot_level'] as int? ?? 1;
+            _selectedBotLevel = _botLevel;
+            _displayName = profile['display_name'] as String?;
+            _name.text = _displayName ?? _name.text;
+            _message = 'Welcome back, ${_displayName ?? 'Player'}.';
+          });
+        }
       });
 
   Future<void> _openRegistration() async {
@@ -87,6 +100,9 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
       _token = null;
       _cookie = null;
       _password.clear();
+      _botLevel = 1;
+      _selectedBotLevel = 1;
+      _displayName = null;
       _message = 'Logged out.';
     });
   }
@@ -96,6 +112,14 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
         PlayerSide.black => BoardSide.black,
         PlayerSide.random => BoardSide.random,
       };
+
+  Future<int> _recordBotVictory(int level) async {
+    if (!_signedIn) return level;
+    final api = _MobileApi(_server.text, _token, _cookie);
+    final unlocked = await api.recordBotVictory(level);
+    if (mounted) setState(() => _botLevel = unlocked);
+    return unlocked;
+  }
 
   Future<void> _createOnlineGame() => _perform((api) async {
         final room = await api.createRoom(
@@ -146,8 +170,40 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
         ),
         body: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
             children: [
+              Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: const Color(0xff173b2a),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('YOUR NEXT GAME',
+                          style: TextStyle(
+                              color: Color(0xffa9c7a9),
+                              fontSize: 11,
+                              letterSpacing: 1.8,
+                              fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      Text(
+                          _signedIn
+                              ? 'Ready, ${_displayName ?? 'Player'}?'
+                              : 'Play chess your way.',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 27,
+                              fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 7),
+                      const Text(
+                          'Train with the bot, share a board, or challenge a friend online.',
+                          style:
+                              TextStyle(color: Color(0xffd4e2d5), height: 1.4)),
+                    ]),
+              ),
+              const SizedBox(height: 22),
               if (!_signedIn) ...[
                 Text('Login', style: Theme.of(context).textTheme.headlineSmall),
                 TextField(
@@ -197,16 +253,62 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
               const SizedBox(height: 24),
               Text('Play', style: Theme.of(context).textTheme.titleLarge),
               const SizedBox(height: 8),
-              _PlayCard(
-                icon: Icons.smart_toy_outlined,
-                title: 'Play with Bot',
-                subtitle: 'Play offline against the computer',
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => OfflineBoardPage(
-                    mode: OfflinePlayMode.bot,
-                    preferredSide: chessSide(),
-                  ),
-                )),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          const CircleAvatar(
+                              child: Icon(Icons.smart_toy_outlined)),
+                          const SizedBox(width: 12),
+                          Expanded(
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                const Text('Bot Challenge',
+                                    style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.bold)),
+                                Text(_signedIn
+                                    ? 'Level $_botLevel unlocked'
+                                    : 'Guest progress · Level 1'),
+                              ])),
+                        ]),
+                        const SizedBox(height: 12),
+                        LinearProgressIndicator(
+                            value: _botLevel / 10,
+                            minHeight: 7,
+                            borderRadius: BorderRadius.circular(10)),
+                        const SizedBox(height: 10),
+                        DropdownButtonFormField<int>(
+                          initialValue: _selectedBotLevel,
+                          decoration:
+                              const InputDecoration(labelText: 'Bot level'),
+                          items: [
+                            for (var level = 1; level <= _botLevel; level++)
+                              DropdownMenuItem(
+                                  value: level, child: Text('Level $level'))
+                          ],
+                          onChanged: (value) =>
+                              setState(() => _selectedBotLevel = value ?? 1),
+                        ),
+                        const SizedBox(height: 10),
+                        FilledButton.icon(
+                          onPressed: () =>
+                              Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => OfflineBoardPage(
+                                mode: OfflinePlayMode.bot,
+                                preferredSide: chessSide(),
+                                botLevel: _selectedBotLevel,
+                                onBotVictory: _recordBotVictory),
+                          )),
+                          icon: const Icon(Icons.play_arrow),
+                          label: const Text('Play Bot'),
+                        ),
+                      ]),
+                ),
               ),
               _PlayCard(
                 icon: Icons.people_outline,
@@ -517,6 +619,15 @@ class _MobileApi {
     final data = await _request(
         'POST', 'api/auth/token/', {'email': email, 'password': password});
     return data['access'] as String;
+  }
+
+  Future<Map<String, dynamic>> profile() async => Map<String, dynamic>.from(
+      await _request('GET', 'api/accounts/me/') as Map);
+
+  Future<int> recordBotVictory(int level) async {
+    final data =
+        await _request('POST', 'api/accounts/bot-victory/', {'level': level});
+    return data['bot_level'] as int? ?? level;
   }
 
   Future<void> register(String email, String displayName, String password) =>

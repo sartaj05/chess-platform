@@ -14,10 +14,14 @@ class OfflineBoardPage extends StatefulWidget {
     super.key,
     this.mode = OfflinePlayMode.friend,
     this.preferredSide = BoardSide.white,
+    this.botLevel = 1,
+    this.onBotVictory,
   });
 
   final OfflinePlayMode mode;
   final BoardSide preferredSide;
+  final int botLevel;
+  final Future<int> Function(int level)? onBotVictory;
 
   @override
   State<OfflineBoardPage> createState() => _OfflineBoardPageState();
@@ -28,6 +32,7 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
   final _repository = OfflineGameRepository();
   final _id = DateTime.now().microsecondsSinceEpoch.toString();
   String? _selected;
+  bool _reportedVictory = false;
   late final bool _playerIsWhite = switch (widget.preferredSide) {
     BoardSide.white => true,
     BoardSide.black => false,
@@ -58,15 +63,57 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
         _game.move({'from': _selected, 'to': square, 'promotion': 'q'});
     setState(() => _selected = moved ? null : square);
     if (moved && widget.mode == OfflinePlayMode.bot) {
+      _checkResult();
       Future<void>.delayed(const Duration(milliseconds: 350), _playBotMove);
     }
   }
 
   void _playBotMove() {
     if (!mounted || _game.game_over) return;
-    final moves = _game.moves();
+    final moves = _game.moves({'verbose': true});
     if (moves.isEmpty) return;
-    setState(() => _game.move(moves[Random().nextInt(moves.length)]));
+    final move = _chooseBotMove(moves.cast<Map>());
+    setState(() => _game.move(move));
+    _checkResult();
+  }
+
+  dynamic _chooseBotMove(List<Map> moves) {
+    if (widget.botLevel <= 1) return moves[Random().nextInt(moves.length)];
+    const values = {'p': 1, 'n': 3, 'b': 3, 'r': 5, 'q': 9, 'k': 0};
+    moves.sort((a, b) {
+      final aScore = (values[a['captured']] ?? 0) * 10 +
+          (a['san']?.toString().contains('+') == true ? widget.botLevel : 0);
+      final bScore = (values[b['captured']] ?? 0) * 10 +
+          (b['san']?.toString().contains('+') == true ? widget.botLevel : 0);
+      return bScore.compareTo(aScore);
+    });
+    final pool = max(1, 5 - widget.botLevel ~/ 2);
+    return moves[Random().nextInt(min(pool, moves.length))];
+  }
+
+  Future<void> _checkResult() async {
+    if (!_game.in_checkmate || _reportedVictory) return;
+    final playerWon = (_game.turn == chess.Chess.BLACK) == _playerIsWhite;
+    if (!playerWon) return;
+    _reportedVictory = true;
+    final unlocked = await widget.onBotVictory?.call(widget.botLevel);
+    if (mounted) {
+      showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          icon: const Icon(Icons.emoji_events, size: 42),
+          title: const Text('You won!'),
+          content: Text(unlocked != null && unlocked > widget.botLevel
+              ? 'Level $unlocked is now unlocked.'
+              : 'Great game. Sign in to save your progress.'),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Continue'))
+          ],
+        ),
+      );
+    }
   }
 
   Future<void> _save() async {
@@ -99,7 +146,7 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
           title: Text(widget.mode == OfflinePlayMode.bot
-              ? 'Play with Bot'
+              ? 'Bot · Level ${widget.botLevel}'
               : 'Play with Friend'),
         ),
         body: Padding(

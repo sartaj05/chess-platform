@@ -15,8 +15,34 @@ class ChessPlatformApp extends StatelessWidget {
   Widget build(BuildContext context) => MaterialApp(
         title: 'Chess Platform',
         theme: ThemeData(
-          colorSchemeSeed: const Color(0xff1b5e20),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xff24563b),
+            brightness: Brightness.light,
+            surface: const Color(0xfffbfcf7),
+          ),
           useMaterial3: true,
+          scaffoldBackgroundColor: const Color(0xfff4f7ef),
+          appBarTheme: const AppBarTheme(
+            backgroundColor: Color(0xfff4f7ef),
+            foregroundColor: Color(0xff17251c),
+            elevation: 0,
+          ),
+          cardTheme: const CardThemeData(
+            color: Colors.white,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(20)),
+              side: BorderSide(color: Color(0xffdce5d8)),
+            ),
+          ),
+          inputDecorationTheme: const InputDecorationTheme(
+            filled: true,
+            fillColor: Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(14)),
+              borderSide: BorderSide.none,
+            ),
+          ),
         ),
         home: const SimpleHomePage(),
       );

@@ -23,8 +23,17 @@ class UserSerializer(serializers.ModelSerializer):
             "two_factor_enabled",
             "date_joined",
             "last_seen_at",
+            "bot_level",
         )
-        read_only_fields = ("id", "email", "is_email_verified", "two_factor_enabled", "date_joined", "last_seen_at")
+        read_only_fields = (
+            "id",
+            "email",
+            "is_email_verified",
+            "two_factor_enabled",
+            "date_joined",
+            "last_seen_at",
+            "bot_level",
+        )
 
     def get_avatar_url(self, obj) -> str | None:
         request = self.context.get("request")
@@ -66,11 +75,15 @@ class MobileEmailVerificationSerializer(serializers.Serializer):
         user = User.objects.filter(email__iexact=attrs["email"].strip()).first()
         otp = None
         if user is not None:
-            otp = EmailOTP.objects.filter(
-                user=user,
-                purpose=EmailOTP.Purpose.VERIFY_EMAIL,
-                used_at__isnull=True,
-            ).order_by("-created_at").first()
+            otp = (
+                EmailOTP.objects.filter(
+                    user=user,
+                    purpose=EmailOTP.Purpose.VERIFY_EMAIL,
+                    used_at__isnull=True,
+                )
+                .order_by("-created_at")
+                .first()
+            )
         if user is None or otp is None or not otp.verify(attrs["code"].strip()):
             raise serializers.ValidationError("Invalid or expired verification code.")
         attrs["user"] = user
