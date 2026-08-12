@@ -569,7 +569,11 @@ class _MobileApi {
       if (cookie != null) {
         request.headers.set(HttpHeaders.cookieHeader, cookie!);
       }
-      if (body != null) request.write(jsonEncode(body));
+      if (body != null) {
+        final payload = utf8.encode(jsonEncode(body));
+        request.contentLength = payload.length;
+        request.add(payload);
+      }
       final response = await request.close();
       if (response.cookies.isNotEmpty) {
         cookie = response.cookies
@@ -579,11 +583,27 @@ class _MobileApi {
       final text = await utf8.decodeStream(response);
       final data = text.isEmpty ? <String, dynamic>{} : jsonDecode(text);
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw HttpException(data.toString());
+        throw HttpException(_errorMessage(data, response.statusCode));
       }
       return data;
     } finally {
       client.close(force: true);
     }
+  }
+
+  String _errorMessage(dynamic data, int statusCode) {
+    if (data is Map) {
+      final messages = <String>[];
+      for (final entry in data.entries) {
+        final value = entry.value;
+        if (value is List) {
+          messages.addAll(value.map((item) => item.toString()));
+        } else if (value != null) {
+          messages.add(value.toString());
+        }
+      }
+      if (messages.isNotEmpty) return messages.join(' ');
+    }
+    return 'Server returned status $statusCode.';
   }
 }
