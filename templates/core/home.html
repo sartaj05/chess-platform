@@ -1,81 +1,62 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}Chess Platform{% endblock %}
+{% block title %}Play Chess Online | Chess Platform{% endblock %}
 {% block body_class %}app-home-page{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/app-home.css' %}">{% endblock %}
 {% block content %}
-<div class="web-app-shell">
-  <header class="web-app-header">
-    <div>
-      <span>Play Chess</span>
-      <small>Choose how you want to play</small>
-    </div>
-    {% if request.user.is_authenticated %}
-      <form method="post" action="{% url 'accounts:logout' %}">
-        {% csrf_token %}<button type="submit" class="app-text-button">Logout</button>
-      </form>
-    {% endif %}
-  </header>
-
-  <div class="web-app-grid">
-
-  {% if not request.user.is_authenticated %}
-  <section class="app-section login-section">
-    <h1>Login</h1>
-    <form method="post" action="{% url 'accounts:login' %}">
-      {% csrf_token %}
-      <label for="homeEmail">Email</label>
-      <input id="homeEmail" name="email" type="email" autocomplete="email" required>
-      <label for="homePassword">Password</label>
-      <input id="homePassword" name="password" type="password" autocomplete="current-password" required>
-      <button class="app-primary-button" type="submit">Login</button>
-    </form>
-    <a class="create-account-link" href="{% url 'accounts:signup' %}">Create Account</a>
-    <p class="guest-copy">or continue as guest</p>
-  </section>
-  {% else %}
-  <div class="signed-in-note">Signed in as <strong>{{ request.user.display_name|default:request.user.email }}</strong></div>
-  {% endif %}
-
-  <form method="post" id="quickPlayForm" class="quick-play-form">
-    {% csrf_token %}
-    <section class="app-section player-section">
-      <label class="sr-only" for="displayName">Your name</label>
-      <span class="person-icon" aria-hidden="true">♙</span>
-      <input id="displayName" name="display_name" type="text" maxlength="80"
-             placeholder="Your name" value="{% if request.user.is_authenticated %}{{ request.user.display_name }}{% endif %}">
-    </section>
-
-    <section class="app-section">
-      <h2>Choose your side</h2>
-      <div class="side-picker" role="radiogroup" aria-label="Choose your side">
-        <label><input type="radio" name="side" value="white"><span>White</span></label>
-        <label><input type="radio" name="side" value="random" checked><span>✓&nbsp; Random</span></label>
-        <label><input type="radio" name="side" value="black"><span>Black</span></label>
-      </div>
-    </section>
-
-    <section class="app-section play-section">
-      <h2>Play</h2>
-      <button class="play-option" type="submit" name="action" value="bot">
-        <span class="play-icon">♟</span><span><strong>Play with Bot</strong><small>Play against the computer</small></span><b>›</b>
-      </button>
-      <button class="play-option" type="submit" name="action" value="same_pc">
-        <span class="play-icon">♟♙</span><span><strong>Play with Friend</strong><small>Two players on this device</small></span><b>›</b>
-      </button>
-      <button class="play-option" type="submit" name="action" value="create_room">
-        <span class="play-icon">▣</span><span><strong>Play on Another Device</strong><small>Create a game and share its code</small></span><b>›</b>
-      </button>
-    </section>
-
-    <section class="join-code-section">
-      <label for="roomCode">Friend code</label>
-      <div class="join-code-row">
-        <input id="roomCode" name="room_code" maxlength="12" placeholder="Enter shared code">
-        <button type="submit" name="action" value="join_room">Join</button>
-      </div>
-    </section>
-  </form>
+<section class="chess-hero">
+  <div class="hero-copy">
+    <span class="hero-kicker">YOUR NEXT GAME STARTS HERE</span>
+    <h1>Chess for every<br><em>kind of player.</em></h1>
+    <p>Challenge the computer, share a board with a friend, or play live across devices—all from one account.</p>
+    <div class="hero-stats"><span><strong>3</strong> play modes</span><span><strong>10</strong> bot levels</span><span><strong>1</strong> shared platform</span></div>
   </div>
+  <div class="hero-board" aria-hidden="true"><span>♜</span><span>♞</span><span>♝</span><span>♛</span><span>♚</span><span>♝</span><span>♞</span><span>♜</span></div>
+</section>
+
+<div class="home-layout">
+  <main class="play-studio">
+    <div class="section-heading"><div><span class="step-number">01</span><h2>Set up your game</h2></div><p>Choose your identity and side.</p></div>
+    <form method="post" id="quickPlayForm">
+      {% csrf_token %}
+      <div class="game-setup-bar">
+        <label class="name-control"><span>Your name</span><input name="display_name" maxlength="80" placeholder="Player name" value="{% if request.user.is_authenticated %}{{ request.user.display_name }}{% endif %}"></label>
+        <fieldset class="side-control"><legend>Your side</legend><div class="side-picker">
+          <label><input type="radio" name="side" value="white"><span>White</span></label>
+          <label><input type="radio" name="side" value="random" checked><span>Random</span></label>
+          <label><input type="radio" name="side" value="black"><span>Black</span></label>
+        </div></fieldset>
+      </div>
+
+      <div class="section-heading modes-heading"><div><span class="step-number">02</span><h2>Choose a mode</h2></div></div>
+      <div class="mode-grid">
+        <article class="mode-card featured-mode">
+          <div class="mode-icon">♟</div><span class="mode-tag">PROGRESSIVE</span><h3>Play with Bot</h3>
+          <p>Train against a computer opponent that becomes more challenging as you advance.</p>
+          <label class="level-control">Bot level <select name="bot_level">{% for level in bot_levels %}<option value="{{ level }}"{% if level == bot_level %} selected{% endif %}>Level {{ level }}</option>{% endfor %}</select></label>
+          <div class="level-progress"><span style="width:{% widthratio bot_level 10 100 %}%"></span></div>
+          <small>{% if request.user.is_authenticated and bot_level < 10 %}Beat Level {{ bot_level }} to unlock Level {{ bot_level|add:1 }}{% elif request.user.is_authenticated %}Maximum level unlocked{% else %}Sign in to save level progress{% endif %}</small>
+          <button type="submit" name="action" value="bot">Play Bot <span>→</span></button>
+        </article>
+        <article class="mode-card"><div class="mode-icon">♙♟</div><h3>Same Device</h3><p>Sit together and take turns on one chessboard. Fast, simple, and offline-friendly.</p><button type="submit" name="action" value="same_pc">Start Game <span>→</span></button></article>
+        <article class="mode-card"><div class="mode-icon">⌁</div><h3>Play Online</h3><p>Create a private room, share the code, and play from another phone or computer.</p><button type="submit" name="action" value="create_room">Create Room <span>→</span></button></article>
+      </div>
+
+      <div class="join-strip"><div><span class="join-icon">#</span><span><strong>Have a friend code?</strong><small>Enter it to join their private room.</small></span></div><input name="room_code" maxlength="12" placeholder="ROOM CODE"><button type="submit" name="action" value="join_room">Join game</button></div>
+    </form>
+  </main>
+
+  <aside class="account-panel">
+    {% if request.user.is_authenticated %}
+      <span class="account-label">PLAYER PROFILE</span><div class="profile-avatar">{{ request.user.display_name|first|upper }}</div><h2>{{ request.user.display_name }}</h2><p>{{ request.user.email }}</p>
+      <div class="profile-level"><span>Bot progress</span><strong>Level {{ request.user.bot_level }}</strong></div>
+      <a class="panel-primary" href="{% url 'dashboard:home' %}">Open dashboard</a>
+      <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="panel-secondary" type="submit">Logout</button></form>
+    {% else %}
+      <span class="account-label">PLAYER ACCOUNT</span><h2>Welcome back</h2><p>Sign in to track games and unlock bot levels.</p>
+      <form method="post" action="{% url 'accounts:login' %}" class="compact-login">{% csrf_token %}<label>Email<input name="email" type="email" required></label><label>Password<input name="password" type="password" required></label><button type="submit">Login</button></form>
+      <div class="account-divider"><span>New player?</span></div><a class="panel-secondary" href="{% url 'accounts:signup' %}">Create free account</a><small class="guest-note">You can also play any mode as a guest.</small>
+    {% endif %}
+  </aside>
 </div>
 {% endblock %}

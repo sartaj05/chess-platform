@@ -27,9 +27,9 @@ def test_home_displays_mobile_style_quick_play(client):
     response = client.get(reverse("core:home"))
 
     assert response.status_code == 200
-    assert b"Choose your side" in response.content
+    assert b"Choose a mode" in response.content
     assert b"Play with Bot" in response.content
-    assert b"Play on Another Device" in response.content
+    assert b"Play Online" in response.content
 
 
 def test_home_can_start_same_pc_game(client, db):
@@ -56,7 +56,7 @@ def test_home_bot_plays_first_when_player_selects_black(client, db):
     from apps.games.models import Game
 
     game = Game.objects.latest("created_at")
-    assert game.metadata == {"mode": "local_ai", "player_color": "black"}
+    assert game.metadata == {"mode": "local_ai", "player_color": "black", "bot_level": 1}
     assert game.white_display_name == "Bot"
     assert game.ply_count == 1
     assert game.turn == "black"

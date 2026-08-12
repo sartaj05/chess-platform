@@ -27,6 +27,7 @@
             Status <span x-text="state.status"></span>
             · Result <span x-text="state.result"></span>
             · Turn <span x-text="state.turn"></span>
+            <template x-if="state.mode === 'local_ai'"><span> · Bot Level <span x-text="state.bot_level"></span></span></template>
           </span>
         </div>
 
@@ -38,6 +39,9 @@
       </div>
 
       <div class="card-body">
+        <div class="alert alert-success" x-show="state.level_unlocked" x-cloak>
+          Victory! Bot Level <strong x-text="state.level_unlocked"></strong> is now unlocked.
+        </div>
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div>
             <strong x-text="state.black.name"></strong>

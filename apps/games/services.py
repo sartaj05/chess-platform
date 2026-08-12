@@ -87,7 +87,51 @@ def play_local_bot_reply(*, game: Any, actor: GameActor) -> None:
     board = board_from_fen(game.current_fen)
     legal_moves = list(board.legal_moves)
     if legal_moves:
-        play_uci_move(game=game, actor=actor, uci=random.choice(legal_moves).uci())
+        level = max(1, min(int(metadata.get("bot_level", 1)), 10))
+        play_uci_move(game=game, actor=actor, uci=choose_bot_move(board, legal_moves, level).uci())
+
+
+def choose_bot_move(board: chess.Board, legal_moves: list[chess.Move], level: int) -> chess.Move:
+    """Choose increasingly tactical moves without requiring an engine binary."""
+
+    if level <= 1:
+        return random.choice(legal_moves)
+    piece_values = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 0}
+    scored: list[tuple[float, chess.Move]] = []
+    for move in legal_moves:
+        captured = board.piece_at(move.to_square)
+        mover = board.piece_at(move.from_square)
+        score = float(piece_values.get(captured.piece_type, 0) * 10 if captured else 0)
+        if mover and captured:
+            score -= piece_values.get(mover.piece_type, 0)
+        board.push(move)
+        if board.is_checkmate():
+            score += 10000
+        elif board.is_check():
+            score += 3 + level
+        if level >= 4:
+            score += len(list(board.legal_moves)) * 0.03
+        board.pop()
+        score += random.random() * max(0.2, 3 - level * 0.25)
+        scored.append((score, move))
+    scored.sort(key=lambda item: item[0], reverse=True)
+    return random.choice(scored[: max(1, 5 - level // 2)])[1]
+
+
+def award_bot_level_if_won(game: Any) -> None:
+    metadata = game.metadata or {}
+    player_color = metadata.get("player_color")
+    if metadata.get("mode") != "local_ai" or metadata.get("progress_awarded") or game.winner_color != player_color:
+        return
+    user = game.white_user if player_color == "white" else game.black_user
+    played_level = int(metadata.get("bot_level", 1))
+    if user is not None and user.bot_level <= played_level and user.bot_level < 10:
+        user.bot_level = played_level + 1
+        user.save(update_fields=["bot_level"])
+        metadata["level_unlocked"] = user.bot_level
+    metadata["progress_awarded"] = True
+    game.metadata = metadata
+    game.save(update_fields=["metadata", "updated_at"])
 
 
 def actor_from_request(request: HttpRequest, game: Any) -> GameActor:
@@ -568,6 +612,7 @@ def play_uci_move(
             "updated_at",
         ]
     )
+    award_bot_level_if_won(game)
 
     game_move = GameMove.objects.create(
         game=game,
@@ -879,6 +924,9 @@ def serialize_game(
         "url": game.get_absolute_url(),
         "mode": metadata.get("mode", ""),
         "source": metadata.get("source", ""),
+        "bot_level": metadata.get("bot_level"),
+        "player_color": metadata.get("player_color"),
+        "level_unlocked": metadata.get("level_unlocked"),
         "room_code": game.room.code if game.room_id else "",
         "status": game.status,
         "rated": game.rated,

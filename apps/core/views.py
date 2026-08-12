@@ -15,7 +15,8 @@ class HomeView(View):
     template_name = "core/home.html"
 
     def get(self, request):
-        return render(request, self.template_name)
+        bot_level = request.user.bot_level if request.user.is_authenticated else 1
+        return render(request, self.template_name, {"bot_level": bot_level, "bot_levels": range(1, bot_level + 1)})
 
     def post(self, request):
         action = request.POST.get("action", "")
@@ -34,11 +35,22 @@ class HomeView(View):
             return redirect(game.get_absolute_url())
 
         if action == "bot":
+            unlocked_level = request.user.bot_level if request.user.is_authenticated else 1
+            try:
+                selected_level = int(request.POST.get("bot_level", unlocked_level))
+            except (TypeError, ValueError):
+                selected_level = unlocked_level
+            selected_level = max(1, min(selected_level, unlocked_level, 10))
             player_side = side if side != Room.ColorPreference.RANDOM else random.choice(["white", "black"])
             white_name, black_name = (name, "Bot") if player_side == "white" else ("Bot", name)
             game = create_same_pc_game(white_name=white_name, black_name=black_name, initial_minutes=10)
-            game.metadata = {"mode": "local_ai", "player_color": player_side}
-            game.save(update_fields=["metadata", "updated_at"])
+            game.metadata = {"mode": "local_ai", "player_color": player_side, "bot_level": selected_level}
+            if request.user.is_authenticated:
+                if player_side == "white":
+                    game.white_user = request.user
+                else:
+                    game.black_user = request.user
+            game.save(update_fields=["metadata", "white_user", "black_user", "updated_at"])
             if player_side == "black":
                 play_local_bot_reply(game=game, actor=actor_from_request(request, game))
             return redirect(game.get_absolute_url())

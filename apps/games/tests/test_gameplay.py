@@ -1,7 +1,15 @@
 from __future__ import annotations
 
 import pytest
-from apps.games.services import GameActor, ParticipantIdentity, create_same_pc_game, play_uci_move, serialize_game
+from apps.accounts.models import User
+from apps.games.services import (
+    GameActor,
+    ParticipantIdentity,
+    award_bot_level_if_won,
+    create_same_pc_game,
+    play_uci_move,
+    serialize_game,
+)
 from django.core.exceptions import ValidationError
 
 
@@ -25,6 +33,25 @@ def test_illegal_move_rejected():
     )
     with pytest.raises(ValidationError):
         play_uci_move(game=game, actor=actor, uci="e2e5")
+
+
+@pytest.mark.django_db
+def test_winning_unlocked_bot_level_advances_user_once():
+    user = User.objects.create_user(email="bot-winner@example.com", password="StrongPass123!", bot_level=2)
+    game = create_same_pc_game(white_name="Player", black_name="Bot")
+    game.white_user = user
+    game.winner_color = "white"
+    game.metadata = {"mode": "local_ai", "player_color": "white", "bot_level": 2}
+    game.save(update_fields=["white_user", "winner_color", "metadata", "updated_at"])
+
+    award_bot_level_if_won(game)
+    award_bot_level_if_won(game)
+
+    user.refresh_from_db()
+    game.refresh_from_db()
+    assert user.bot_level == 3
+    assert game.metadata["level_unlocked"] == 3
+    assert game.metadata["progress_awarded"] is True
 
 
 @pytest.mark.django_db

@@ -73,7 +73,8 @@
         }
 
         this.boardOrientation =
-          this.state.viewer && this.state.viewer.color === "black"
+          (this.state.mode === "local_ai" && this.state.player_color === "black") ||
+          (this.state.viewer && this.state.viewer.color === "black")
             ? "black-orientation"
             : "white-orientation";
 
@@ -94,6 +95,10 @@
 
       isSameBrowserGame() {
         return this.state.mode === "same_pc" || this.state.source === "fen_import";
+      },
+
+      isBotGame() {
+        return this.state.mode === "local_ai";
       },
 
       websocketUrl() {
@@ -257,6 +262,9 @@
       },
 
       isOwnPiece(square) {
+        if (this.isBotGame()) {
+          return square.color === this.state.player_color && this.state.turn === this.state.player_color;
+        }
         if (this.isSameBrowserGame()) {
           return square.color === this.state.turn;
         }
