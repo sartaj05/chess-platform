@@ -1,48 +1,75 @@
 {% extends "base.html" %}
+{% load static %}
+{% block title %}Chess Platform{% endblock %}
+{% block body_class %}app-home-page{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/app-home.css' %}">{% endblock %}
 {% block content %}
-<section class="hero mb-4">
-  <div class="row align-items-center g-4">
-    <div class="col-lg-7">
-      <h1 class="display-5 mb-3">A quieter place<br>to play serious chess.</h1>
-      <p class="lead mb-4 lead-measure">Real-time games, offline LAN play, engine analysis, and account security &mdash; built on Django, PostgreSQL, Redis, and Channels.</p>
-      {% if request.user.is_authenticated %}
-        <a class="btn btn-success" href="{% url 'dashboard:home' %}">Open Dashboard</a>
-      {% else %}
-        <a class="btn btn-success me-2" href="{% url 'accounts:signup' %}">Create Account</a>
-        <a class="btn btn-outline-light" href="{% url 'accounts:login' %}">Login</a>
-      {% endif %}
-    </div>
-    <div class="col-lg-5">
-      <div class="status-card p-4">
-        <h2 class="h6 text-uppercase mb-3 eyebrow-tight">System Online</h2>
-        <ul class="stack-list">
-          <li>Django Templates</li>
-          <li>PostgreSQL</li>
-          <li>Redis</li>
-          <li>Channels WebSockets</li>
-          <li>Celery Worker + Beat</li>
-          <li>JWT API</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</section>
+<div class="web-app-shell">
+  <header class="web-app-header">
+    <span>Chess Platform</span>
+    {% if request.user.is_authenticated %}
+      <form method="post" action="{% url 'accounts:logout' %}">
+        {% csrf_token %}<button type="submit" class="app-text-button">Logout</button>
+      </form>
+    {% endif %}
+  </header>
 
-<div class="row g-0 feature-row mb-4">
-  <div class="col-md-4 feature-col">
-    <h2 class="h5 mb-2">Create a Room</h2>
-    <p class="mb-3 text-dim">Start an online, LAN, offline, or same-PC chess room in seconds.</p>
-    <a class="feature-link" href="{% url 'rooms:create' %}">Create Room &rarr;</a>
-  </div>
-  <div class="col-md-4 feature-col">
-    <h2 class="h5 mb-2">Join by Code</h2>
-    <p class="mb-3 text-dim">Use a private room code or invite URL from your opponent.</p>
-    <a class="feature-link" href="{% url 'rooms:join' %}">Join Room &rarr;</a>
-  </div>
-  <div class="col-md-4 feature-col">
-    <h2 class="h5 mb-2">LAN Mode</h2>
-    <p class="mb-3 text-dim">Play inside a local network with no internet connection required.</p>
-    <a class="feature-link" href="{% url 'rooms:lan_mode' %}">LAN Instructions &rarr;</a>
-  </div>
+  {% if not request.user.is_authenticated %}
+  <section class="app-section login-section">
+    <h1>Login</h1>
+    <form method="post" action="{% url 'accounts:login' %}">
+      {% csrf_token %}
+      <label for="homeEmail">Email</label>
+      <input id="homeEmail" name="email" type="email" autocomplete="email" required>
+      <label for="homePassword">Password</label>
+      <input id="homePassword" name="password" type="password" autocomplete="current-password" required>
+      <button class="app-primary-button" type="submit">Login</button>
+    </form>
+    <a class="create-account-link" href="{% url 'accounts:signup' %}">Create Account</a>
+    <p class="guest-copy">or continue as guest</p>
+  </section>
+  {% else %}
+  <div class="signed-in-note">Signed in as <strong>{{ request.user.display_name|default:request.user.email }}</strong></div>
+  {% endif %}
+
+  <form method="post" id="quickPlayForm">
+    {% csrf_token %}
+    <section class="app-section player-section">
+      <label class="sr-only" for="displayName">Your name</label>
+      <span class="person-icon" aria-hidden="true">♙</span>
+      <input id="displayName" name="display_name" type="text" maxlength="80"
+             placeholder="Your name" value="{% if request.user.is_authenticated %}{{ request.user.display_name }}{% endif %}">
+    </section>
+
+    <section class="app-section">
+      <h2>Choose your side</h2>
+      <div class="side-picker" role="radiogroup" aria-label="Choose your side">
+        <label><input type="radio" name="side" value="white"><span>White</span></label>
+        <label><input type="radio" name="side" value="random" checked><span>✓&nbsp; Random</span></label>
+        <label><input type="radio" name="side" value="black"><span>Black</span></label>
+      </div>
+    </section>
+
+    <section class="app-section play-section">
+      <h2>Play</h2>
+      <button class="play-option" type="submit" name="action" value="bot">
+        <span class="play-icon">♟</span><span><strong>Play with Bot</strong><small>Play against the computer</small></span><b>›</b>
+      </button>
+      <button class="play-option" type="submit" name="action" value="same_pc">
+        <span class="play-icon">♟♙</span><span><strong>Play with Friend</strong><small>Two players on this device</small></span><b>›</b>
+      </button>
+      <button class="play-option" type="submit" name="action" value="create_room">
+        <span class="play-icon">▣</span><span><strong>Play on Another Device</strong><small>Create a game and share its code</small></span><b>›</b>
+      </button>
+    </section>
+
+    <section class="join-code-section">
+      <label for="roomCode">Friend code</label>
+      <div class="join-code-row">
+        <input id="roomCode" name="room_code" maxlength="12" placeholder="Enter shared code">
+        <button type="submit" name="action" value="join_room">Join</button>
+      </div>
+    </section>
+  </form>
 </div>
 {% endblock %}

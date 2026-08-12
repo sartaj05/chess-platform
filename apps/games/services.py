@@ -73,7 +73,21 @@ def is_same_browser_game(game: Any) -> bool:
     """
 
     metadata = getattr(game, "metadata", None) or {}
-    return metadata.get("mode") == "same_pc" or metadata.get("source") == "fen_import"
+    return metadata.get("mode") in {"same_pc", "local_ai"} or metadata.get("source") == "fen_import"
+
+
+def play_local_bot_reply(*, game: Any, actor: GameActor) -> None:
+    """Play a simple legal reply for local bot games."""
+
+    metadata = game.metadata or {}
+    if metadata.get("mode") != "local_ai" or game.status != game.Status.ACTIVE:
+        return
+    if game.turn == metadata.get("player_color"):
+        return
+    board = board_from_fen(game.current_fen)
+    legal_moves = list(board.legal_moves)
+    if legal_moves:
+        play_uci_move(game=game, actor=actor, uci=random.choice(legal_moves).uci())
 
 
 def actor_from_request(request: HttpRequest, game: Any) -> GameActor:
