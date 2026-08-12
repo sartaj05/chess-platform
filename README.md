@@ -23,6 +23,20 @@ python -m venv .venv
 .venv/Scripts/python manage.py runserver
 ```
 
+On Windows, the included helper scripts provide the same setup and also support
+the Flutter Android app:
+
+```powershell
+.\scripts\setup_windows.ps1
+.\scripts\run_local.ps1
+.\scripts\run_local.ps1 -Mobile
+```
+
+Use `.\scripts\run_local.ps1 -CheckOnly` to apply pending migrations and run
+Django's system checks without starting a server. Project workflow, first-time
+setup, and feature-status guides are available as Word documents in
+`project_documentation/`.
+
 ## Admin
 
 ```bash
