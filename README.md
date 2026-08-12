@@ -37,6 +37,16 @@ Django's system checks without starting a server. Project workflow, first-time
 setup, and feature-status guides are available as Word documents in
 `project_documentation/`.
 
+To clean Python cache files and run `makemigrations`, `migrate`, and `check`:
+
+```powershell
+.\venv\Scripts\python.exe .\scripts\migrations_cleanup.py
+```
+
+Migration files are preserved by default. The exceptional
+`--reset-migrations --yes` mode deletes generated migration files while keeping
+each `migrations/__init__.py`; use it only with a backed-up development database.
+
 ## Admin
 
 ```bash
