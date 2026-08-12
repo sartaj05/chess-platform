@@ -24,11 +24,13 @@ class OfflineSyncService {
         final request = await client.postUrl(uri);
         request.headers.contentType = ContentType.json;
         request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-        if (accessToken != null)
+        if (accessToken != null) {
           request.headers
               .set(HttpHeaders.authorizationHeader, 'Bearer $accessToken');
-        if (sessionCookie != null)
+        }
+        if (sessionCookie != null) {
           request.headers.set(HttpHeaders.cookieHeader, sessionCookie);
+        }
         request.write(jsonEncode({
           'sync_id': game.id,
           'initial_fen': game.initialFen,

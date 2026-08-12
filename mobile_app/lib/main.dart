@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'offline_board_page.dart';
+import 'simple_home_page.dart';
 
 void main() => runApp(const ChessPlatformApp());
 
@@ -17,7 +18,7 @@ class ChessPlatformApp extends StatelessWidget {
           colorSchemeSeed: const Color(0xff1b5e20),
           useMaterial3: true,
         ),
-        home: const OfflineLobbyPage(),
+        home: const SimpleHomePage(),
       );
 }
 
@@ -29,7 +30,12 @@ class OfflineLobbyPage extends StatefulWidget {
 }
 
 class _OfflineLobbyPageState extends State<OfflineLobbyPage> {
-  final _server = TextEditingController(text: 'http://192.168.1.10:8000');
+  final _server = TextEditingController(
+    text: const String.fromEnvironment(
+      'CHESS_SERVER_URL',
+      defaultValue: 'http://10.0.2.2:8000',
+    ),
+  );
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _roomName = TextEditingController();
@@ -80,8 +86,9 @@ class _OfflineLobbyPageState extends State<OfflineLobbyPage> {
 
   Future<void> _login() => _run((api) async {
         _accessToken = await api.login(_email.text, _password.text);
-        if (mounted)
+        if (mounted) {
           setState(() => _message = 'Signed in to your local server.');
+        }
       });
 
   Future<void> _loadRooms() => _run((api) async {
@@ -294,8 +301,9 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
     } on HttpException catch (error) {
       if (mounted) setState(() => _error = error.message);
     } on SocketException {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'Cannot reach the local game server.');
+      }
     }
   }
 
@@ -318,17 +326,20 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
       _socket = socket;
       socket.listen((message) {
         final data = jsonDecode(message as String) as Map<String, dynamic>;
-        if (data['room'] is Map && mounted)
+        if (data['room'] is Map && mounted) {
           setState(
               () => _room = Map<String, dynamic>.from(data['room'] as Map));
-        if (data['type'] == 'error' && mounted)
+        }
+        if (data['type'] == 'error' && mounted) {
           setState(() => _error = data['message'] as String?);
+        }
       }, onError: (_) {
         if (mounted) setState(() => _error = 'Lost connection to the room.');
       });
     } on SocketException {
-      if (mounted)
+      if (mounted) {
         setState(() => _error = 'Cannot connect to the local room server.');
+      }
     }
   }
 
@@ -422,20 +433,22 @@ class OfflineApi {
       'password': password,
     });
     final access = body['access'] as String?;
-    if (access == null)
+    if (access == null) {
       throw const HttpException(
         'The local server did not return an access token.',
       );
+    }
     return access;
   }
 
   Future<List<Map<String, dynamic>>> publicRooms() async {
     final body = await _request('GET', 'api/rooms/');
     final data = body['results'] ?? body;
-    if (data is! List)
+    if (data is! List) {
       throw const HttpException(
         'Unexpected room response from the local server.',
       );
+    }
     return data
         .cast<Map>()
         .map((item) => Map<String, dynamic>.from(item))
@@ -479,9 +492,10 @@ class OfflineApi {
   Future<Map<String, dynamic>> startRoomGame(String code) async {
     final body =
         await _request('POST', 'api/rooms/${code.trim().toUpperCase()}/start/');
-    if (body is! Map)
+    if (body is! Map) {
       throw const HttpException(
           'Unexpected game response from the local server.');
+    }
     return Map<String, dynamic>.from(body);
   }
 
@@ -498,15 +512,17 @@ class OfflineApi {
       if (sessionCookie != null) {
         request.headers.set(HttpHeaders.cookieHeader, sessionCookie!);
       }
-      if (token != null)
+      if (token != null) {
         request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+      }
       if (payload != null) request.write(jsonEncode(payload));
       final response = await request.close();
       final session = response.cookies
           .where((cookie) => cookie.name == 'sessionid')
           .toList();
-      if (session.isNotEmpty)
+      if (session.isNotEmpty) {
         sessionCookie = 'sessionid=${session.first.value}';
+      }
       final text = await utf8.decodeStream(response);
       final decoded = text.isEmpty ? <String, dynamic>{} : jsonDecode(text);
       if (response.statusCode < 200 || response.statusCode >= 300) {

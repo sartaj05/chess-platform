@@ -32,3 +32,32 @@ def test_signup_creates_inactive_user_and_otp(client):
 def test_me_api_requires_authentication(client):
     response = client.get(reverse("api:accounts_api:me"))
     assert response.status_code in {401, 403}
+
+
+@pytest.mark.django_db
+def test_mobile_registration_and_email_verification(client, monkeypatch):
+    sent = {}
+
+    def fake_send(user_id, request_host, scheme, ip_address=None, user_agent=""):
+        user = User.objects.get(id=user_id)
+        _, sent["code"] = EmailOTP.create_code(user=user, purpose=EmailOTP.Purpose.VERIFY_EMAIL)
+
+    monkeypatch.setattr("apps.accounts.api_views.send_email_verification", fake_send)
+    response = client.post(
+        reverse("api:accounts_api:register"),
+        {"email": "mobile@example.com", "display_name": "Mobile", "password": "StrongPass123!"},
+        content_type="application/json",
+    )
+    assert response.status_code == 201
+    user = User.objects.get(email="mobile@example.com")
+    assert user.is_active is False
+
+    response = client.post(
+        reverse("api:accounts_api:verify-email"),
+        {"email": user.email, "code": sent["code"]},
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    user.refresh_from_db()
+    assert user.is_active is True
+    assert user.is_email_verified is True
