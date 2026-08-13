@@ -724,6 +724,22 @@ def play_uci_move(
 
     update_cached_pgn(game)
 
+    # Persisted notifications back mobile background delivery through FCM;
+    # local reminders cover the running clock while the app is suspended.
+    if game.status == game.Status.ACTIVE:
+        next_player = game.white_user if game.turn == "white" else game.black_user
+        if next_player is not None and next_player != actor.identity.user:
+            from apps.notifications.models import Notification
+            from apps.notifications.services import notify
+
+            notify(
+                recipient=next_player,
+                kind=Notification.Kind.SYSTEM,
+                title="Your move",
+                message=f"{actor.display_name} played {san}.",
+                target_url=f"/games/{game.pk}/",
+            )
+
     return game_move, game
 
 

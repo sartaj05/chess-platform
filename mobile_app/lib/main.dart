@@ -6,8 +6,15 @@ import 'package:flutter/material.dart';
 import 'offline_board_page.dart';
 import 'simple_home_page.dart';
 import 'app_preferences.dart';
+import 'deep_link_service.dart';
+import 'push_service.dart';
 
-void main() => runApp(const ChessPlatformApp());
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PushService.initializeNavigation();
+  await DeepLinkService.initialize();
+  runApp(const ChessPlatformApp());
+}
 
 class ChessPlatformApp extends StatefulWidget {
   const ChessPlatformApp({super.key});

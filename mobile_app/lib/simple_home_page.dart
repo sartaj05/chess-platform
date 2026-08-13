@@ -13,6 +13,9 @@ import 'matchmaking_page.dart';
 import 'competitive_pages.dart';
 import 'push_service.dart';
 import 'social_pages.dart';
+import 'deep_link_service.dart';
+import 'game_replay_page.dart';
+import 'dart:async';
 
 enum PlayerSide { white, black, random }
 
@@ -33,6 +36,7 @@ class SimpleHomePage extends StatefulWidget {
 }
 
 class _SimpleHomePageState extends State<SimpleHomePage> {
+  StreamSubscription<MobileLink>? _deepLinkSubscription;
   final _server = TextEditingController(
     text: const String.fromEnvironment(
       'CHESS_SERVER_URL',
@@ -58,7 +62,45 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
   @override
   void initState() {
     super.initState();
+    _deepLinkSubscription = DeepLinkService.links.listen(_handleDeepLink);
     _restoreSession();
+  }
+
+  Future<void> _handleDeepLink(MobileLink link) async {
+    if (!mounted) return;
+    if (link.destination == MobileDestination.notifications) {
+      if (_signedIn) await _openNotifications();
+      return;
+    }
+    if (link.id == null) return;
+    if (link.destination == MobileDestination.room) {
+      _code.text = link.id!;
+      await _joinOnlineGame();
+      return;
+    }
+    if (!_signedIn) {
+      setState(() => _message = 'Log in to open this secure chess link.');
+      return;
+    }
+    await _perform((api) async {
+      if (link.destination == MobileDestination.profile) {
+        final profile = await api.publicProfile(link.id!);
+        if (mounted) {
+          await Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => PublicProfilePage(profile: profile)));
+        }
+      } else if (link.destination == MobileDestination.game) {
+        final game = await api.game(link.id!);
+        if (mounted) {
+          await Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => GameReplayPage(
+                  game: game,
+                  startAnalysis: api.startGameAnalysis,
+                  analysisStatus: api.analysisStatus,
+                  retryAnalysis: api.retryAnalysis)));
+        }
+      }
+    });
   }
 
   Future<void> _restoreSession() async {
@@ -88,6 +130,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
 
   @override
   void dispose() {
+    _deepLinkSubscription?.cancel();
     _server.dispose();
     _email.dispose();
     _password.dispose();
@@ -372,225 +415,235 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
           ],
         ),
         body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
-            children: [
-              Container(
-                padding: const EdgeInsets.all(22),
-                decoration: BoxDecoration(
-                  color: const Color(0xff173b2a),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('YOUR NEXT GAME',
-                          style: TextStyle(
-                              color: Color(0xffa9c7a9),
-                              fontSize: 11,
-                              letterSpacing: 1.8,
-                              fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 8),
-                      Text(
-                          _signedIn
-                              ? 'Ready, ${_displayName ?? 'Player'}?'
-                              : 'Play chess your way.',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 27,
-                              fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 7),
-                      const Text(
-                          'Train with the bot, share a board, or challenge a friend online.',
-                          style:
-                              TextStyle(color: Color(0xffd4e2d5), height: 1.4)),
-                    ]),
-              ),
-              const SizedBox(height: 22),
-              if (!_signedIn) ...[
-                Text('Login', style: Theme.of(context).textTheme.headlineSmall),
-                TextField(
-                  controller: _email,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(labelText: 'Email'),
-                ),
-                TextField(
-                  controller: _password,
-                  obscureText: true,
-                  decoration: const InputDecoration(labelText: 'Password'),
-                ),
-                const SizedBox(height: 8),
-                FilledButton(
-                  onPressed: _busy ? null : _login,
-                  child: const Text('Login'),
-                ),
-                OutlinedButton(
-                  onPressed: _busy ? null : _openRegistration,
-                  child: const Text('Create Account'),
-                ),
-                const Center(child: Text('or continue as guest')),
-                const Divider(height: 32),
-              ],
-              TextField(
-                controller: _name,
-                decoration: const InputDecoration(
-                  labelText: 'Your name',
-                  prefixIcon: Icon(Icons.person_outline),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Text('Choose your side',
-                  style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              SegmentedButton<PlayerSide>(
-                segments: const [
-                  ButtonSegment(value: PlayerSide.white, label: Text('White')),
-                  ButtonSegment(
-                      value: PlayerSide.random, label: Text('Random')),
-                  ButtonSegment(value: PlayerSide.black, label: Text('Black')),
-                ],
-                selected: {_side},
-                onSelectionChanged: (value) =>
-                    setState(() => _side = value.first),
-              ),
-              const SizedBox(height: 24),
-              Text('Play', style: Theme.of(context).textTheme.titleLarge),
-              const SizedBox(height: 8),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(children: [
-                          const CircleAvatar(
-                              child: Icon(Icons.smart_toy_outlined)),
-                          const SizedBox(width: 12),
-                          Expanded(
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                const Text('Bot Challenge',
-                                    style: TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.bold)),
-                                Text(_signedIn
-                                    ? 'Level $_botLevel unlocked'
-                                    : 'Guest progress · Level 1'),
-                              ])),
-                        ]),
-                        const SizedBox(height: 12),
-                        LinearProgressIndicator(
-                            value: _botLevel / 10,
-                            minHeight: 7,
-                            borderRadius: BorderRadius.circular(10)),
-                        const SizedBox(height: 10),
-                        DropdownButtonFormField<int>(
-                          initialValue: _selectedBotLevel,
-                          decoration:
-                              const InputDecoration(labelText: 'Bot level'),
-                          items: [
-                            for (var level = 1; level <= _botLevel; level++)
-                              DropdownMenuItem(
-                                  value: level, child: Text('Level $level'))
-                          ],
-                          onChanged: (value) =>
-                              setState(() => _selectedBotLevel = value ?? 1),
-                        ),
-                        const SizedBox(height: 10),
-                        FilledButton.icon(
-                          onPressed: () =>
-                              Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => OfflineBoardPage(
-                                mode: OfflinePlayMode.bot,
-                                preferredSide: chessSide(),
-                                botLevel: _selectedBotLevel,
-                                onBotVictory: _recordBotVictory,
-                                stockfishMove: _stockfishMove,
-                                soundsEnabled: widget.soundsEnabled),
-                          )),
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('Play Bot'),
-                        ),
-                      ]),
-                ),
-              ),
-              _PlayCard(
-                icon: Icons.bolt,
-                title: 'Rated Matchmaking',
-                subtitle: 'Live search for a close-rated player',
-                onTap: _signedIn ? _openMatchmaking : null,
-              ),
-              _PlayCard(
-                icon: Icons.people_outline,
-                title: 'Play with Friend',
-                subtitle: 'Two players on this device',
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => OfflineBoardPage(
-                    preferredSide: chessSide(),
-                    soundsEnabled: widget.soundsEnabled,
-                  ),
-                )),
-              ),
-              _PlayCard(
-                icon: Icons.phone_android,
-                title: 'Play on Another Mobile',
-                subtitle: 'Create a game and share its code',
-                onTap: _busy ? null : _createOnlineGame,
-              ),
-              _PlayCard(
-                  icon: Icons.calendar_today_outlined,
-                  title: 'Daily Chess',
-                  subtitle: 'A relaxed 24-hour correspondence clock',
-                  onTap: _signedIn && !_busy ? _createDailyGame : null),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _code,
-                textCapitalization: TextCapitalization.characters,
-                decoration: const InputDecoration(
-                  labelText: 'Friend code',
-                  prefixIcon: Icon(Icons.key),
-                ),
-              ),
-              FilledButton.tonal(
-                onPressed: _busy ? null : _joinOnlineGame,
-                child: const Text('Join with Code'),
-              ),
-              ExpansionTile(
-                title: const Text('App settings'),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: ListView(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
                 children: [
-                  DropdownButtonFormField<ThemeMode>(
-                      initialValue: widget.themeMode,
-                      decoration: const InputDecoration(labelText: 'Theme'),
-                      items: ThemeMode.values
-                          .map((mode) => DropdownMenuItem(
-                              value: mode, child: Text(mode.name)))
-                          .toList(),
-                      onChanged: (mode) {
-                        if (mode != null) widget.onThemeChanged(mode);
-                      }),
-                  SwitchListTile(
-                      title: const Text('Move and game sounds'),
-                      value: widget.soundsEnabled,
-                      onChanged: widget.onSoundsChanged),
-                  TextField(
-                    controller: _server,
-                    keyboardType: TextInputType.url,
-                    decoration: const InputDecoration(labelText: 'Server URL'),
+                  Container(
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      color: const Color(0xff173b2a),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('YOUR NEXT GAME',
+                              style: TextStyle(
+                                  color: Color(0xffa9c7a9),
+                                  fontSize: 11,
+                                  letterSpacing: 1.8,
+                                  fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          Text(
+                              _signedIn
+                                  ? 'Ready, ${_displayName ?? 'Player'}?'
+                                  : 'Play chess your way.',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 27,
+                                  fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 7),
+                          const Text(
+                              'Train with the bot, share a board, or challenge a friend online.',
+                              style: TextStyle(
+                                  color: Color(0xffd4e2d5), height: 1.4)),
+                        ]),
                   ),
+                  const SizedBox(height: 22),
+                  if (!_signedIn) ...[
+                    Text('Login',
+                        style: Theme.of(context).textTheme.headlineSmall),
+                    TextField(
+                      controller: _email,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(labelText: 'Email'),
+                    ),
+                    TextField(
+                      controller: _password,
+                      obscureText: true,
+                      decoration: const InputDecoration(labelText: 'Password'),
+                    ),
+                    const SizedBox(height: 8),
+                    FilledButton(
+                      onPressed: _busy ? null : _login,
+                      child: const Text('Login'),
+                    ),
+                    OutlinedButton(
+                      onPressed: _busy ? null : _openRegistration,
+                      child: const Text('Create Account'),
+                    ),
+                    const Center(child: Text('or continue as guest')),
+                    const Divider(height: 32),
+                  ],
+                  TextField(
+                    controller: _name,
+                    decoration: const InputDecoration(
+                      labelText: 'Your name',
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text('Choose your side',
+                      style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  SegmentedButton<PlayerSide>(
+                    segments: const [
+                      ButtonSegment(
+                          value: PlayerSide.white, label: Text('White')),
+                      ButtonSegment(
+                          value: PlayerSide.random, label: Text('Random')),
+                      ButtonSegment(
+                          value: PlayerSide.black, label: Text('Black')),
+                    ],
+                    selected: {_side},
+                    onSelectionChanged: (value) =>
+                        setState(() => _side = value.first),
+                  ),
+                  const SizedBox(height: 24),
+                  Text('Play', style: Theme.of(context).textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(children: [
+                              const CircleAvatar(
+                                  child: Icon(Icons.smart_toy_outlined)),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                  child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                    const Text('Bot Challenge',
+                                        style: TextStyle(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.bold)),
+                                    Text(_signedIn
+                                        ? 'Level $_botLevel unlocked'
+                                        : 'Guest progress · Level 1'),
+                                  ])),
+                            ]),
+                            const SizedBox(height: 12),
+                            LinearProgressIndicator(
+                                value: _botLevel / 10,
+                                minHeight: 7,
+                                borderRadius: BorderRadius.circular(10)),
+                            const SizedBox(height: 10),
+                            DropdownButtonFormField<int>(
+                              initialValue: _selectedBotLevel,
+                              decoration:
+                                  const InputDecoration(labelText: 'Bot level'),
+                              items: [
+                                for (var level = 1; level <= _botLevel; level++)
+                                  DropdownMenuItem(
+                                      value: level, child: Text('Level $level'))
+                              ],
+                              onChanged: (value) => setState(
+                                  () => _selectedBotLevel = value ?? 1),
+                            ),
+                            const SizedBox(height: 10),
+                            FilledButton.icon(
+                              onPressed: () =>
+                                  Navigator.of(context).push(MaterialPageRoute(
+                                builder: (_) => OfflineBoardPage(
+                                    mode: OfflinePlayMode.bot,
+                                    preferredSide: chessSide(),
+                                    botLevel: _selectedBotLevel,
+                                    onBotVictory: _recordBotVictory,
+                                    stockfishMove: _stockfishMove,
+                                    soundsEnabled: widget.soundsEnabled),
+                              )),
+                              icon: const Icon(Icons.play_arrow),
+                              label: const Text('Play Bot'),
+                            ),
+                          ]),
+                    ),
+                  ),
+                  _PlayCard(
+                    icon: Icons.bolt,
+                    title: 'Rated Matchmaking',
+                    subtitle: 'Live search for a close-rated player',
+                    onTap: _signedIn ? _openMatchmaking : null,
+                  ),
+                  _PlayCard(
+                    icon: Icons.people_outline,
+                    title: 'Play with Friend',
+                    subtitle: 'Two players on this device',
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => OfflineBoardPage(
+                        preferredSide: chessSide(),
+                        soundsEnabled: widget.soundsEnabled,
+                      ),
+                    )),
+                  ),
+                  _PlayCard(
+                    icon: Icons.phone_android,
+                    title: 'Play on Another Mobile',
+                    subtitle: 'Create a game and share its code',
+                    onTap: _busy ? null : _createOnlineGame,
+                  ),
+                  _PlayCard(
+                      icon: Icons.calendar_today_outlined,
+                      title: 'Daily Chess',
+                      subtitle: 'A relaxed 24-hour correspondence clock',
+                      onTap: _signedIn && !_busy ? _createDailyGame : null),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _code,
+                    textCapitalization: TextCapitalization.characters,
+                    decoration: const InputDecoration(
+                      labelText: 'Friend code',
+                      prefixIcon: Icon(Icons.key),
+                    ),
+                  ),
+                  FilledButton.tonal(
+                    onPressed: _busy ? null : _joinOnlineGame,
+                    child: const Text('Join with Code'),
+                  ),
+                  ExpansionTile(
+                    title: const Text('App settings'),
+                    children: [
+                      DropdownButtonFormField<ThemeMode>(
+                          initialValue: widget.themeMode,
+                          decoration: const InputDecoration(labelText: 'Theme'),
+                          items: ThemeMode.values
+                              .map((mode) => DropdownMenuItem(
+                                  value: mode, child: Text(mode.name)))
+                              .toList(),
+                          onChanged: (mode) {
+                            if (mode != null) widget.onThemeChanged(mode);
+                          }),
+                      SwitchListTile(
+                          title: const Text('Move and game sounds'),
+                          value: widget.soundsEnabled,
+                          onChanged: widget.onSoundsChanged),
+                      TextField(
+                        controller: _server,
+                        keyboardType: TextInputType.url,
+                        decoration:
+                            const InputDecoration(labelText: 'Server URL'),
+                      ),
+                    ],
+                  ),
+                  if (_busy)
+                    const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  if (_message != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(_message!, textAlign: TextAlign.center),
+                    ),
                 ],
               ),
-              if (_busy)
-                const Padding(
-                  padding: EdgeInsets.all(12),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-              if (_message != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(_message!, textAlign: TextAlign.center),
-                ),
-            ],
+            ),
           ),
         ),
       );
@@ -945,6 +998,13 @@ class _MobileApi {
 
   Future<Map<String, dynamic>> profile() async => Map<String, dynamic>.from(
       await _request('GET', 'api/accounts/me/') as Map);
+
+  Future<Map<String, dynamic>> publicProfile(String id) async =>
+      Map<String, dynamic>.from(
+          await _request('GET', 'api/accounts/players/$id/') as Map);
+
+  Future<Map<String, dynamic>> game(String id) async =>
+      Map<String, dynamic>.from(await _request('GET', 'api/games/$id/') as Map);
 
   Future<Map<String, dynamic>> updateProfile(
           Map<String, dynamic> values) async =>

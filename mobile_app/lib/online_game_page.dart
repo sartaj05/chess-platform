@@ -5,6 +5,7 @@ import 'dart:io';
 import 'package:chess/chess.dart' as chess;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'push_service.dart';
 
 class OnlineGamePage extends StatefulWidget {
   const OnlineGamePage({
@@ -26,7 +27,8 @@ class OnlineGamePage extends StatefulWidget {
   State<OnlineGamePage> createState() => _OnlineGamePageState();
 }
 
-class _OnlineGamePageState extends State<OnlineGamePage> {
+class _OnlineGamePageState extends State<OnlineGamePage>
+    with WidgetsBindingObserver {
   WebSocket? _socket;
   Timer? _clockTimer;
   Timer? _reconnectTimer;
@@ -62,10 +64,12 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _game = Map<String, dynamic>.from(widget.initialGame);
     _chat.addAll(((_game['chat'] as List?) ?? const [])
         .map((e) => Map<String, dynamic>.from(e as Map)));
     _connect();
+    _syncTurnReminder();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _active) setState(() {});
     });
@@ -124,6 +128,7 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
         _selected = null;
         _error = null;
       });
+      _syncTurnReminder();
       _playQueuedPremove();
     } else if (data['type'] == 'game.chat' && data['message'] is Map) {
       setState(
@@ -240,9 +245,37 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
     return '$minutes:${(seconds % 60).toString().padLeft(2, '0')}';
   }
 
+  Future<void> _syncTurnReminder() async {
+    final id = _game['id']?.toString();
+    if (id == null) return;
+    if (_active && _viewerColor.isNotEmpty && _game['turn'] == _viewerColor) {
+      await PushService.scheduleTurnReminder(
+        gameId: id,
+        remaining: Duration(milliseconds: _timeFor(_viewerColor)),
+      );
+    } else {
+      await PushService.cancelGameReminder(id);
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      _syncTurnReminder();
+    } else if (state == AppLifecycleState.resumed) {
+      final id = _game['id']?.toString();
+      if (id != null) PushService.cancelGameReminder(id);
+    }
+  }
+
   @override
   void dispose() {
     _disposed = true;
+    WidgetsBinding.instance.removeObserver(this);
+    final id = _game['id']?.toString();
+    if (id != null) PushService.cancelGameReminder(id);
     _clockTimer?.cancel();
     _reconnectTimer?.cancel();
     _socket?.close();

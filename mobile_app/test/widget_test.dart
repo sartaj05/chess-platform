@@ -2,8 +2,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 
 import 'package:chess_platform_mobile/main.dart';
+import 'package:chess_platform_mobile/deep_link_service.dart';
 
 void main() {
+  test('parses supported mobile deep links', () {
+    expect(MobileLink.parse('chessplatform://rooms/abc123')?.id, 'ABC123');
+    expect(
+        MobileLink.parse('https://chess.example.com/games/game-id/')
+            ?.destination,
+        MobileDestination.game);
+    expect(MobileLink.parse('chessplatform://notifications')?.destination,
+        MobileDestination.notifications);
+  });
   testWidgets('shows simple play choices and opens a friend game',
       (tester) async {
     await tester.pumpWidget(const ChessPlatformApp());

@@ -1,6 +1,47 @@
 import 'package:flutter/material.dart';
 import 'game_replay_page.dart';
 
+class PublicProfilePage extends StatelessWidget {
+  const PublicProfilePage({super.key, required this.profile});
+  final Map<String, dynamic> profile;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Player profile')),
+        body: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: ListView(padding: const EdgeInsets.all(24), children: [
+              CircleAvatar(
+                radius: 48,
+                child: Text(
+                  (profile['display_name']?.toString() ?? 'P')[0].toUpperCase(),
+                  style: const TextStyle(fontSize: 34),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(profile['display_name']?.toString() ?? 'Player',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall),
+              Text(profile['country']?.toString() ?? '',
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 20),
+              Card(
+                  child: ListTile(
+                      leading: const Icon(Icons.insights),
+                      title: const Text('Rating'),
+                      trailing: Text('${profile['rating'] ?? 'Unrated'}'))),
+              if ((profile['bio']?.toString() ?? '').isNotEmpty)
+                Card(
+                    child: Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Text(profile['bio'].toString()))),
+            ]),
+          ),
+        ),
+      );
+}
+
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key, required this.load, required this.save});
 

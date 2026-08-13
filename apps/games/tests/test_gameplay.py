@@ -11,6 +11,8 @@ from apps.games.services import (
     serialize_game,
 )
 from django.core.exceptions import ValidationError
+from apps.notifications.models import Notification
+from apps.notifications.models import Notification
 
 
 @pytest.mark.django_db
@@ -23,6 +25,46 @@ def test_same_pc_game_accepts_legal_move():
     assert move.san == "e4"
     assert game.turn == "black"
     assert game.ply_count == 1
+
+
+@pytest.mark.django_db
+def test_move_notifies_registered_opponent():
+    white = User.objects.create_user(email="white@example.com", password="StrongPass123!")
+    black = User.objects.create_user(email="black@example.com", password="StrongPass123!")
+    game = create_same_pc_game(white_name="White", black_name="Black", initial_minutes=5)
+    game.white_user = white
+    game.black_user = black
+    game.save(update_fields=["white_user", "black_user", "updated_at"])
+    actor = GameActor(
+        identity=ParticipantIdentity(user=white, guest_key="", display_name="White"),
+        color="white",
+        display_name="White",
+    )
+
+    play_uci_move(game=game, actor=actor, uci="e2e4")
+
+    notice = Notification.objects.get(recipient=black, title="Your move")
+    assert str(game.pk) in notice.target_url
+
+
+@pytest.mark.django_db
+def test_move_notifies_registered_opponent():
+    white = User.objects.create_user(email="white@example.com", password="StrongPass123!")
+    black = User.objects.create_user(email="black@example.com", password="StrongPass123!")
+    game = create_same_pc_game(white_name="White", black_name="Black", initial_minutes=5)
+    game.white_user = white
+    game.black_user = black
+    game.save(update_fields=["white_user", "black_user", "updated_at"])
+    actor = GameActor(
+        identity=ParticipantIdentity(user=white, guest_key="", display_name="White"),
+        color="white",
+        display_name="White",
+    )
+
+    play_uci_move(game=game, actor=actor, uci="e2e4")
+
+    notice = Notification.objects.get(recipient=black, title="Your move")
+    assert str(game.pk) in notice.target_url
 
 
 @pytest.mark.django_db
