@@ -27,6 +27,10 @@ The first Flutter build needs the Android SDK and locally cached Flutter artifac
   history from the app bar.
 - Use the Django server's Stockfish engine for bot moves at the selected level,
   with a local fallback when the server or engine is unavailable.
+- Join live rated matchmaking, poll while waiting, and open the matched room
+  automatically on both mobile and web.
+- Replay completed games move by move and request server-side Stockfish
+  post-game analysis from the history screen.
 
 For real Stockfish play, install Stockfish on the Django server and set
 `STOCKFISH_BINARY` in `.env` to its executable path. On Windows this can be a
@@ -36,5 +40,5 @@ after changing it. The mobile APK does not need its own engine binary.
 - Choose system, light, or dark appearance and persist the preference.
 - Enable or disable move and game sounds.
 
-Next mobile screens should be local notifications, detailed PGN replay, and
-full Stockfish game analysis.
+Production Android releases must be built with the real deployed server URL:
+`flutter build appbundle --release --dart-define=CHESS_SERVER_URL=https://your-domain.example`.

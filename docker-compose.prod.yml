@@ -12,20 +12,20 @@ services:
     restart: unless-stopped
 
   web:
-    env_file: .env.production
+    env_file: ${PRODUCTION_ENV_FILE:-.env.production}
     volumes:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     restart: unless-stopped
 
   celery_worker:
-    env_file: .env.production
+    env_file: ${PRODUCTION_ENV_FILE:-.env.production}
     volumes:
       - media_volume:/app/media
     restart: unless-stopped
 
   celery_beat:
-    env_file: .env.production
+    env_file: ${PRODUCTION_ENV_FILE:-.env.production}
     volumes: !reset []
     restart: unless-stopped
 

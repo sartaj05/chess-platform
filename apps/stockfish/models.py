@@ -37,10 +37,11 @@ class StockfishEngineProfile(TimeStampedModel):
 
     @classmethod
     def default_profile(cls) -> StockfishEngineProfile:
+        configured_binary = getattr(settings, "STOCKFISH_BINARY", "/usr/games/stockfish")
         profile, _created = cls.objects.get_or_create(
             name="Default Offline Stockfish",
             defaults={
-                "binary_path": getattr(settings, "STOCKFISH_BINARY", "/usr/games/stockfish"),
+                "binary_path": configured_binary,
                 "default_depth": getattr(settings, "STOCKFISH_DEFAULT_DEPTH", 12),
                 "default_movetime_ms": getattr(settings, "STOCKFISH_DEFAULT_MOVETIME_MS", 750),
                 "threads": getattr(settings, "STOCKFISH_THREADS", 1),
@@ -48,6 +49,9 @@ class StockfishEngineProfile(TimeStampedModel):
                 "is_active": True,
             },
         )
+        if profile.binary_path != configured_binary:
+            profile.binary_path = configured_binary
+            profile.save(update_fields=["binary_path", "updated_at"])
         return profile
 
 

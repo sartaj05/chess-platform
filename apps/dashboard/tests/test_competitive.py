@@ -26,6 +26,20 @@ def test_matchmaking_pairs_waiting_rated_players(client):
     response = client.post(reverse("rooms:matchmaking"))
     assert response.status_code == 302
     assert room.participants.filter(user=second).exists()
+    room.refresh_from_db()
+    assert room.status == Room.Status.READY
+
+
+@pytest.mark.django_db
+def test_mobile_matchmaking_api_is_live(client):
+    first = User.objects.create_user(email="api-first@example.com", password="StrongPass123!", rating=1200)
+    second = User.objects.create_user(email="api-second@example.com", password="StrongPass123!", rating=1250)
+    client.force_login(first)
+    first_response = client.post(reverse("api:rooms-api:matchmaking"))
+    assert first_response.status_code == 200 and first_response.json()["matched"] is False
+    client.force_login(second)
+    second_response = client.post(reverse("api:rooms-api:matchmaking"))
+    assert second_response.status_code == 200 and second_response.json()["matched"] is True
 
 
 @pytest.mark.django_db

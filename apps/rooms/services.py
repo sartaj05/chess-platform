@@ -162,6 +162,30 @@ def create_room(*, request: HttpRequest, cleaned_data: dict[str, Any]):
 
 
 @transaction.atomic
+def enter_matchmaking(*, request: HttpRequest):
+    """Return a waiting room or pair the signed-in user with a close-rated host."""
+    from apps.rooms.models import Room
+
+    user = request.user
+    if not getattr(user, "is_authenticated", False):
+        raise PermissionDenied("Sign in to use rated matchmaking.")
+    existing = Room.objects.filter(host=user, rated=True, status=Room.Status.WAITING, metadata__matchmaking=True).first()
+    if existing:
+        return existing, False
+    candidates = Room.objects.select_for_update().filter(mode=Room.Mode.ONLINE, status=Room.Status.WAITING, rated=True, visibility=Room.Visibility.PUBLIC, allow_guests=False, metadata__matchmaking=True).exclude(host=user).select_related("host").order_by("created_at")
+    room = next((item for item in candidates if item.host and abs(item.host.rating - user.rating) <= 300), None)
+    if room:
+        join_room(request=request, room=room, display_name=user.display_name)
+        room.status = Room.Status.READY
+        room.save(update_fields=["status", "updated_at"])
+        return room, True
+    room = create_room(request=request, cleaned_data={"name": f"Rated match - {user.display_name}", "description": "Automatic rated matchmaking", "host_display_name": user.display_name, "mode": Room.Mode.ONLINE, "visibility": Room.Visibility.PUBLIC, "clock_initial_minutes": 10, "increment_seconds": 0, "delay_seconds": 0, "color_preference": Room.ColorPreference.RANDOM, "rated": True, "allow_guests": False, "spectator_enabled": True})
+    room.metadata = {**room.metadata, "matchmaking": True}
+    room.save(update_fields=["metadata", "updated_at"])
+    return room, False
+
+
+@transaction.atomic
 def join_room(*, request: HttpRequest, room: Any, display_name: str | None = None, as_spectator: bool = False):
     """Join an existing room as player or spectator."""
 

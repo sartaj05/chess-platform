@@ -10,6 +10,7 @@ from apps.games.serializers import GameSerializer
 from apps.games.services import create_game_from_room, serialize_game
 from apps.rooms.models import Room
 from apps.rooms.serializers import CreateRoomSerializer, JoinRoomSerializer, RoomParticipantSerializer, RoomSerializer
+from apps.rooms.services import enter_matchmaking
 
 
 class PublicRoomPagination(pagination.PageNumberPagination):
@@ -90,3 +91,22 @@ class StartRoomGameAPIView(views.APIView):
             {"type": "broadcast_game_started", "game": serialize_game(game)},
         )
         return response.Response(serialize_game(game, request=request), status=status.HTTP_201_CREATED)
+
+
+class MatchmakingAPIView(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        room, matched = enter_matchmaking(request=request)
+        return response.Response({"matched": matched, "room": RoomSerializer(room, context={"request": request}).data})
+
+    def get(self, request):
+        room = Room.objects.filter(rated=True, metadata__matchmaking=True, participants__user=request.user).distinct().order_by("-created_at").first()
+        if room is None:
+            return response.Response({"queued": False, "matched": False, "room": None})
+        matched = room.status in {Room.Status.READY, Room.Status.IN_PROGRESS}
+        return response.Response({"queued": room.status == Room.Status.WAITING, "matched": matched, "room": RoomSerializer(room, context={"request": request}).data})
+
+    def delete(self, request):
+        updated = Room.objects.filter(host=request.user, status=Room.Status.WAITING, metadata__matchmaking=True).update(status=Room.Status.ABORTED)
+        return response.Response({"cancelled": bool(updated)})

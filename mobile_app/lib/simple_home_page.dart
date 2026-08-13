@@ -9,11 +9,17 @@ import 'mobile_session.dart';
 import 'online_game_page.dart';
 import 'profile_history_pages.dart';
 import 'notification_page.dart';
+import 'matchmaking_page.dart';
 
 enum PlayerSide { white, black, random }
 
 class SimpleHomePage extends StatefulWidget {
-  const SimpleHomePage({super.key,required this.themeMode,required this.soundsEnabled,required this.onThemeChanged,required this.onSoundsChanged});
+  const SimpleHomePage(
+      {super.key,
+      required this.themeMode,
+      required this.soundsEnabled,
+      required this.onThemeChanged,
+      required this.onSoundsChanged});
   final ThemeMode themeMode;
   final bool soundsEnabled;
   final ValueChanged<ThemeMode> onThemeChanged;
@@ -54,7 +60,9 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
 
   Future<void> _restoreSession() async {
     await _session.restore();
-    if (_session.serverUrl?.isNotEmpty == true) _server.text = _session.serverUrl!;
+    if (_session.serverUrl?.isNotEmpty == true) {
+      _server.text = _session.serverUrl!;
+    }
     if (!_session.isSignedIn) return;
     _token = _session.accessToken;
     try {
@@ -116,7 +124,8 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
         );
         _token = _session.accessToken;
         final profile =
-            await _MobileApi(_server.text, _token, _cookie, session: _session).profile();
+            await _MobileApi(_server.text, _token, _cookie, session: _session)
+                .profile();
         if (mounted) {
           setState(() {
             _botLevel = profile['bot_level'] as int? ?? 1;
@@ -227,27 +236,56 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
 
   Future<void> _openHistory() async {
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => GameHistoryPage(load: _authenticatedApi.gameHistory),
+      builder: (_) => GameHistoryPage(
+          load: _authenticatedApi.gameHistory,
+          startAnalysis: _authenticatedApi.startGameAnalysis,
+          analysisStatus: _authenticatedApi.analysisStatus),
     ));
   }
 
   Future<void> _openNotifications() async {
-    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => NotificationPage(
-      load: _authenticatedApi.notifications,
-      markRead: _authenticatedApi.markNotificationRead,
-      markAllRead: _authenticatedApi.markAllNotificationsRead,
-    )));
+    await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => NotificationPage(
+              load: _authenticatedApi.notifications,
+              markRead: _authenticatedApi.markNotificationRead,
+              markAllRead: _authenticatedApi.markAllNotificationsRead,
+            )));
   }
 
   Future<String?> _stockfishMove(String fen, int level) =>
       _authenticatedApi.stockfishMove(fen, level);
+
+  Future<void> _openMatchmaking() async {
+    final api = _authenticatedApi;
+    await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => MatchmakingPage(
+              enter: api.enterMatchmaking,
+              status: api.matchmakingStatus,
+              cancel: api.cancelMatchmaking,
+              openRoom: (room) async {
+                await Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => ShareCodePage(
+                        serverUrl: _server.text,
+                        roomCode: room['code'] as String,
+                        displayName: _name.text,
+                        token: _token,
+                        cookie: api.cookie,
+                        session: _session,
+                        soundsEnabled: widget.soundsEnabled)));
+              },
+            )));
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
           title: const Text('Chess Platform'),
           actions: [
-            if (_signedIn) IconButton(onPressed:_openNotifications,tooltip:'Notifications',icon:const Icon(Icons.notifications_none)),
+            if (_signedIn)
+              IconButton(
+                  onPressed: _openNotifications,
+                  tooltip: 'Notifications',
+                  icon: const Icon(Icons.notifications_none)),
             if (_signedIn)
               IconButton(
                 onPressed: _openHistory,
@@ -413,6 +451,12 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                 ),
               ),
               _PlayCard(
+                icon: Icons.bolt,
+                title: 'Rated Matchmaking',
+                subtitle: 'Live search for a close-rated player',
+                onTap: _signedIn ? _openMatchmaking : null,
+              ),
+              _PlayCard(
                 icon: Icons.people_outline,
                 title: 'Play with Friend',
                 subtitle: 'Two players on this device',
@@ -445,8 +489,20 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
               ExpansionTile(
                 title: const Text('App settings'),
                 children: [
-                  DropdownButtonFormField<ThemeMode>(initialValue:widget.themeMode,decoration:const InputDecoration(labelText:'Theme'),items:ThemeMode.values.map((mode)=>DropdownMenuItem(value:mode,child:Text(mode.name))).toList(),onChanged:(mode){if(mode!=null)widget.onThemeChanged(mode);}),
-                  SwitchListTile(title:const Text('Move and game sounds'),value:widget.soundsEnabled,onChanged:widget.onSoundsChanged),
+                  DropdownButtonFormField<ThemeMode>(
+                      initialValue: widget.themeMode,
+                      decoration: const InputDecoration(labelText: 'Theme'),
+                      items: ThemeMode.values
+                          .map((mode) => DropdownMenuItem(
+                              value: mode, child: Text(mode.name)))
+                          .toList(),
+                      onChanged: (mode) {
+                        if (mode != null) widget.onThemeChanged(mode);
+                      }),
+                  SwitchListTile(
+                      title: const Text('Move and game sounds'),
+                      value: widget.soundsEnabled,
+                      onChanged: widget.onSoundsChanged),
                   TextField(
                     controller: _server,
                     keyboardType: TextInputType.url,
@@ -706,7 +762,8 @@ class _ShareCodePageState extends State<ShareCodePage> {
 
   Future<void> _refresh() async {
     try {
-      final api = _MobileApi(widget.serverUrl, widget.token, widget.cookie, session: widget.session);
+      final api = _MobileApi(widget.serverUrl, widget.token, widget.cookie,
+          session: widget.session);
       final room = await api.room(widget.roomCode);
       if (mounted) setState(() => _room = room);
     } catch (error) {
@@ -717,7 +774,8 @@ class _ShareCodePageState extends State<ShareCodePage> {
   Future<void> _start() async {
     setState(() => _busy = true);
     try {
-      final api = _MobileApi(widget.serverUrl, widget.token, widget.cookie, session: widget.session);
+      final api = _MobileApi(widget.serverUrl, widget.token, widget.cookie,
+          session: widget.session);
       final game = await api.start(widget.roomCode);
       await _openGame(game, api);
     } catch (error) {
@@ -788,7 +846,10 @@ class _MobileApi {
   Future<Map<String, String>> login(String email, String password) async {
     final data = await _request(
         'POST', 'api/auth/token/', {'email': email, 'password': password});
-    return {'access': data['access'] as String, 'refresh': data['refresh'] as String};
+    return {
+      'access': data['access'] as String,
+      'refresh': data['refresh'] as String
+    };
   }
 
   Future<String?> validAccessToken() async {
@@ -803,21 +864,27 @@ class _MobileApi {
 
   Future<void> _refreshAccess() async {
     final refresh = session?.refreshToken;
-    if (refresh == null) throw const HttpException('Your session has expired. Please log in again.');
-    final data = await _request('POST', 'api/auth/token/refresh/', {'refresh': refresh}, false);
+    if (refresh == null) {
+      throw const HttpException(
+          'Your session has expired. Please log in again.');
+    }
+    final data = await _request(
+        'POST', 'api/auth/token/refresh/', {'refresh': refresh}, false);
     await session!.updateAccess(data['access'] as String);
   }
 
   Future<Map<String, dynamic>> profile() async => Map<String, dynamic>.from(
       await _request('GET', 'api/accounts/me/') as Map);
 
-  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> values) async =>
+  Future<Map<String, dynamic>> updateProfile(
+          Map<String, dynamic> values) async =>
       Map<String, dynamic>.from(
           await _request('PATCH', 'api/accounts/me/', values) as Map);
 
   Future<List<Map<String, dynamic>>> gameHistory() async {
     final data = await _request('GET', 'api/games/');
-    final rows = data is Map ? (data['results'] as List? ?? const []) : data as List;
+    final rows =
+        data is Map ? (data['results'] as List? ?? const []) : data as List;
     return rows.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
@@ -827,12 +894,37 @@ class _MobileApi {
     return data['bestmove'] as String?;
   }
 
-  Future<List<Map<String,dynamic>>> notifications() async {
-    final data=await _request('GET','api/notifications/') as List;
-    return data.map((row)=>Map<String,dynamic>.from(row as Map)).toList();
+  Future<List<Map<String, dynamic>>> notifications() async {
+    final data = await _request('GET', 'api/notifications/') as List;
+    return data.map((row) => Map<String, dynamic>.from(row as Map)).toList();
   }
-  Future<void> markNotificationRead(int id) async { await _request('POST','api/notifications/$id/read/'); }
-  Future<void> markAllNotificationsRead() async { await _request('POST','api/notifications/read-all/'); }
+
+  Future<void> markNotificationRead(int id) async {
+    await _request('POST', 'api/notifications/$id/read/');
+  }
+
+  Future<void> markAllNotificationsRead() async {
+    await _request('POST', 'api/notifications/read-all/');
+  }
+
+  Future<Map<String, dynamic>> enterMatchmaking() async =>
+      Map<String, dynamic>.from(
+          await _request('POST', 'api/matchmaking/') as Map);
+  Future<Map<String, dynamic>> matchmakingStatus() async =>
+      Map<String, dynamic>.from(
+          await _request('GET', 'api/matchmaking/') as Map);
+  Future<void> cancelMatchmaking() async {
+    await _request('DELETE', 'api/matchmaking/');
+  }
+
+  Future<Map<String, dynamic>> startGameAnalysis(String gameId) async =>
+      Map<String, dynamic>.from(await _request(
+          'POST',
+          'api/analysis/games/$gameId/start/',
+          {'analysis_type': 'quick', 'depth': 10}) as Map);
+  Future<Map<String, dynamic>> analysisStatus(String jobId) async =>
+      Map<String, dynamic>.from(
+          await _request('GET', 'api/analysis/jobs/$jobId/') as Map);
 
   Future<int> recordBotVictory(int level) async {
     final data =
@@ -905,7 +997,8 @@ class _MobileApi {
       final text = await utf8.decodeStream(response);
       final data = text.isEmpty ? <String, dynamic>{} : jsonDecode(text);
       if (response.statusCode == HttpStatus.unauthorized &&
-          retryAfterRefresh && session?.refreshToken != null) {
+          retryAfterRefresh &&
+          session?.refreshToken != null) {
         await _refreshAccess();
         return _request(method, path, body, false);
       }
