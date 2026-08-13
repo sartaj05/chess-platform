@@ -50,6 +50,7 @@ class MoveReviewSerializer(serializers.ModelSerializer):
             "bestmove_san",
             "score_loss_cp",
             "comment",
+            "best_line",
         ]
 
 

@@ -1108,6 +1108,7 @@ def serialize_game(
         "is_live": game.is_live,
         "started_at": game.started_at.isoformat() if game.started_at else None,
         "ended_at": game.ended_at.isoformat() if game.ended_at else None,
+        "chat": [{"id":str(row.pk),"sender":row.sender_name,"role":row.sender_role,"body":"Message removed by moderator" if row.is_removed else row.body,"audience":row.audience,"created_at":row.created_at.isoformat(),"removed":row.is_removed} for row in game.chat_messages.all().order_by("-created_at")[:50][::-1]] if hasattr(game, "chat_messages") else [],
     }
 
     if include_legal_moves and game.status == game.Status.ACTIVE:

@@ -62,6 +62,8 @@ class PuzzleAttempt(TimeStampedModel):
     mistakes = models.PositiveSmallIntegerField(default=0)
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.IN_PROGRESS, db_index=True)
     solved_at = models.DateTimeField(blank=True, null=True)
+    rating_change = models.SmallIntegerField(default=0)
+    rating_applied = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-updated_at"]

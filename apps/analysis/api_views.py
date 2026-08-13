@@ -14,7 +14,7 @@ from apps.analysis.serializers import (
     PositionAnalysisSerializer,
     StartAnalysisSerializer,
 )
-from apps.analysis.services import analyse_position, create_analysis_job, search_openings
+from apps.analysis.services import analyse_position, create_analysis_job, personal_opening_statistics, search_openings
 from apps.analysis.tasks import run_game_analysis_job
 from apps.api.throttles import AnalysisAnonRateThrottle, AnalysisUserRateThrottle
 from apps.games.services import visible_games_for_request
@@ -55,6 +55,15 @@ class GameAnalysisJobApiView(APIView):
         )
         return Response(GameAnalysisJobSerializer(job).data)
 
+    def post(self, request, pk: str):
+        job = get_object_or_404(GameAnalysisJob.objects.filter(game__in=visible_games_for_request(request)), pk=pk)
+        if job.status not in {GameAnalysisJob.Status.FAILED, GameAnalysisJob.Status.CANCELLED}:
+            return Response({"detail":"Only failed or cancelled analysis can be retried."}, status=400)
+        job.status, job.progress, job.error_message, job.completed_at = GameAnalysisJob.Status.QUEUED, 0, "", None
+        job.save(update_fields=["status","progress","error_message","completed_at","updated_at"])
+        run_game_analysis_job.delay(str(job.id))
+        return Response(GameAnalysisJobSerializer(job).data, status=202)
+
 
 class PositionAnalysisApiView(APIView):
     permission_classes = [permissions.AllowAny]
@@ -79,3 +88,9 @@ class OpeningExplorerApiView(APIView):
         raw_moves = request.query_params.get("moves", "").replace(",", " ").split()
         openings = search_openings(moves_uci=raw_moves, user=request.user, request=request)
         return Response(OpeningBookLineSerializer(openings, many=True).data)
+
+
+class PersonalOpeningStatsApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+    def get(self, request):
+        return Response(personal_opening_statistics(request.user))

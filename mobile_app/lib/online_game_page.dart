@@ -34,6 +34,9 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
   String? _selected;
   String? _premove;
   String? _error;
+  final _chatController = TextEditingController();
+  final List<Map<String, dynamic>> _chat = [];
+  String _chatAudience = 'all';
   bool _connecting = true;
   bool _disposed = false;
   int _reconnectAttempt = 0;
@@ -48,6 +51,8 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
   void initState() {
     super.initState();
     _game = Map<String, dynamic>.from(widget.initialGame);
+    _chat.addAll(((_game['chat'] as List?) ?? const [])
+        .map((e) => Map<String, dynamic>.from(e as Map)));
     _connect();
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _active) setState(() {});
@@ -108,6 +113,23 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
         _error = null;
       });
       _playQueuedPremove();
+    } else if (data['type'] == 'game.chat' && data['message'] is Map) {
+      setState(
+          () => _chat.add(Map<String, dynamic>.from(data['message'] as Map)));
+    } else if (data['type'] == 'game.chat.moderated' &&
+        data['message'] is Map) {
+      final changed = data['message'] as Map;
+      setState(() {
+        final index = _chat.indexWhere((e) => e['id'] == changed['id']);
+        if (index >= 0) {
+          _chat[index] = {
+            ..._chat[index],
+            ...Map<String, dynamic>.from(changed),
+            if (changed['removed'] == true)
+              'body': 'Message removed by moderator'
+          };
+        }
+      });
     } else if (data['type'] == 'error') {
       setState(
           () => _error = data['message']?.toString() ?? 'Game action failed.');
@@ -212,6 +234,7 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
     _clockTimer?.cancel();
     _reconnectTimer?.cancel();
     _socket?.close();
+    _chatController.dispose();
     super.dispose();
   }
 
@@ -311,6 +334,45 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
               FilledButton(
                   onPressed: !_active ? () => _send('game.rematch') : null,
                   child: const Text('Rematch')),
+            ]),
+            const Divider(),
+            Text('Game chat', style: Theme.of(context).textTheme.titleMedium),
+            ..._chat.map((message) => ListTile(
+                dense: true,
+                title: Text('${message['sender']} · ${message['role']}'),
+                subtitle: Text(message['body'].toString()),
+                trailing: message['removed'] == true
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.flag_outlined),
+                        onPressed: () => _send('game.chat.report',
+                            {'message_id': message['id']})))),
+            DropdownButton<String>(
+                value: _chatAudience,
+                items: const [
+                  DropdownMenuItem(value: 'all', child: Text('Everyone')),
+                  DropdownMenuItem(
+                      value: 'players', child: Text('Players only')),
+                  DropdownMenuItem(
+                      value: 'spectators', child: Text('Spectators only'))
+                ],
+                onChanged: (value) =>
+                    setState(() => _chatAudience = value ?? 'all')),
+            Row(children: [
+              Expanded(
+                  child: TextField(
+                      controller: _chatController,
+                      maxLength: 500,
+                      decoration: const InputDecoration(
+                          hintText: 'Send a game message'))),
+              IconButton(
+                  icon: const Icon(Icons.send),
+                  onPressed: () {
+                    final body = _chatController.text;
+                    _chatController.clear();
+                    _send(
+                        'game.chat', {'body': body, 'audience': _chatAudience});
+                  })
             ]),
           ],
         ),

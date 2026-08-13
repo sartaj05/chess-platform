@@ -244,7 +244,8 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
       builder: (_) => GameHistoryPage(
           load: _authenticatedApi.gameHistory,
           startAnalysis: _authenticatedApi.startGameAnalysis,
-          analysisStatus: _authenticatedApi.analysisStatus),
+          analysisStatus: _authenticatedApi.analysisStatus,
+          retryAnalysis: _authenticatedApi.retryAnalysis),
     ));
   }
 
@@ -274,6 +275,10 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
           builder: (_) => TournamentPage(
               load: _authenticatedApi.tournaments,
               action: _authenticatedApi.tournamentAction)));
+  Future<void> _openOpenings() async =>
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) =>
+              OpeningStatsPage(load: _authenticatedApi.openingStats)));
 
   Future<String?> _stockfishMove(String fen, int level) =>
       _authenticatedApi.stockfishMove(fen, level);
@@ -321,6 +326,11 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
         appBar: AppBar(
           title: const Text('Chess Platform'),
           actions: [
+            if (_signedIn)
+              IconButton(
+                  onPressed: _openOpenings,
+                  tooltip: 'Opening statistics',
+                  icon: const Icon(Icons.auto_graph)),
             if (_signedIn)
               IconButton(
                   onPressed: _openSocial,
@@ -957,10 +967,8 @@ class _MobileApi {
         .toList();
   }
 
-  Future<List<Map<String, dynamic>>> puzzles() async {
-    final data = await _request('GET', 'api/accounts/puzzles/') as List;
-    return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-  }
+  Future<Map<String, dynamic>> puzzles() async => Map<String, dynamic>.from(
+      await _request('GET', 'api/accounts/puzzles/') as Map);
 
   Future<Map<String, dynamic>> playPuzzle(int id, String move) async =>
       Map<String, dynamic>.from(await _request(
@@ -979,6 +987,12 @@ class _MobileApi {
 
   Future<void> tournamentAction(int id, String action) async {
     await _request('POST', 'api/tournaments/$id/', {'action': action});
+  }
+
+  Future<List<Map<String, dynamic>>> openingStats() async {
+    final data =
+        await _request('GET', 'api/analysis/openings/personal/') as List;
+    return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
   Future<String?> stockfishMove(String fen, int level) async {
@@ -1024,6 +1038,9 @@ class _MobileApi {
   Future<Map<String, dynamic>> analysisStatus(String jobId) async =>
       Map<String, dynamic>.from(
           await _request('GET', 'api/analysis/jobs/$jobId/') as Map);
+  Future<Map<String, dynamic>> retryAnalysis(String jobId) async =>
+      Map<String, dynamic>.from(
+          await _request('POST', 'api/analysis/jobs/$jobId/') as Map);
 
   Future<int> recordBotVictory(int level) async {
     final data =

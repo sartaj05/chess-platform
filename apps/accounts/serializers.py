@@ -29,6 +29,7 @@ class UserSerializer(serializers.ModelSerializer):
             "rated_games",
             "bullet_rating", "blitz_rating", "rapid_rating",
             "bullet_games", "blitz_games", "rapid_games",
+            "puzzle_rating", "puzzle_streak", "puzzle_best_streak", "last_puzzle_date",
         )
         read_only_fields = (
             "id",
@@ -43,6 +44,7 @@ class UserSerializer(serializers.ModelSerializer):
             "rated_games",
             "bullet_rating", "blitz_rating", "rapid_rating",
             "bullet_games", "blitz_games", "rapid_games",
+            "puzzle_rating", "puzzle_streak", "puzzle_best_streak", "last_puzzle_date",
         )
 
     def get_avatar_url(self, obj) -> str | None:

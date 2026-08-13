@@ -136,10 +136,12 @@ class GameHistoryPage extends StatefulWidget {
       {super.key,
       required this.load,
       required this.startAnalysis,
-      required this.analysisStatus});
+      required this.analysisStatus,
+      required this.retryAnalysis});
   final Future<List<Map<String, dynamic>>> Function() load;
   final Future<Map<String, dynamic>> Function(String gameId) startAnalysis;
   final Future<Map<String, dynamic>> Function(String jobId) analysisStatus;
+  final Future<Map<String, dynamic>> Function(String jobId) retryAnalysis;
 
   @override
   State<GameHistoryPage> createState() => _GameHistoryPageState();
@@ -214,8 +216,9 @@ class _GameHistoryPageState extends State<GameHistoryPage> {
                                       builder: (_) => GameReplayPage(
                                           game: game,
                                           startAnalysis: widget.startAnalysis,
-                                          analysisStatus:
-                                              widget.analysisStatus))),
+                                          analysisStatus: widget.analysisStatus,
+                                          retryAnalysis:
+                                              widget.retryAnalysis))),
                             ));
                           }),
         ),

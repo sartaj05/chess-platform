@@ -1,4 +1,5 @@
 from drf_spectacular.utils import extend_schema
+from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -34,7 +35,9 @@ class PuzzleListAPIView(APIView):
     def get(self, request):
         from apps.puzzles.models import Puzzle
         rows = Puzzle.objects.filter(is_published=True).order_by("rating")[:100]
-        return Response([{"id": row.pk, "title": row.title, "fen": row.initial_fen, "rating": row.rating, "difficulty": row.difficulty, "themes": row.themes} for row in rows])
+        daily = Puzzle.objects.filter(is_published=True).order_by("id")[timezone.localdate().toordinal() % max(Puzzle.objects.filter(is_published=True).count(), 1)] if rows else None
+        leaders = User.objects.filter(is_active=True).order_by("-puzzle_rating", "display_name")[:20]
+        return Response({"daily_id": daily.pk if daily else None, "puzzle_rating": request.user.puzzle_rating, "streak": request.user.puzzle_streak, "best_streak": request.user.puzzle_best_streak, "leaderboard": [{"name":u.display_name,"rating":u.puzzle_rating,"streak":u.puzzle_streak} for u in leaders], "results":[{"id": row.pk, "title": row.title, "fen": row.initial_fen, "rating": row.rating, "difficulty": row.difficulty, "themes": row.themes} for row in rows]})
 
 
 class PuzzlePlayAPIView(APIView):
@@ -49,7 +52,7 @@ class PuzzlePlayAPIView(APIView):
         attempt = get_attempt(puzzle=puzzle, user=request.user)
         correct, reply = submit_move(attempt=attempt, move_text=str(request.data.get("move", "")))
         attempt.refresh_from_db()
-        return Response({"correct": correct, "reply": reply, "fen": attempt.current_fen, "status": attempt.status, "mistakes": attempt.mistakes})
+        return Response({"correct": correct, "reply": reply, "fen": attempt.current_fen, "status": attempt.status, "mistakes": attempt.mistakes, "rating_change": attempt.rating_change, "puzzle_rating": request.user.puzzle_rating, "streak": request.user.puzzle_streak})
 
 
 class MeAPIView(APIView):

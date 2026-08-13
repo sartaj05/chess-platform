@@ -178,3 +178,34 @@ class _TournamentPageState extends State<TournamentPage> {
                     .toList());
           }));
 }
+
+class OpeningStatsPage extends StatelessWidget {
+  const OpeningStatsPage({super.key, required this.load});
+  final Future<List<Map<String, dynamic>>> Function() load;
+  @override
+  Widget build(BuildContext context) => Scaffold(
+      appBar: AppBar(title: const Text('My openings')),
+      body: FutureBuilder<List<Map<String, dynamic>>>(
+          future: load(),
+          builder: (_, snapshot) {
+            if (!snapshot.hasData) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.data!.isEmpty) {
+              return const Center(
+                  child:
+                      Text('Finish games to build your opening statistics.'));
+            }
+            return ListView(
+                children: snapshot.data!
+                    .map((row) => Card(
+                        child: ListTile(
+                            leading: CircleAvatar(
+                                child: Text(row['eco'].toString())),
+                            title: Text(row['name'].toString()),
+                            subtitle: Text(
+                                '${row['games']} games · ${row['wins']} wins · ${row['draws']} draws'),
+                            trailing: Text('${row['losses']} losses'))))
+                    .toList());
+          }));
+}

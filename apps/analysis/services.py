@@ -8,6 +8,7 @@ import chess
 import chess.pgn
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Q
 
 from apps.analysis.models import GameAnalysisJob, MoveReview, OpeningBookLine, OpeningExplorerQuery, PositionAnalysis
 from apps.games.models import Game, GameMove
@@ -174,6 +175,7 @@ def run_game_review(*, job: GameAnalysisJob) -> dict[str, Any]:
                     "bestmove_san": before_position.bestmove_san,
                     "score_loss_cp": loss,
                     "comment": comment,
+                    "best_line": before_position.pv,
                     "fen_before": move.fen_before,
                     "fen_after": move.fen_after,
                 },
@@ -189,7 +191,11 @@ def run_game_review(*, job: GameAnalysisJob) -> dict[str, Any]:
             )
             job.progress = min(99, int((index / total) * 100))
             job.save(update_fields=["progress", "updated_at"])
-        summary = {"counts": dict(summary_counter), "moves": len(moves), "evaluation": evaluation_points}
+        losses = {"white": [], "black": []}
+        for review in job.move_reviews.all():
+            losses[moves[review.ply_number - 1].color].append(review.score_loss_cp)
+        accuracy = {color: round(100 * (2.718281828 ** (-(sum(values) / max(len(values), 1)) / 300)), 1) if values else 100.0 for color, values in losses.items()}
+        summary = {"counts": dict(summary_counter), "moves": len(moves), "evaluation": evaluation_points, "accuracy": accuracy}
         job.mark_completed(summary=summary)
         return summary
     except Exception as exc:
@@ -226,7 +232,25 @@ def serialize_move_review(review: MoveReview) -> dict[str, Any]:
         "bestmove_san": review.bestmove_san,
         "score_loss_cp": review.score_loss_cp,
         "comment": review.comment,
+        "best_line": review.best_line,
     }
+
+
+def personal_opening_statistics(user: Any) -> list[dict[str, Any]]:
+    games = Game.objects.filter(Q(white_user=user) | Q(black_user=user), status=Game.Status.FINISHED).prefetch_related("moves")
+    stats: dict[str, dict[str, Any]] = {}
+    openings = list(OpeningBookLine.objects.filter(is_active=True).order_by("-frequency"))
+    for game in games:
+        played = [move.uci for move in game.moves.all().order_by("ply_number")]
+        match = next((line for line in openings if played[:len(line.moves_uci)] == line.moves_uci), None)
+        if not match: continue
+        row = stats.setdefault(match.eco, {"eco":match.eco,"name":match.name,"games":0,"wins":0,"draws":0,"losses":0})
+        row["games"] += 1
+        is_white = game.white_user_id == user.pk
+        if game.result == Game.Result.DRAW: row["draws"] += 1
+        elif (game.result == Game.Result.WHITE_WIN) == is_white: row["wins"] += 1
+        else: row["losses"] += 1
+    return sorted(stats.values(), key=lambda row: -row["games"])
 
 
 def parse_pgn_moves_to_uci(pgn_text: str) -> list[str]:

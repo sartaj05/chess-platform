@@ -9,7 +9,7 @@ class CompetitiveHubPage extends StatefulWidget {
       required this.playPuzzle});
   final Future<List<Map<String, dynamic>>> Function(String category)
       leaderboard;
-  final Future<List<Map<String, dynamic>>> Function() puzzles;
+  final Future<Map<String, dynamic>> Function() puzzles;
   final Future<Map<String, dynamic>> Function(int id, String move) playPuzzle;
   @override
   State<CompetitiveHubPage> createState() => _CompetitiveHubPageState();
@@ -89,29 +89,37 @@ class _LeaderboardState extends State<_Leaderboard> {
 
 class _Puzzles extends StatelessWidget {
   const _Puzzles({required this.load, required this.play});
-  final Future<List<Map<String, dynamic>>> Function() load;
+  final Future<Map<String, dynamic>> Function() load;
   final Future<Map<String, dynamic>> Function(int, String) play;
   @override
-  Widget build(BuildContext context) =>
-      FutureBuilder<List<Map<String, dynamic>>>(
-          future: load(),
-          builder: (context, snapshot) {
-            if (!snapshot.hasData) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            return ListView(
-                children: snapshot.data!
-                    .map((p) => ListTile(
-                        leading: const Icon(Icons.extension),
-                        title: Text(p['title'].toString()),
-                        subtitle: Text('${p['difficulty']} · ${p['rating']}'),
-                        onTap: () => Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                                builder: (_) =>
-                                    _PuzzlePlay(puzzle: p, play: play)))))
-                    .toList());
-          });
+  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>>(
+      future: load(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final dashboard = snapshot.data!;
+        final rows = dashboard['results'] as List? ?? const [];
+        return ListView(children: [
+          ListTile(
+              leading: const Icon(Icons.local_fire_department),
+              title: Text(
+                  'Rating ${dashboard['puzzle_rating']} · Streak ${dashboard['streak']}'),
+              subtitle: Text(
+                  'Best streak ${dashboard['best_streak']} · Daily puzzle highlighted')),
+          const Divider(),
+          ...rows.map((p) => ListTile(
+              leading: Icon(p['id'] == dashboard['daily_id']
+                  ? Icons.today
+                  : Icons.extension),
+              title: Text(p['title'].toString()),
+              subtitle: Text('${p['difficulty']} · ${p['rating']}'),
+              onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (_) => _PuzzlePlay(puzzle: p, play: play)))))
+        ]);
+      });
 }
 
 class _PuzzlePlay extends StatefulWidget {

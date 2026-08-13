@@ -182,10 +182,10 @@ class MoveReview(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name="move_reviews",
     )
-    move = models.OneToOneField(
+    move = models.ForeignKey(
         "games.GameMove",
         on_delete=models.CASCADE,
-        related_name="review",
+        related_name="reviews",
     )
     ply_number = models.PositiveIntegerField(db_index=True)
     move_uci = models.CharField(max_length=8)
@@ -197,6 +197,7 @@ class MoveReview(TimeStampedModel):
     bestmove_san = models.CharField(max_length=32, blank=True)
     score_loss_cp = models.PositiveIntegerField(default=0)
     comment = models.CharField(max_length=255, blank=True)
+    best_line = models.JSONField(default=list, blank=True)
     fen_before = models.CharField(max_length=180)
     fen_after = models.CharField(max_length=180)
 

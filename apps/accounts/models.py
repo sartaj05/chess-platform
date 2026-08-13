@@ -42,6 +42,10 @@ class User(AbstractBaseUser, PermissionsMixin):
     bullet_games = models.PositiveIntegerField(default=0)
     blitz_games = models.PositiveIntegerField(default=0)
     rapid_games = models.PositiveIntegerField(default=0)
+    puzzle_rating = models.PositiveIntegerField(default=1200, db_index=True)
+    puzzle_streak = models.PositiveIntegerField(default=0)
+    puzzle_best_streak = models.PositiveIntegerField(default=0)
+    last_puzzle_date = models.DateField(null=True, blank=True)
     objects = UserManager()
     EMAIL_FIELD = "email"
     USERNAME_FIELD = "email"

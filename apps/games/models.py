@@ -279,3 +279,22 @@ class GameEvent(TimeStampedModel):
 
     def __str__(self) -> str:
         return f"{self.event_type} {self.game_id}"
+
+
+class GameChatMessage(TimeStampedModel):
+    class Audience(models.TextChoices):
+        ALL = "all", "Everyone"
+        PLAYERS = "players", "Players"
+        SPECTATORS = "spectators", "Spectators"
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="chat_messages")
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+    sender_name = models.CharField(max_length=80)
+    sender_role = models.CharField(max_length=16, default="spectator")
+    body = models.CharField(max_length=500)
+    audience = models.CharField(max_length=16, choices=Audience.choices, default=Audience.ALL)
+    is_removed = models.BooleanField(default=False, db_index=True)
+    reports = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [models.Index(fields=["game", "created_at"], name="game_chat_game_time_idx")]

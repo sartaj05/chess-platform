@@ -7,10 +7,12 @@ class GameReplayPage extends StatefulWidget {
       {super.key,
       required this.game,
       required this.startAnalysis,
-      required this.analysisStatus});
+      required this.analysisStatus,
+      required this.retryAnalysis});
   final Map<String, dynamic> game;
   final Future<Map<String, dynamic>> Function(String gameId) startAnalysis;
   final Future<Map<String, dynamic>> Function(String jobId) analysisStatus;
+  final Future<Map<String, dynamic>> Function(String jobId) retryAnalysis;
   @override
   State<GameReplayPage> createState() => _GameReplayPageState();
 }
@@ -103,11 +105,37 @@ class _GameReplayPageState extends State<GameReplayPage> {
               icon: const Icon(Icons.analytics),
               label: Text(
                   _analysing ? 'Analysing with Stockfish...' : 'Analyse game')),
+          if (_analysis?['status'] == 'failed')
+            OutlinedButton.icon(
+                onPressed: () async {
+                  final id = _analysis?['id']?.toString();
+                  if (id != null) {
+                    await widget.retryAnalysis(id);
+                    await _analyseStatus(id);
+                  }
+                },
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry analysis')),
+          if ((_analysis?['summary'] as Map?)?['accuracy'] is Map)
+            Card(
+                child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Text(
+                        'Accuracy · White ${(_analysis!['summary'] as Map)['accuracy']['white']}% · Black ${(_analysis!['summary'] as Map)['accuracy']['black']}%'))),
+          if (((_analysis?['summary'] as Map?)?['evaluation'] as List?)
+                  ?.isNotEmpty ==
+              true)
+            SizedBox(
+                height: 150,
+                child: CustomPaint(
+                    painter: _EvaluationPainter(((_analysis!['summary']
+                        as Map)['evaluation'] as List)))),
           if (_error != null)
             Text(_error!, style: const TextStyle(color: Colors.red)),
           ...reviewRows.map((row) => ListTile(
               title: Text('${row['ply_number']}. ${row['move_san']}'),
-              subtitle: Text(row['comment']?.toString() ?? ''),
+              subtitle: Text(
+                  '${row['comment'] ?? ''}\nBest: ${row['bestmove_san'] ?? row['bestmove_uci'] ?? ''} · Line: ${((row['best_line'] as List?) ?? const []).take(6).join(' ')}'),
               trailing:
                   Chip(label: Text(row['classification']?.toString() ?? ''))))
         ]));
@@ -118,4 +146,48 @@ class _GameReplayPageState extends State<GameReplayPage> {
         b = {'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚'};
     return (white ? w : b)[type] ?? '';
   }
+
+  Future<void> _analyseStatus(String id) async {
+    for (var i = 0; i < 60; i++) {
+      final state = await widget.analysisStatus(id);
+      if (!mounted) return;
+      setState(() => _analysis = state);
+      if (state['status'] == 'completed' || state['status'] == 'failed') return;
+      await Future<void>.delayed(const Duration(seconds: 2));
+    }
+  }
+}
+
+class _EvaluationPainter extends CustomPainter {
+  _EvaluationPainter(this.points);
+  final List points;
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawLine(Offset(0, size.height / 2),
+        Offset(size.width, size.height / 2), Paint()..color = Colors.grey);
+    if (points.length < 2) return;
+    final path = Path();
+    for (var i = 0; i < points.length; i++) {
+      final value =
+          ((points[i] as Map)['score_white_cp'] as num?)?.toDouble() ?? 0;
+      final x = i * size.width / (points.length - 1);
+      final y = size.height / 2 -
+          (value.clamp(-1000, 1000) / 1000) * (size.height / 2 - 8);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(
+        path,
+        Paint()
+          ..color = Colors.green
+          ..strokeWidth = 2
+          ..style = PaintingStyle.stroke);
+  }
+
+  @override
+  bool shouldRepaint(covariant _EvaluationPainter oldDelegate) =>
+      oldDelegate.points != points;
 }

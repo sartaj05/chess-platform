@@ -75,6 +75,14 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
                 payload = await self._takeback(event_type == "game.decline_takeback")
                 await self.channel_layer.group_send(self.group_name, {"type": "broadcast_game", "event": "takeback.updated", "game": payload})
                 return
+            if event_type == "game.chat":
+                payload = await self._chat(str(content.get("body", "")), str(content.get("audience", "all")))
+                await self.channel_layer.group_send(self.group_name, {"type":"broadcast_chat","message":payload})
+                return
+            if event_type in {"game.chat.report", "game.chat.remove"}:
+                payload = await self._moderate_chat(str(content.get("message_id", "")), event_type.endswith("remove"))
+                await self.channel_layer.group_send(self.group_name, {"type":"broadcast_chat_moderated","message":payload})
+                return
         except PermissionDenied as exc:
             await self.send_json({"type": "error", "message": str(exc)})
             return
@@ -88,6 +96,16 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
 
     async def broadcast_game(self, event: dict[str, Any]) -> None:
         await self.send_json({"type": "game.state", "event": event.get("event"), "game": event["game"]})
+
+    async def broadcast_chat(self, event):
+        audience = event["message"].get("audience", "all")
+        role = await self._viewer_role()
+        if audience != "all" and audience != f"{role}s":
+            return
+        await self.send_json({"type":"game.chat","message":event["message"]})
+
+    async def broadcast_chat_moderated(self, event):
+        await self.send_json({"type":"game.chat.moderated","message":event["message"]})
 
     def _serialized_for_viewer(self, game: Any) -> dict[str, Any]:
         from apps.games.services import actor_from_scope, serialize_game
@@ -209,3 +227,33 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         decline_takeback(game=game, actor=actor) if decline else offer_or_accept_takeback(game=game, actor=actor)
         game.refresh_from_db()
         return self._serialized_for_viewer(game)
+
+    @database_sync_to_async
+    def _chat(self, body: str, audience: str) -> dict[str, Any]:
+        from apps.games.models import Game, GameChatMessage
+        from apps.games.services import actor_from_scope
+        game=Game.objects.get(pk=self.game_id);actor=actor_from_scope(self.scope,game);clean=" ".join(body.strip().split())[:500]
+        if not clean: raise ValidationError("Message cannot be empty.")
+        role="player" if actor.color in {"white","black"} else "spectator"
+        if audience not in GameChatMessage.Audience.values: audience=GameChatMessage.Audience.ALL
+        message=GameChatMessage.objects.create(game=game,sender=actor.identity.user,sender_name=actor.display_name,sender_role=role,body=clean,audience=audience)
+        return {"id":str(message.pk),"sender":message.sender_name,"role":role,"body":clean,"audience":audience,"created_at":message.created_at.isoformat(),"removed":False}
+
+    @database_sync_to_async
+    def _viewer_role(self) -> str:
+        from apps.games.models import Game
+        from apps.games.services import actor_from_scope
+        actor = actor_from_scope(self.scope, Game.objects.get(pk=self.game_id))
+        return "player" if actor.color in {"white", "black"} else "spectator"
+
+    @database_sync_to_async
+    def _moderate_chat(self, message_id: str, remove: bool) -> dict[str, Any]:
+        from apps.games.models import GameChatMessage
+        message=GameChatMessage.objects.select_related("sender").get(pk=message_id,game_id=self.game_id)
+        user=self.scope.get("user")
+        if remove:
+            if not getattr(user,"is_staff",False): raise PermissionDenied("Only moderators can remove messages.")
+            message.is_removed=True
+        else: message.reports += 1
+        message.save(update_fields=["is_removed","reports","updated_at"])
+        return {"id":str(message.pk),"removed":message.is_removed,"reports":message.reports}
