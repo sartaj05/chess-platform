@@ -5,7 +5,7 @@ from django.db import transaction
 from django.db.models import Q
 
 from apps.accounts.models import User
-from apps.friends.models import Friendship
+from apps.friends.models import Friendship, UserBlock
 from apps.notifications.models import Notification
 from apps.notifications.services import notify
 
@@ -13,7 +13,7 @@ from .models import Conversation, Message
 
 
 def users_are_friends(first: User, second: User) -> bool:
-    return Friendship.objects.filter(
+    return not UserBlock.objects.filter(Q(blocker=first, blocked=second) | Q(blocker=second, blocked=first)).exists() and Friendship.objects.filter(
         Q(requester=first, addressee=second) | Q(requester=second, addressee=first),
         status=Friendship.Status.ACCEPTED,
     ).exists()

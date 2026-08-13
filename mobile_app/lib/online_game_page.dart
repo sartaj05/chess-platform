@@ -273,6 +273,32 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
                   onPressed: _active ? () => _send('game.draw') : null,
                   child: const Text('Offer draw')),
               OutlinedButton(
+                  onPressed: _active && !(_game['rated'] as bool? ?? false)
+                      ? () => _send('game.takeback')
+                      : null,
+                  child: Text(
+                      (_game['takeback_offer_by'] ?? '').toString().isEmpty
+                          ? 'Takeback'
+                          : 'Accept takeback')),
+              if ((_game['takeback_offer_by'] ?? '').toString().isNotEmpty &&
+                  _game['takeback_offer_by'] != _viewerColor)
+                TextButton(
+                    onPressed: () => _send('game.decline_takeback'),
+                    child: const Text('Decline takeback')),
+              PopupMenuButton<String>(
+                  enabled: _active,
+                  onSelected: (rule) =>
+                      _send('game.claim_draw', {'rule': rule}),
+                  itemBuilder: (_) => const [
+                        PopupMenuItem(
+                            value: 'threefold',
+                            child: Text('Claim threefold repetition')),
+                        PopupMenuItem(
+                            value: 'fifty_move',
+                            child: Text('Claim 50-move draw'))
+                      ],
+                  child: const Chip(label: Text('Claim draw'))),
+              OutlinedButton(
                   onPressed: _active
                       ? () => _confirmAction('Resign game?', 'game.resign')
                       : null,

@@ -44,3 +44,18 @@ class Friendship(TimeStampedModel):
 
     def other_user(self, user):
         return self.addressee if self.requester_id == user.pk else self.requester
+
+
+class UserBlock(TimeStampedModel):
+    blocker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="blocks_created")
+    blocked = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="blocks_received")
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["blocker", "blocked"], name="friends_unique_block")]
+
+
+class UserReport(TimeStampedModel):
+    reporter = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reports_created")
+    reported = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reports_received")
+    reason = models.CharField(max_length=32, default="other")
+    details = models.TextField(max_length=1000, blank=True)
+    status = models.CharField(max_length=16, default="open", db_index=True)

@@ -67,6 +67,14 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
                     self.group_name, {"type": "broadcast_game", "event": "rematch.updated", "game": payload}
                 )
                 return
+            if event_type == "game.claim_draw":
+                payload = await self._claim_draw(str(content.get("rule", "")))
+                await self.channel_layer.group_send(self.group_name, {"type": "broadcast_game", "event": "draw.claimed", "game": payload})
+                return
+            if event_type in {"game.takeback", "game.decline_takeback"}:
+                payload = await self._takeback(event_type == "game.decline_takeback")
+                await self.channel_layer.group_send(self.group_name, {"type": "broadcast_game", "event": "takeback.updated", "game": payload})
+                return
         except PermissionDenied as exc:
             await self.send_json({"type": "error", "message": str(exc)})
             return
@@ -180,5 +188,24 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         from apps.games.services import actor_from_scope, request_rematch
         game = Game.objects.select_related("white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
         request_rematch(game=game, actor=actor_from_scope(self.scope, game))
+        game.refresh_from_db()
+        return self._serialized_for_viewer(game)
+
+    @database_sync_to_async
+    def _claim_draw(self, rule: str) -> dict[str, Any]:
+        from apps.games.models import Game
+        from apps.games.services import actor_from_scope, claim_rule_draw
+        game = Game.objects.select_related("white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
+        claim_rule_draw(game=game, actor=actor_from_scope(self.scope, game), rule=rule)
+        game.refresh_from_db()
+        return self._serialized_for_viewer(game)
+
+    @database_sync_to_async
+    def _takeback(self, decline: bool) -> dict[str, Any]:
+        from apps.games.models import Game
+        from apps.games.services import actor_from_scope, decline_takeback, offer_or_accept_takeback
+        game = Game.objects.select_related("white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
+        actor = actor_from_scope(self.scope, game)
+        decline_takeback(game=game, actor=actor) if decline else offer_or_accept_takeback(game=game, actor=actor)
         game.refresh_from_db()
         return self._serialized_for_viewer(game)

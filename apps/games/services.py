@@ -867,6 +867,74 @@ def offer_or_accept_draw(*, game: Any, actor: GameActor):
 
 
 @transaction.atomic
+def claim_rule_draw(*, game: Any, actor: GameActor, rule: str):
+    """Claim a server-verified threefold repetition or fifty-move draw."""
+    from apps.games.models import GameEvent
+    game = game.__class__.objects.select_for_update().prefetch_related("moves").get(pk=game.pk)
+    if game.status != game.Status.ACTIVE or actor.color not in {"white", "black"}:
+        raise PermissionDenied("Only a player in an active game can claim a draw.")
+    board = chess.Board(game.initial_fen)
+    for row in game.moves.all().order_by("ply_number"):
+        board.push_uci(row.uci)
+    if rule == "threefold" and board.can_claim_threefold_repetition():
+        termination = game.Termination.THREEFOLD_REPETITION
+    elif rule == "fifty_move" and board.can_claim_fifty_moves():
+        termination = game.Termination.FIFTY_MOVE_RULE
+    else:
+        raise ValidationError("This draw cannot currently be claimed.")
+    game.finish(result=game.Result.DRAW, termination=termination)
+    apply_elo_ratings(game)
+    GameEvent.objects.create(game=game, event_type=GameEvent.EventType.DRAW_ACCEPT, actor_user=actor.identity.user, actor_display_name=actor.display_name, actor_color=actor.color, payload={"rule": rule})
+    update_cached_pgn(game)
+    return game
+
+
+@transaction.atomic
+def offer_or_accept_takeback(*, game: Any, actor: GameActor):
+    from apps.games.models import GameEvent
+    game = game.__class__.objects.select_for_update().prefetch_related("moves").get(pk=game.pk)
+    if game.rated:
+        raise ValidationError("Takebacks are disabled in rated games.")
+    if game.status != game.Status.ACTIVE or actor.color not in {"white", "black"} or game.ply_count == 0:
+        raise ValidationError("A takeback is not available.")
+    if game.takeback_offer_by and game.takeback_offer_by != actor.color:
+        last = game.moves.order_by("-ply_number").first()
+        game.current_fen = last.fen_before
+        game.turn = last.color
+        game.ply_count -= 1
+        game.fullmove_number = last.move_number
+        last.delete()
+        previous = game.moves.order_by("-ply_number").first()
+        game.white_time_ms = previous.white_time_ms if previous else game.clock_initial_ms
+        game.black_time_ms = previous.black_time_ms if previous else game.clock_initial_ms
+        game.last_move_uci = previous.uci if previous else ""
+        game.last_move_san = previous.san if previous else ""
+        game.takeback_offer_by = ""
+        game.takeback_offer_at = None
+        game.clock_started_at = timezone.now()
+        game.save(update_fields=["current_fen", "turn", "ply_count", "fullmove_number", "white_time_ms", "black_time_ms", "last_move_uci", "last_move_san", "takeback_offer_by", "takeback_offer_at", "clock_started_at", "updated_at"])
+        event_type, result = GameEvent.EventType.TAKEBACK_ACCEPT, "accepted"
+        update_cached_pgn(game)
+    else:
+        game.takeback_offer_by = actor.color
+        game.takeback_offer_at = timezone.now()
+        game.save(update_fields=["takeback_offer_by", "takeback_offer_at", "updated_at"])
+        event_type, result = GameEvent.EventType.TAKEBACK_OFFER, "offered"
+    GameEvent.objects.create(game=game, event_type=event_type, actor_user=actor.identity.user, actor_display_name=actor.display_name, actor_color=actor.color)
+    return game, result
+
+
+@transaction.atomic
+def decline_takeback(*, game: Any, actor: GameActor):
+    if not game.takeback_offer_by or game.takeback_offer_by == actor.color:
+        raise ValidationError("There is no opponent takeback offer to decline.")
+    game.takeback_offer_by = ""
+    game.takeback_offer_at = None
+    game.save(update_fields=["takeback_offer_by", "takeback_offer_at", "updated_at"])
+    return game
+
+
+@transaction.atomic
 def decline_draw(*, game: Any, actor: GameActor):
     from apps.games.models import GameEvent
 

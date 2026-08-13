@@ -11,6 +11,8 @@ urlpatterns = [
     path("", include("apps.notifications.api_urls")),
     path("", include("apps.stockfish.api_urls")),
     path("", include("apps.analysis.api_urls")),
+    path("", include("apps.friends.api_urls")),
+    path("", include("apps.tournaments.api_urls")),
     path("", include(("apps.rooms.api_urls", "rooms-api"), namespace="rooms-api")),
     path("", include(("apps.games.api_urls", "games-api"), namespace="games-api")),
 ]

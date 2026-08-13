@@ -8,7 +8,7 @@ from apps.accounts.models import User
 from apps.notifications.models import Notification
 from apps.notifications.services import notify
 
-from .models import Friendship
+from .models import Friendship, UserBlock
 
 
 @transaction.atomic
@@ -19,6 +19,8 @@ def send_friend_request(*, requester: User, email: str) -> Friendship:
         raise ValidationError("No account exists with that email address.") from exc
     if requester.pk == addressee.pk:
         raise ValidationError("You cannot send a friend request to yourself.")
+    if UserBlock.objects.filter(Q(blocker=requester, blocked=addressee) | Q(blocker=addressee, blocked=requester)).exists():
+        raise PermissionDenied("Friend requests are unavailable between these accounts.")
 
     existing = Friendship.objects.filter(
         Q(requester=requester, addressee=addressee) | Q(requester=addressee, addressee=requester)

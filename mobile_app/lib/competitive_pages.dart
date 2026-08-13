@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:chess/chess.dart' as chess;
 
 class CompetitiveHubPage extends StatefulWidget {
   const CompetitiveHubPage(
@@ -122,12 +123,36 @@ class _PuzzlePlay extends StatefulWidget {
 }
 
 class _PuzzlePlayState extends State<_PuzzlePlay> {
-  final move = TextEditingController();
-  String result = 'Enter a move in UCI notation, for example e2e4.';
-  @override
-  void dispose() {
-    move.dispose();
-    super.dispose();
+  late String fen = widget.puzzle['fen'].toString();
+  String? selected;
+  String result = 'Tap a piece, then tap its destination.';
+
+  Future<void> tap(String square) async {
+    final board = chess.Chess.fromFEN(fen);
+    if (selected == null) {
+      final piece = board.get(square);
+      if (piece != null && piece.color == board.turn) {
+        setState(() => selected = square);
+      }
+      return;
+    }
+    var uci = '$selected$square';
+    final piece = board.get(selected!);
+    if (piece?.type.name == 'p' &&
+        (square.endsWith('8') || square.endsWith('1'))) {
+      uci += 'q';
+    }
+    final response = await widget.play(widget.puzzle['id'] as int, uci);
+    if (!mounted) return;
+    setState(() {
+      selected = null;
+      fen = response['fen']?.toString() ?? fen;
+      result = response['correct'] == true
+          ? (response['status'] == 'solved'
+              ? 'Solved!'
+              : 'Correct — opponent replied ${response['reply']}')
+          : 'That is not the puzzle move. Try again.';
+    });
   }
 
   @override
@@ -137,24 +162,47 @@ class _PuzzlePlayState extends State<_PuzzlePlay> {
           padding: const EdgeInsets.all(20),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            SelectableText('Position: ${widget.puzzle['fen']}'),
-            const SizedBox(height: 16),
-            TextField(
-                controller: move,
-                decoration: const InputDecoration(labelText: 'Your move')),
-            const SizedBox(height: 12),
-            FilledButton(
-                onPressed: () async {
-                  final r =
-                      await widget.play(widget.puzzle['id'] as int, move.text);
-                  setState(() => result = r['correct'] == true
-                      ? (r['status'] == 'solved'
-                          ? 'Solved!'
-                          : 'Correct. Reply: ${r['reply']}')
-                      : 'Try again.');
-                },
-                child: const Text('Play move')),
+            AspectRatio(
+                aspectRatio: 1,
+                child: GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 8),
+                    itemCount: 64,
+                    itemBuilder: (_, index) {
+                      final file = index % 8;
+                      final rank = 8 - index ~/ 8;
+                      final square = '${String.fromCharCode(97 + file)}$rank';
+                      final piece = chess.Chess.fromFEN(fen).get(square);
+                      final dark = (file + rank).isOdd;
+                      return InkWell(
+                          onTap: () => tap(square),
+                          child: Container(
+                              color: selected == square
+                                  ? Colors.amber
+                                  : (dark
+                                      ? const Color(0xff769656)
+                                      : const Color(0xffeeeed2)),
+                              alignment: Alignment.center,
+                              child: Text(
+                                  _piece(piece?.type.name,
+                                      piece?.color == chess.Color.WHITE),
+                                  style: const TextStyle(fontSize: 32))));
+                    })),
             const SizedBox(height: 16),
             Text(result)
           ])));
+
+  String _piece(String? type, bool white) {
+    const glyphs = {
+      'p': ['♟', '♙'],
+      'n': ['♞', '♘'],
+      'b': ['♝', '♗'],
+      'r': ['♜', '♖'],
+      'q': ['♛', '♕'],
+      'k': ['♚', '♔']
+    };
+    return type == null ? '' : glyphs[type]![white ? 1 : 0];
+  }
 }

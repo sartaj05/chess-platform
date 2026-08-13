@@ -12,6 +12,7 @@ import 'notification_page.dart';
 import 'matchmaking_page.dart';
 import 'competitive_pages.dart';
 import 'push_service.dart';
+import 'social_pages.dart';
 
 enum PlayerSide { white, black, random }
 
@@ -263,6 +264,17 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
               puzzles: _authenticatedApi.puzzles,
               playPuzzle: _authenticatedApi.playPuzzle)));
 
+  Future<void> _openSocial() async =>
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => SocialPage(
+              load: _authenticatedApi.social,
+              action: _authenticatedApi.socialAction)));
+  Future<void> _openTournaments() async =>
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => TournamentPage(
+              load: _authenticatedApi.tournaments,
+              action: _authenticatedApi.tournamentAction)));
+
   Future<String?> _stockfishMove(String fen, int level) =>
       _authenticatedApi.stockfishMove(fen, level);
 
@@ -287,11 +299,38 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
             )));
   }
 
+  Future<void> _createDailyGame() async {
+    await _perform((api) async {
+      final room =
+          await api.createDailyRoom(displayName: _name.text, side: _side.name);
+      if (!mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => ShareCodePage(
+              serverUrl: _server.text,
+              roomCode: room['code'] as String,
+              displayName: _name.text,
+              token: _token,
+              cookie: api.cookie,
+              session: _session,
+              soundsEnabled: widget.soundsEnabled)));
+    });
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
           title: const Text('Chess Platform'),
           actions: [
+            if (_signedIn)
+              IconButton(
+                  onPressed: _openSocial,
+                  tooltip: 'Friends and chat',
+                  icon: const Icon(Icons.people_outline)),
+            if (_signedIn)
+              IconButton(
+                  onPressed: _openTournaments,
+                  tooltip: 'Tournaments',
+                  icon: const Icon(Icons.workspace_premium_outlined)),
             if (_signedIn)
               IconButton(
                   onPressed: _openCompetitive,
@@ -489,6 +528,11 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                 subtitle: 'Create a game and share its code',
                 onTap: _busy ? null : _createOnlineGame,
               ),
+              _PlayCard(
+                  icon: Icons.calendar_today_outlined,
+                  title: 'Daily Chess',
+                  subtitle: 'A relaxed 24-hour correspondence clock',
+                  onTap: _signedIn && !_busy ? _createDailyGame : null),
               const SizedBox(height: 12),
               TextField(
                 controller: _code,
@@ -922,6 +966,21 @@ class _MobileApi {
       Map<String, dynamic>.from(await _request(
           'POST', 'api/accounts/puzzles/$id/play/', {'move': move}) as Map);
 
+  Future<Map<String, dynamic>> social() async =>
+      Map<String, dynamic>.from(await _request('GET', 'api/social/') as Map);
+  Future<void> socialAction(Map<String, dynamic> values) async {
+    await _request('POST', 'api/social/', values);
+  }
+
+  Future<List<Map<String, dynamic>>> tournaments() async {
+    final data = await _request('GET', 'api/tournaments/') as List;
+    return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<void> tournamentAction(int id, String action) async {
+    await _request('POST', 'api/tournaments/$id/', {'action': action});
+  }
+
   Future<String?> stockfishMove(String fen, int level) async {
     final data = await _request(
         'POST', 'api/stockfish/best-move/', {'fen': fen, 'level': level});
@@ -999,6 +1058,21 @@ class _MobileApi {
     });
     return Map<String, dynamic>.from(data as Map);
   }
+
+  Future<Map<String, dynamic>> createDailyRoom(
+          {required String displayName, required String side}) async =>
+      Map<String, dynamic>.from(await _request('POST', 'api/rooms/', {
+        'name': 'Daily game',
+        'host_display_name': displayName,
+        'mode': 'online',
+        'visibility': 'private',
+        'color_preference': side,
+        'clock_initial_minutes': 1440,
+        'increment_seconds': 0,
+        'rated': false,
+        'allow_guests': false,
+        'spectator_enabled': true
+      }) as Map);
 
   Future<void> joinRoom(String code, String name) =>
       _request('POST', 'api/rooms/$code/join/', {'display_name': name});
