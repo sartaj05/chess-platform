@@ -40,10 +40,21 @@ class OfflineSyncService {
           'metadata': game.metadata,
         }));
         final response = await request.close();
-        await response.drain();
+        final responseText = await utf8.decodeStream(response);
         if (response.statusCode >= 200 && response.statusCode < 300) {
           await _repository.markSynced(game.id);
           synced++;
+        } else if (response.statusCode == HttpStatus.conflict) {
+          final details = responseText.isEmpty
+              ? <String, dynamic>{'detail': 'Offline sync conflict.'}
+              : Map<String, dynamic>.from(jsonDecode(responseText) as Map);
+          await _repository.markConflict(game.id, details);
+          return OfflineSyncResult(
+              synced: synced,
+              pending: pending.length - synced,
+              conflicts: [OfflineSyncConflict(game: game, details: details)],
+              message:
+                  'A game changed on both device and server. Choose which copy to keep.');
         } else {
           return OfflineSyncResult(
               synced: synced,
@@ -63,13 +74,34 @@ class OfflineSyncService {
     return OfflineSyncResult(
         synced: synced, pending: 0, message: 'Offline games synced.');
   }
+
+  Future<void> resolve(OfflineSyncConflict conflict,
+      OfflineConflictResolution resolution) async {
+    if (resolution == OfflineConflictResolution.keepServer) {
+      await _repository.keepServerVersion(conflict.game.id);
+    } else {
+      await _repository.uploadAsCopy(conflict.game);
+    }
+  }
+}
+
+enum OfflineConflictResolution { keepServer, uploadDeviceAsCopy }
+
+class OfflineSyncConflict {
+  const OfflineSyncConflict({required this.game, required this.details});
+  final OfflineGame game;
+  final Map<String, dynamic> details;
 }
 
 class OfflineSyncResult {
   const OfflineSyncResult(
-      {required this.synced, required this.pending, required this.message});
+      {required this.synced,
+      required this.pending,
+      required this.message,
+      this.conflicts = const []});
 
   final int synced;
   final int pending;
   final String message;
+  final List<OfflineSyncConflict> conflicts;
 }

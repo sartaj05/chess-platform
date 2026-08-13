@@ -23,6 +23,8 @@ Highlights include live clocks and reconnection, bullet/blitz/rapid ratings, gam
 - Complete Play Console Data safety for account data, gameplay, social content, diagnostics, and device tokens.
 - Test notification permission, cold-start notification navigation, custom/HTTPS deep links, large text, TalkBack, landscape, and 7–10 inch screens.
 - Build an Android App Bundle with the protected upload key for Play Console; retain the signed APK for direct installs.
+- Run the Android emulator integration workflow for every release and the self-hosted physical-phone job before promoting from internal to production.
+- Promote the same tested artifact through internal, alpha, beta, and production tracks; never reuse or decrease a version code.
 
 ## Screenshot plan
 

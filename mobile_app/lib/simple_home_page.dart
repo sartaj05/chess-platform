@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'l10n/app_localizations.dart';
 
 import 'offline_board_page.dart';
 import 'mobile_session.dart';
@@ -24,12 +25,16 @@ class SimpleHomePage extends StatefulWidget {
       {super.key,
       required this.themeMode,
       required this.soundsEnabled,
+      required this.locale,
       required this.onThemeChanged,
-      required this.onSoundsChanged});
+      required this.onSoundsChanged,
+      required this.onLocaleChanged});
   final ThemeMode themeMode;
   final bool soundsEnabled;
+  final Locale? locale;
   final ValueChanged<ThemeMode> onThemeChanged;
   final ValueChanged<bool> onSoundsChanged;
+  final ValueChanged<Locale?> onLocaleChanged;
 
   @override
   State<SimpleHomePage> createState() => _SimpleHomePageState();
@@ -367,7 +372,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
-          title: const Text('Chess Platform'),
+          title: Text(AppLocalizations.of(context)!.appTitle),
           actions: [
             if (_signedIn)
               IconButton(
@@ -454,7 +459,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                   ),
                   const SizedBox(height: 22),
                   if (!_signedIn) ...[
-                    Text('Login',
+                    Text(AppLocalizations.of(context)!.login,
                         style: Theme.of(context).textTheme.headlineSmall),
                     TextField(
                       controller: _email,
@@ -469,11 +474,11 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                     const SizedBox(height: 8),
                     FilledButton(
                       onPressed: _busy ? null : _login,
-                      child: const Text('Login'),
+                      child: Text(AppLocalizations.of(context)!.login),
                     ),
                     OutlinedButton(
                       onPressed: _busy ? null : _openRegistration,
-                      child: const Text('Create Account'),
+                      child: Text(AppLocalizations.of(context)!.createAccount),
                     ),
                     const Center(child: Text('or continue as guest')),
                     const Divider(height: 32),
@@ -486,7 +491,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Text('Choose your side',
+                  Text(AppLocalizations.of(context)!.chooseSide,
                       style: Theme.of(context).textTheme.titleLarge),
                   const SizedBox(height: 8),
                   SegmentedButton<PlayerSide>(
@@ -520,7 +525,9 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                    const Text('Bot Challenge',
+                                    Text(
+                                        AppLocalizations.of(context)!
+                                            .playWithBot,
                                         style: TextStyle(
                                             fontSize: 17,
                                             fontWeight: FontWeight.bold)),
@@ -573,7 +580,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                   ),
                   _PlayCard(
                     icon: Icons.people_outline,
-                    title: 'Play with Friend',
+                    title: AppLocalizations.of(context)!.playWithFriend,
                     subtitle: 'Two players on this device',
                     onTap: () => Navigator.of(context).push(MaterialPageRoute(
                       builder: (_) => OfflineBoardPage(
@@ -607,8 +614,32 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                     child: const Text('Join with Code'),
                   ),
                   ExpansionTile(
-                    title: const Text('App settings'),
+                    title: Text(AppLocalizations.of(context)!.appSettings),
                     children: [
+                      DropdownButtonFormField<String>(
+                        initialValue: widget.locale?.languageCode ?? '',
+                        decoration: InputDecoration(
+                            labelText: AppLocalizations.of(context)!.language),
+                        items: [
+                          DropdownMenuItem(
+                              value: '',
+                              child: Text(AppLocalizations.of(context)!
+                                  .systemLanguage)),
+                          DropdownMenuItem(
+                              value: 'en',
+                              child:
+                                  Text(AppLocalizations.of(context)!.english)),
+                          DropdownMenuItem(
+                              value: 'hi',
+                              child: Text(AppLocalizations.of(context)!.hindi)),
+                          DropdownMenuItem(
+                              value: 'es',
+                              child:
+                                  Text(AppLocalizations.of(context)!.spanish)),
+                        ],
+                        onChanged: (code) => widget.onLocaleChanged(
+                            code == null || code.isEmpty ? null : Locale(code)),
+                      ),
                       DropdownButtonFormField<ThemeMode>(
                           initialValue: widget.themeMode,
                           decoration: const InputDecoration(labelText: 'Theme'),

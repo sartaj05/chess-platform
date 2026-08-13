@@ -1,0 +1,14 @@
+{
+  "appTitle": "शतरंज मंच",
+  "login": "लॉग इन",
+  "createAccount": "खाता बनाएँ",
+  "chooseSide": "अपना पक्ष चुनें",
+  "playWithBot": "बॉट के साथ खेलें",
+  "playWithFriend": "मित्र के साथ खेलें",
+  "appSettings": "ऐप सेटिंग्स",
+  "language": "भाषा",
+  "systemLanguage": "सिस्टम भाषा",
+  "english": "अंग्रेज़ी",
+  "hindi": "हिन्दी",
+  "spanish": "स्पेनिश"
+}

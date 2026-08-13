@@ -1,0 +1,14 @@
+{
+  "appTitle": "Plataforma de Ajedrez",
+  "login": "Iniciar sesión",
+  "createAccount": "Crear cuenta",
+  "chooseSide": "Elige tu lado",
+  "playWithBot": "Jugar contra el bot",
+  "playWithFriend": "Jugar con un amigo",
+  "appSettings": "Ajustes de la aplicación",
+  "language": "Idioma",
+  "systemLanguage": "Idioma del sistema",
+  "english": "Inglés",
+  "hindi": "Hindi",
+  "spanish": "Español"
+}

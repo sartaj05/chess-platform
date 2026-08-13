@@ -1,0 +1,59 @@
+name: Play Store release
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: Play Store track
+        required: true
+        default: internal
+        type: choice
+        options: [internal, alpha, beta, production]
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    environment: play-${{ inputs.track }}
+    defaults:
+      run:
+        working-directory: mobile_app
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: subosito/flutter-action@v2
+        with: {channel: stable, cache: true}
+      - run: flutter pub get
+      - name: Restore protected signing files
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_PROPERTIES: ${{ secrets.ANDROID_KEY_PROPERTIES }}
+        run: |
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > android/app/release-keystore.jks
+          printf '%s' "$KEY_PROPERTIES" > android/key.properties
+      - name: Derive immutable build version
+        id: version
+        run: |
+          echo "code=$(git rev-list --count HEAD)" >> "$GITHUB_OUTPUT"
+          echo "name=$(git describe --tags --always | sed 's/^v//;s/-/./g')" >> "$GITHUB_OUTPUT"
+      - run: flutter analyze
+      - run: flutter test
+      - name: Build signed app bundle
+        run: >-
+          flutter build appbundle --release
+          --build-number=${{ steps.version.outputs.code }}
+          --build-name=${{ steps.version.outputs.name }}
+          --dart-define=CHESS_SERVER_URL=${{ vars.CHESS_SERVER_URL }}
+          --dart-define=FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}
+          --dart-define=FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}
+          --dart-define=FIREBASE_PROJECT_ID=${{ secrets.FIREBASE_PROJECT_ID }}
+          --dart-define=FIREBASE_SENDER_ID=${{ secrets.FIREBASE_SENDER_ID }}
+      - uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.chessplatform.mobile
+          releaseFiles: mobile_app/build/app/outputs/bundle/release/app-release.aab
+          track: ${{ inputs.track }}
+          status: completed

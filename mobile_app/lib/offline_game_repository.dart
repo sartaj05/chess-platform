@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
@@ -13,7 +14,7 @@ class OfflineGameRepository {
     final directory = await getApplicationDocumentsDirectory();
     _database = await openDatabase(
       join(directory.path, 'chess_platform_offline.db'),
-      version: 1,
+      version: 2,
       onCreate: (db, _) => db.execute('''
         CREATE TABLE offline_games (
           id TEXT PRIMARY KEY,
@@ -24,9 +25,16 @@ class OfflineGameRepository {
           created_at TEXT NOT NULL,
           updated_at TEXT NOT NULL,
           synced_at TEXT,
-          metadata TEXT NOT NULL
+          metadata TEXT NOT NULL,
+          conflict_details TEXT
         )
       '''),
+      onUpgrade: (db, oldVersion, _) async {
+        if (oldVersion < 2) {
+          await db.execute(
+              'ALTER TABLE offline_games ADD COLUMN conflict_details TEXT');
+        }
+      },
     );
     return _database!;
   }
@@ -49,6 +57,39 @@ class OfflineGameRepository {
     await db.update('offline_games',
         {'synced_at': DateTime.now().toUtc().toIso8601String()},
         where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> markConflict(String id, Map<String, dynamic> details) async {
+    final db = await _db;
+    await db.update('offline_games', {'conflict_details': jsonEncode(details)},
+        where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<void> keepServerVersion(String id) => markSynced(id);
+
+  Future<void> uploadAsCopy(OfflineGame game) async {
+    await save(OfflineGame(
+      id: _newUuid(),
+      initialFen: game.initialFen,
+      currentFen: game.currentFen,
+      pgn: game.pgn,
+      mode: game.mode,
+      createdAt: game.createdAt,
+      updatedAt: DateTime.now().toUtc(),
+      metadata: {...game.metadata, 'conflict_copy_of': game.id},
+    ));
+    await markSynced(game.id);
+  }
+
+  String _newUuid() {
+    final random = Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final hex =
+        bytes.map((value) => value.toRadixString(16).padLeft(2, '0')).join();
+    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-'
+        '${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
   }
 }
 

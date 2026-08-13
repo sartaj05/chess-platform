@@ -1,0 +1,14 @@
+{
+  "appTitle": "Chess Platform",
+  "login": "Login",
+  "createAccount": "Create Account",
+  "chooseSide": "Choose your side",
+  "playWithBot": "Play with Bot",
+  "playWithFriend": "Play with Friend",
+  "appSettings": "App settings",
+  "language": "Language",
+  "systemLanguage": "System language",
+  "english": "English",
+  "hindi": "Hindi",
+  "spanish": "Spanish"
+}

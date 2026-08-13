@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'l10n/app_localizations.dart';
 
 import 'offline_board_page.dart';
 import 'simple_home_page.dart';
@@ -27,6 +29,7 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
   final _preferences = AppPreferences();
   ThemeMode _themeMode = ThemeMode.system;
   bool _soundsEnabled = true;
+  Locale? _locale;
 
   @override
   void initState() {
@@ -37,10 +40,12 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
   Future<void> _restore() async {
     final theme = await _preferences.loadTheme();
     final sounds = await _preferences.loadSounds();
+    final locale = await _preferences.loadLocale();
     if (mounted) {
       setState(() {
         _themeMode = theme;
         _soundsEnabled = sounds;
+        _locale = locale;
       });
     }
   }
@@ -55,9 +60,22 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
     setState(() => _soundsEnabled = enabled);
   }
 
+  Future<void> _setLocale(Locale? locale) async {
+    await _preferences.saveLocale(locale);
+    setState(() => _locale = locale);
+  }
+
   @override
   Widget build(BuildContext context) => MaterialApp(
         title: 'Chess Platform',
+        locale: _locale,
+        supportedLocales: AppLocalizations.supportedLocales,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
             seedColor: const Color(0xff24563b),
@@ -101,8 +119,10 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
         home: SimpleHomePage(
             themeMode: _themeMode,
             soundsEnabled: _soundsEnabled,
+            locale: _locale,
             onThemeChanged: _setTheme,
-            onSoundsChanged: _setSounds),
+            onSoundsChanged: _setSounds,
+            onLocaleChanged: _setLocale),
       );
 }
 

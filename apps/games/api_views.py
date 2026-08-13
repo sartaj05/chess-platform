@@ -62,6 +62,20 @@ class GameViewSet(viewsets.ReadOnlyModelViewSet):
             offline_sync_id=sync_uuid,
         ).first()
         if existing:
+            if (
+                existing.initial_fen != data["initial_fen"]
+                or existing.current_fen != data["current_fen"]
+                or existing.cached_pgn != data["pgn"]
+            ):
+                return Response(
+                    {
+                        "detail": "Offline sync conflict.",
+                        "code": "offline_sync_conflict",
+                        "resolution": "Keep the server game or upload the device game as a copy.",
+                        "server_game": serialize_game(existing, request=request),
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
             return Response({"game": serialize_game(existing, request=request), "created": False})
         board_from_fen(data["initial_fen"])
         current = board_from_fen(data["current_fen"])

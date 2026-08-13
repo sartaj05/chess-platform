@@ -26,7 +26,7 @@ void main() {
       scrollable: find.byType(Scrollable).first,
     );
     expect(find.text('Choose your side'), findsOneWidget);
-    expect(find.text('Bot Challenge'), findsOneWidget);
+    expect(find.text('Play with Bot'), findsOneWidget);
     expect(find.text('Play with Friend'), findsOneWidget);
 
     await tester.tap(find.text('Play with Friend'));

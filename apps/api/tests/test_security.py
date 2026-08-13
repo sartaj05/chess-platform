@@ -89,6 +89,11 @@ def test_offline_sync_requires_login_and_is_scoped_to_owner(client):
     assert game.metadata["mode"] == "same_device"
     assert Game.objects.filter(white_user=user, offline_sync_id=sync_id).count() == 1
 
+    conflicting = {**payload, "current_fen": "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1", "pgn": "1. e4"}
+    conflict_response = client.post(url, conflicting, content_type="application/json")
+    assert conflict_response.status_code == 409
+    assert conflict_response.json()["code"] == "offline_sync_conflict"
+
 
 @pytest.mark.django_db
 def test_game_api_hides_private_and_local_games_from_other_callers(client):
