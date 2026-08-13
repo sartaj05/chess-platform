@@ -17,11 +17,17 @@ services:
       - static_volume:/app/staticfiles
       - media_volume:/app/media
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   celery_worker:
     env_file: ${PRODUCTION_ENV_FILE:-.env.production}
     volumes:
       - media_volume:/app/media
+      - ${FIREBASE_CREDENTIALS_HOST_PATH:-./secrets/firebase-service-account.json}:/run/secrets/firebase-service-account.json:ro
     restart: unless-stopped
 
   celery_beat:
@@ -31,3 +37,4 @@ services:
 
   nginx:
     restart: unless-stopped
+    security_opt: ["no-new-privileges:true"]

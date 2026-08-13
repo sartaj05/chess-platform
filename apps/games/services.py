@@ -142,25 +142,62 @@ def apply_elo_ratings(game: Any) -> None:
         return
     white = game.white_user
     black = game.black_user
-    white_before, black_before = white.rating, black.rating
+    category = getattr(getattr(game, "room", None), "time_category", "blitz")
+    if category not in {"bullet", "blitz", "rapid"}:
+        category = "rapid"
+    rating_field = f"{category}_rating"
+    games_field = f"{category}_games"
+    white_before, black_before = getattr(white, rating_field), getattr(black, rating_field)
     white_score = 1.0 if game.result == game.Result.WHITE_WIN else 0.0 if game.result == game.Result.BLACK_WIN else 0.5
     expected_white = 1 / (1 + 10 ** ((black_before - white_before) / 400))
     white_change = round(32 * (white_score - expected_white))
     black_change = -white_change
-    white.rating = max(100, white_before + white_change)
-    black.rating = max(100, black_before + black_change)
-    white.peak_rating = max(white.peak_rating, white.rating)
-    black.peak_rating = max(black.peak_rating, black.rating)
+    setattr(white, rating_field, max(100, white_before + white_change))
+    setattr(black, rating_field, max(100, black_before + black_change))
+    setattr(white, games_field, getattr(white, games_field) + 1)
+    setattr(black, games_field, getattr(black, games_field) + 1)
+    # Keep the legacy rating aligned with the player's most recently used pool.
+    white.rating = getattr(white, rating_field)
+    black.rating = getattr(black, rating_field)
+    white.peak_rating = max(white.peak_rating, getattr(white, rating_field))
+    black.peak_rating = max(black.peak_rating, getattr(black, rating_field))
     white.rated_games += 1
     black.rated_games += 1
-    white.save(update_fields=["rating", "peak_rating", "rated_games"])
-    black.save(update_fields=["rating", "peak_rating", "rated_games"])
+    white.save(update_fields=["rating", "peak_rating", "rated_games", rating_field, games_field])
+    black.save(update_fields=["rating", "peak_rating", "rated_games", rating_field, games_field])
     game.white_rating_before = white_before
     game.black_rating_before = black_before
     game.white_rating_change = white_change
     game.black_rating_change = black_change
     game.ratings_applied = True
     game.save(update_fields=["white_rating_before", "black_rating_before", "white_rating_change", "black_rating_change", "ratings_applied", "updated_at"])
+
+
+@transaction.atomic
+def request_rematch(*, game: Any, actor: GameActor):
+    """Record a rematch offer and create a color-swapped game when both players accept."""
+    from apps.games.models import Game
+    if game.status not in {Game.Status.FINISHED, Game.Status.ABORTED} or actor.color not in {"white", "black"}:
+        raise ValidationError("Rematch is available after the game finishes.")
+    metadata = dict(game.metadata or {})
+    offers = set(metadata.get("rematch_offers", []))
+    offers.add(actor.color)
+    metadata["rematch_offers"] = sorted(offers)
+    if offers == {"white", "black"} and not metadata.get("rematch_game_id"):
+        rematch = Game.objects.create(
+            rated=game.rated, allow_spectators=game.allow_spectators,
+            white_user=game.black_user, black_user=game.white_user,
+            white_guest_key=game.black_guest_key, black_guest_key=game.white_guest_key,
+            white_display_name=game.black_display_name, black_display_name=game.white_display_name,
+            clock_initial_ms=game.clock_initial_ms, increment_ms=game.increment_ms,
+            white_time_ms=game.clock_initial_ms, black_time_ms=game.clock_initial_ms,
+            metadata={"rematch_of": str(game.pk), "time_category": (game.metadata or {}).get("time_category", "blitz")},
+        )
+        rematch.start()
+        metadata["rematch_game_id"] = str(rematch.pk)
+    game.metadata = metadata
+    game.save(update_fields=["metadata", "updated_at"])
+    return game
 
 
 def actor_from_request(request: HttpRequest, game: Any) -> GameActor:
@@ -959,6 +996,8 @@ def serialize_game(
         "bot_level": metadata.get("bot_level"),
         "player_color": metadata.get("player_color"),
         "level_unlocked": metadata.get("level_unlocked"),
+        "rematch_offers": metadata.get("rematch_offers", []),
+        "rematch_game_id": metadata.get("rematch_game_id"),
         "ratings": {
             "white_before": game.white_rating_before,
             "black_before": game.black_rating_before,

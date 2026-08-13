@@ -69,4 +69,13 @@ class LeaderboardView(ListView):
     paginate_by = 50
 
     def get_queryset(self):
-        return User.objects.filter(is_active=True).order_by("-rating", "-rated_games", "display_name")
+        category = self.request.GET.get("category", "blitz")
+        if category not in {"bullet", "blitz", "rapid"}:
+            category = "blitz"
+        self.category = category
+        return User.objects.filter(is_active=True).order_by(f"-{category}_rating", f"-{category}_games", "display_name")
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["category"] = self.category
+        return context

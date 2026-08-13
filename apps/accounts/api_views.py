@@ -7,6 +7,51 @@ from .serializers import MobileEmailVerificationSerializer, MobileRegistrationSe
 from .tasks import send_email_verification
 
 
+class LeaderboardAPIView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        category = request.query_params.get("category", "blitz")
+        if category not in {"bullet", "blitz", "rapid"}:
+            category = "blitz"
+        players = User.objects.filter(is_active=True).order_by(f"-{category}_rating", f"-{category}_games")[:100]
+        return Response({"category": category, "results": UserSerializer(players, many=True, context={"request": request}).data})
+
+
+class PublicProfileAPIView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request, pk):
+        user = User.objects.filter(pk=pk, is_active=True).first()
+        if user is None:
+            return Response({"detail": "Player not found."}, status=404)
+        return Response(UserSerializer(user, context={"request": request}).data)
+
+
+class PuzzleListAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from apps.puzzles.models import Puzzle
+        rows = Puzzle.objects.filter(is_published=True).order_by("rating")[:100]
+        return Response([{"id": row.pk, "title": row.title, "fen": row.initial_fen, "rating": row.rating, "difficulty": row.difficulty, "themes": row.themes} for row in rows])
+
+
+class PuzzlePlayAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, pk):
+        from apps.puzzles.models import Puzzle
+        from apps.puzzles.services import get_attempt, submit_move
+        puzzle = Puzzle.objects.filter(pk=pk, is_published=True).first()
+        if puzzle is None:
+            return Response({"detail": "Puzzle not found."}, status=404)
+        attempt = get_attempt(puzzle=puzzle, user=request.user)
+        correct, reply = submit_move(attempt=attempt, move_text=str(request.data.get("move", "")))
+        attempt.refresh_from_db()
+        return Response({"correct": correct, "reply": reply, "fen": attempt.current_fen, "status": attempt.status, "mistakes": attempt.mistakes})
+
+
 class MeAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 

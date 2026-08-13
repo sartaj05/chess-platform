@@ -27,6 +27,8 @@ class UserSerializer(serializers.ModelSerializer):
             "rating",
             "peak_rating",
             "rated_games",
+            "bullet_rating", "blitz_rating", "rapid_rating",
+            "bullet_games", "blitz_games", "rapid_games",
         )
         read_only_fields = (
             "id",
@@ -39,6 +41,8 @@ class UserSerializer(serializers.ModelSerializer):
             "rating",
             "peak_rating",
             "rated_games",
+            "bullet_rating", "blitz_rating", "rapid_rating",
+            "bullet_games", "blitz_games", "rapid_games",
         )
 
     def get_avatar_url(self, obj) -> str | None:

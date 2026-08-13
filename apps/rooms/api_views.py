@@ -97,11 +97,15 @@ class MatchmakingAPIView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request):
-        room, matched = enter_matchmaking(request=request)
+        room, matched = enter_matchmaking(request=request, time_category=request.data.get("category", "blitz"))
         return response.Response({"matched": matched, "room": RoomSerializer(room, context={"request": request}).data})
 
     def get(self, request):
-        room = Room.objects.filter(rated=True, metadata__matchmaking=True, participants__user=request.user).distinct().order_by("-created_at").first()
+        rooms = Room.objects.filter(rated=True, metadata__matchmaking=True, participants__user=request.user)
+        category = request.query_params.get("category")
+        if category in {"bullet", "blitz", "rapid"}:
+            rooms = rooms.filter(time_category=category)
+        room = rooms.distinct().order_by("-created_at").first()
         if room is None:
             return response.Response({"queued": False, "matched": False, "room": None})
         matched = room.status in {Room.Status.READY, Room.Status.IN_PROGRESS}

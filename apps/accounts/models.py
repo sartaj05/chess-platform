@@ -36,6 +36,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     rating = models.PositiveIntegerField(default=1200, db_index=True)
     peak_rating = models.PositiveIntegerField(default=1200)
     rated_games = models.PositiveIntegerField(default=0)
+    bullet_rating = models.PositiveIntegerField(default=1200, db_index=True)
+    blitz_rating = models.PositiveIntegerField(default=1200, db_index=True)
+    rapid_rating = models.PositiveIntegerField(default=1200, db_index=True)
+    bullet_games = models.PositiveIntegerField(default=0)
+    blitz_games = models.PositiveIntegerField(default=0)
+    rapid_games = models.PositiveIntegerField(default=0)
     objects = UserManager()
     EMAIL_FIELD = "email"
     USERNAME_FIELD = "email"
@@ -63,6 +69,8 @@ class User(AbstractBaseUser, PermissionsMixin):
             self.email = self.email.lower().strip()
         if not self.display_name and self.email:
             self.display_name = self.email.split("@")[0]
+        if self._state.adding and self.rating != 1200 and self.bullet_rating == self.blitz_rating == self.rapid_rating == 1200:
+            self.bullet_rating = self.blitz_rating = self.rapid_rating = self.rating
         super().save(*args, **kwargs)
 
     def ensure_totp_secret(self) -> str:

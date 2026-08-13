@@ -32,6 +32,7 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
   Timer? _reconnectTimer;
   late Map<String, dynamic> _game;
   String? _selected;
+  String? _premove;
   String? _error;
   bool _connecting = true;
   bool _disposed = false;
@@ -84,7 +85,8 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
         _connecting = false;
         _error = null;
       });
-      socket.listen(_receive, onDone: _connectionLost, onError: (_) => _connectionLost());
+      socket.listen(_receive,
+          onDone: _connectionLost, onError: (_) => _connectionLost());
     } catch (_) {
       _connectionLost();
     }
@@ -95,7 +97,8 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
     if (data['game'] is Map) {
       final previousPly = (_game['ply_count'] as num?)?.toInt() ?? 0;
       final incoming = Map<String, dynamic>.from(data['game'] as Map);
-      if (widget.soundsEnabled && ((incoming['ply_count'] as num?)?.toInt() ?? 0) > previousPly) {
+      if (widget.soundsEnabled &&
+          ((incoming['ply_count'] as num?)?.toInt() ?? 0) > previousPly) {
         SystemSound.play(SystemSoundType.click);
       }
       setState(() {
@@ -104,8 +107,10 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
         _selected = null;
         _error = null;
       });
+      _playQueuedPremove();
     } else if (data['type'] == 'error') {
-      setState(() => _error = data['message']?.toString() ?? 'Game action failed.');
+      setState(
+          () => _error = data['message']?.toString() ?? 'Game action failed.');
     }
   }
 
@@ -118,34 +123,67 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
     _reconnectTimer = Timer(delay, _connect);
   }
 
-  void _tapSquare(String square) {
-    if (!_active || _socket == null || _viewerColor != _game['turn']) return;
+  Future<void> _tapSquare(String square) async {
+    if (!_active || _socket == null || _viewerColor.isEmpty) return;
     final board = chess.Chess.fromFEN(_game['fen'] as String);
     if (_selected == null) {
       final piece = board.get(square);
       final viewerIsWhite = _viewerColor == 'white';
-      if (piece != null && (piece.color == chess.Color.WHITE) == viewerIsWhite) {
+      if (piece != null &&
+          (piece.color == chess.Color.WHITE) == viewerIsWhite) {
         setState(() => _selected = square);
       }
       return;
     }
-    final uci = '$_selected$square${_promotionSuffix(board, _selected!, square)}';
+    var suffix = '';
+    final movingPiece = board.get(_selected!);
+    if (movingPiece?.type.name == 'p' &&
+        (square.endsWith('8') || square.endsWith('1'))) {
+      suffix = await _choosePromotion() ?? '';
+      if (suffix.isEmpty) return;
+    }
+    final uci = '$_selected$square$suffix';
     final legal = ((_game['legal_moves'] as List?) ?? const []).map((move) {
       if (move is Map) return move['uci']?.toString() ?? '';
       return move.toString();
     });
-    if (legal.contains(uci) || legal.contains('$_selected$square')) {
+    if (_viewerColor != _game['turn']) {
+      setState(() {
+        _premove = uci;
+        _selected = null;
+      });
+    } else if (legal.contains(uci) || legal.contains('$_selected$square')) {
       _send('game.move', {'uci': uci, 'client_lag_ms': 0});
-      setState(() => _selected = null);
+      setState(() {
+        _selected = null;
+        _premove = null;
+      });
     } else {
       setState(() => _selected = square);
     }
   }
 
-  String _promotionSuffix(chess.Chess board, String from, String to) {
-    final piece = board.get(from);
-    if (piece?.type.name == 'p' && (to.endsWith('8') || to.endsWith('1'))) return 'q';
-    return '';
+  Future<String?> _choosePromotion() => showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+            title: const Text('Promote pawn to'),
+            content: Wrap(spacing: 8, children: const [
+              _PromotionButton('Queen', 'q'),
+              _PromotionButton('Rook', 'r'),
+              _PromotionButton('Bishop', 'b'),
+              _PromotionButton('Knight', 'n'),
+            ]),
+          ));
+
+  void _playQueuedPremove() {
+    final move = _premove;
+    if (move == null || _viewerColor != _game['turn']) return;
+    final legal = ((_game['legal_moves'] as List?) ?? const [])
+        .map((item) => item is Map ? item['uci']?.toString() : item.toString());
+    if (legal.contains(move)) {
+      _send('game.move', {'uci': move, 'client_lag_ms': 0});
+    }
+    if (mounted) setState(() => _premove = null);
   }
 
   void _send(String type, [Map<String, dynamic> values = const {}]) {
@@ -156,7 +194,8 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
     final player = (_game[color] as Map?) ?? const {};
     var milliseconds = (player['time_ms'] as num?)?.toInt() ?? 0;
     if (_active && _game['turn'] == color) {
-      milliseconds -= DateTime.now().difference(_stateReceivedAt).inMilliseconds;
+      milliseconds -=
+          DateTime.now().difference(_stateReceivedAt).inMilliseconds;
     }
     return milliseconds.clamp(0, 1 << 31);
   }
@@ -196,27 +235,56 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
         child: ListView(
           padding: const EdgeInsets.all(12),
           children: [
-            _PlayerBar(name: ((_game[top] as Map?)?['name'] ?? top).toString(), clock: _clock(_timeFor(top))),
+            _PlayerBar(
+                name: ((_game[top] as Map?)?['name'] ?? top).toString(),
+                clock: _clock(_timeFor(top))),
             const SizedBox(height: 8),
             AspectRatio(aspectRatio: 1, child: _board()),
             const SizedBox(height: 8),
-            _PlayerBar(name: ((_game[bottom] as Map?)?['name'] ?? bottom).toString(), clock: _clock(_timeFor(bottom))),
-            if (_error != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_error!, style: const TextStyle(color: Colors.red))),
+            _PlayerBar(
+                name: ((_game[bottom] as Map?)?['name'] ?? bottom).toString(),
+                clock: _clock(_timeFor(bottom))),
+            if (_error != null)
+              Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child:
+                      Text(_error!, style: const TextStyle(color: Colors.red))),
             if (!_active)
-              Card(child: Padding(padding: const EdgeInsets.all(16), child: Text('Game finished · ${_game['result']} · ${_game['termination']}'))),
+              Card(
+                  child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                          'Game finished · ${_game['result']} · ${_game['termination']}'))),
+            if (_premove != null)
+              Text('Premove queued: $_premove', textAlign: TextAlign.center),
             SizedBox(
               height: 54,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: moves.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 6),
-                itemBuilder: (_, index) => Chip(label: Text((moves[index] as Map)['san']?.toString() ?? '')),
+                itemBuilder: (_, index) => Chip(
+                    label:
+                        Text((moves[index] as Map)['san']?.toString() ?? '')),
               ),
             ),
             Wrap(spacing: 8, alignment: WrapAlignment.center, children: [
-              OutlinedButton(onPressed: _active ? () => _send('game.draw') : null, child: const Text('Offer draw')),
-              OutlinedButton(onPressed: _active ? () => _confirmAction('Resign game?', 'game.resign') : null, child: const Text('Resign')),
-              OutlinedButton(onPressed: _active ? () => _confirmAction('Abort game?', 'game.abort') : null, child: const Text('Abort')),
+              OutlinedButton(
+                  onPressed: _active ? () => _send('game.draw') : null,
+                  child: const Text('Offer draw')),
+              OutlinedButton(
+                  onPressed: _active
+                      ? () => _confirmAction('Resign game?', 'game.resign')
+                      : null,
+                  child: const Text('Resign')),
+              OutlinedButton(
+                  onPressed: _active
+                      ? () => _confirmAction('Abort game?', 'game.abort')
+                      : null,
+                  child: const Text('Abort')),
+              FilledButton(
+                  onPressed: !_active ? () => _send('game.rematch') : null,
+                  child: const Text('Rematch')),
             ]),
           ],
         ),
@@ -226,7 +294,8 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
 
   Widget _board() => GridView.builder(
         physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 8),
+        gridDelegate:
+            const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 8),
         itemCount: 64,
         itemBuilder: (_, index) {
           final displayFile = index % 8;
@@ -239,31 +308,69 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
           final dark = (file + rank).isOdd;
           final lastMove = (_game['last_move_uci'] ?? '').toString();
           final highlighted = _selected == square ||
-              (lastMove.length >= 4 && (lastMove.substring(0, 2) == square || lastMove.substring(2, 4) == square));
+              (lastMove.length >= 4 &&
+                  (lastMove.substring(0, 2) == square ||
+                      lastMove.substring(2, 4) == square));
           return InkWell(
             onTap: () => _tapSquare(square),
             child: Container(
-              color: highlighted ? Colors.amber.shade400 : (dark ? const Color(0xff769656) : const Color(0xffeeeed2)),
+              color: highlighted
+                  ? Colors.amber.shade400
+                  : (dark ? const Color(0xff769656) : const Color(0xffeeeed2)),
               alignment: Alignment.center,
-              child: Text(_piece(piece?.type.name, piece?.color == chess.Color.WHITE), style: const TextStyle(fontSize: 34)),
+              child: Text(
+                  _piece(piece?.type.name, piece?.color == chess.Color.WHITE),
+                  style: const TextStyle(fontSize: 34)),
             ),
           );
         },
       );
 
   Future<void> _confirmAction(String title, String event) async {
-    final confirmed = await showDialog<bool>(context: context, builder: (_) => AlertDialog(
-      title: Text(title),
-      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Confirm'))],
-    ));
+    final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (_) => AlertDialog(
+              title: Text(title),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel')),
+                FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Confirm'))
+              ],
+            ));
     if (confirmed == true) _send(event);
   }
 
   String _piece(String? type, bool white) {
-    const whitePieces = {'p': '♙', 'n': '♘', 'b': '♗', 'r': '♖', 'q': '♕', 'k': '♔'};
-    const blackPieces = {'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚'};
+    const whitePieces = {
+      'p': '♙',
+      'n': '♘',
+      'b': '♗',
+      'r': '♖',
+      'q': '♕',
+      'k': '♔'
+    };
+    const blackPieces = {
+      'p': '♟',
+      'n': '♞',
+      'b': '♝',
+      'r': '♜',
+      'q': '♛',
+      'k': '♚'
+    };
     return (white ? whitePieces : blackPieces)[type] ?? '';
   }
+}
+
+class _PromotionButton extends StatelessWidget {
+  const _PromotionButton(this.label, this.value);
+  final String label;
+  final String value;
+  @override
+  Widget build(BuildContext context) => ActionChip(
+      label: Text(label), onPressed: () => Navigator.pop(context, value));
 }
 
 class _PlayerBar extends StatelessWidget {
@@ -275,7 +382,17 @@ class _PlayerBar extends StatelessWidget {
   Widget build(BuildContext context) => Row(children: [
         const CircleAvatar(child: Icon(Icons.person)),
         const SizedBox(width: 10),
-        Expanded(child: Text(name, style: Theme.of(context).textTheme.titleMedium)),
-        Container(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8), decoration: BoxDecoration(color: const Color(0xff173b2a), borderRadius: BorderRadius.circular(10)), child: Text(clock, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))),
+        Expanded(
+            child: Text(name, style: Theme.of(context).textTheme.titleMedium)),
+        Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+                color: const Color(0xff173b2a),
+                borderRadius: BorderRadius.circular(10)),
+            child: Text(clock,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold))),
       ]);
 }

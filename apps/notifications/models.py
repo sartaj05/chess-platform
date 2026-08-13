@@ -42,3 +42,14 @@ class Notification(TimeStampedModel):
         if self.read_at is None:
             self.read_at = timezone.now()
             self.save(update_fields=["read_at", "updated_at"])
+
+
+class PushDevice(TimeStampedModel):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="push_devices")
+    token = models.CharField(max_length=512, unique=True)
+    platform = models.CharField(max_length=12, default="android")
+    active = models.BooleanField(default=True, db_index=True)
+    last_seen_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        indexes = [models.Index(fields=["user", "active"], name="push_device_user_active_idx")]

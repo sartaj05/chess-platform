@@ -162,25 +162,29 @@ def create_room(*, request: HttpRequest, cleaned_data: dict[str, Any]):
 
 
 @transaction.atomic
-def enter_matchmaking(*, request: HttpRequest):
+def enter_matchmaking(*, request: HttpRequest, time_category: str = "blitz"):
     """Return a waiting room or pair the signed-in user with a close-rated host."""
     from apps.rooms.models import Room
 
     user = request.user
     if not getattr(user, "is_authenticated", False):
         raise PermissionDenied("Sign in to use rated matchmaking.")
-    existing = Room.objects.filter(host=user, rated=True, status=Room.Status.WAITING, metadata__matchmaking=True).first()
+    if time_category not in {Room.TimeCategory.BULLET, Room.TimeCategory.BLITZ, Room.TimeCategory.RAPID}:
+        time_category = Room.TimeCategory.BLITZ
+    rating = getattr(user, f"{time_category}_rating")
+    existing = Room.objects.filter(host=user, rated=True, status=Room.Status.WAITING, metadata__matchmaking=True, time_category=time_category).first()
     if existing:
         return existing, False
-    candidates = Room.objects.select_for_update().filter(mode=Room.Mode.ONLINE, status=Room.Status.WAITING, rated=True, visibility=Room.Visibility.PUBLIC, allow_guests=False, metadata__matchmaking=True).exclude(host=user).select_related("host").order_by("created_at")
-    room = next((item for item in candidates if item.host and abs(item.host.rating - user.rating) <= 300), None)
+    candidates = Room.objects.select_for_update().filter(mode=Room.Mode.ONLINE, status=Room.Status.WAITING, rated=True, visibility=Room.Visibility.PUBLIC, allow_guests=False, metadata__matchmaking=True, time_category=time_category).exclude(host=user).select_related("host").order_by("created_at")
+    room = next((item for item in candidates if item.host and abs(getattr(item.host, f"{time_category}_rating") - rating) <= 300), None)
     if room:
         join_room(request=request, room=room, display_name=user.display_name)
         room.status = Room.Status.READY
         room.save(update_fields=["status", "updated_at"])
         return room, True
-    room = create_room(request=request, cleaned_data={"name": f"Rated match - {user.display_name}", "description": "Automatic rated matchmaking", "host_display_name": user.display_name, "mode": Room.Mode.ONLINE, "visibility": Room.Visibility.PUBLIC, "clock_initial_minutes": 10, "increment_seconds": 0, "delay_seconds": 0, "color_preference": Room.ColorPreference.RANDOM, "rated": True, "allow_guests": False, "spectator_enabled": True})
-    room.metadata = {**room.metadata, "matchmaking": True}
+    minutes = {"bullet": 1, "blitz": 5, "rapid": 10}[time_category]
+    room = create_room(request=request, cleaned_data={"name": f"{time_category.title()} rated match - {user.display_name}", "description": "Automatic rated matchmaking", "host_display_name": user.display_name, "mode": Room.Mode.ONLINE, "visibility": Room.Visibility.PUBLIC, "clock_initial_minutes": minutes, "increment_seconds": 0, "delay_seconds": 0, "color_preference": Room.ColorPreference.RANDOM, "rated": True, "allow_guests": False, "spectator_enabled": True})
+    room.metadata = {**room.metadata, "matchmaking": True, "rating_category": time_category}
     room.save(update_fields=["metadata", "updated_at"])
     return room, False
 

@@ -10,6 +10,8 @@ import 'online_game_page.dart';
 import 'profile_history_pages.dart';
 import 'notification_page.dart';
 import 'matchmaking_page.dart';
+import 'competitive_pages.dart';
+import 'push_service.dart';
 
 enum PlayerSide { white, black, random }
 
@@ -76,6 +78,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
         _displayName = profile['display_name'] as String?;
         _name.text = _displayName ?? '';
       });
+      await PushService.configure(api.registerPushDevice);
     } catch (_) {
       await _session.clear();
       if (mounted) setState(() => _token = null);
@@ -123,6 +126,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
           server: _server.text.trim(),
         );
         _token = _session.accessToken;
+        await PushService.configure(_authenticatedApi.registerPushDevice);
         final profile =
             await _MobileApi(_server.text, _token, _cookie, session: _session)
                 .profile();
@@ -252,6 +256,13 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
             )));
   }
 
+  Future<void> _openCompetitive() async =>
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => CompetitiveHubPage(
+              leaderboard: _authenticatedApi.leaderboard,
+              puzzles: _authenticatedApi.puzzles,
+              playPuzzle: _authenticatedApi.playPuzzle)));
+
   Future<String?> _stockfishMove(String fen, int level) =>
       _authenticatedApi.stockfishMove(fen, level);
 
@@ -281,6 +292,11 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
         appBar: AppBar(
           title: const Text('Chess Platform'),
           actions: [
+            if (_signedIn)
+              IconButton(
+                  onPressed: _openCompetitive,
+                  tooltip: 'Leaderboard and puzzles',
+                  icon: const Icon(Icons.emoji_events_outlined)),
             if (_signedIn)
               IconButton(
                   onPressed: _openNotifications,
@@ -888,6 +904,24 @@ class _MobileApi {
     return rows.map((item) => Map<String, dynamic>.from(item as Map)).toList();
   }
 
+  Future<List<Map<String, dynamic>>> leaderboard(String category) async {
+    final data =
+        await _request('GET', 'api/accounts/leaderboard/?category=$category')
+            as Map;
+    return (data['results'] as List)
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
+
+  Future<List<Map<String, dynamic>>> puzzles() async {
+    final data = await _request('GET', 'api/accounts/puzzles/') as List;
+    return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> playPuzzle(int id, String move) async =>
+      Map<String, dynamic>.from(await _request(
+          'POST', 'api/accounts/puzzles/$id/play/', {'move': move}) as Map);
+
   Future<String?> stockfishMove(String fen, int level) async {
     final data = await _request(
         'POST', 'api/stockfish/best-move/', {'fen': fen, 'level': level});
@@ -907,12 +941,18 @@ class _MobileApi {
     await _request('POST', 'api/notifications/read-all/');
   }
 
-  Future<Map<String, dynamic>> enterMatchmaking() async =>
+  Future<void> registerPushDevice(String deviceToken) async {
+    await _request('POST', 'api/notifications/devices/',
+        {'token': deviceToken, 'platform': 'android'});
+  }
+
+  Future<Map<String, dynamic>> enterMatchmaking(String category) async =>
       Map<String, dynamic>.from(
-          await _request('POST', 'api/matchmaking/') as Map);
-  Future<Map<String, dynamic>> matchmakingStatus() async =>
+          await _request('POST', 'api/matchmaking/', {'category': category})
+              as Map);
+  Future<Map<String, dynamic>> matchmakingStatus(String category) async =>
       Map<String, dynamic>.from(
-          await _request('GET', 'api/matchmaking/') as Map);
+          await _request('GET', 'api/matchmaking/?category=$category') as Map);
   Future<void> cancelMatchmaking() async {
     await _request('DELETE', 'api/matchmaking/');
   }

@@ -61,6 +61,12 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
                     self.group_name, {"type": "broadcast_game", "event": "draw.declined", "game": payload}
                 )
                 return
+            if event_type == "game.rematch":
+                payload = await self._rematch()
+                await self.channel_layer.group_send(
+                    self.group_name, {"type": "broadcast_game", "event": "rematch.updated", "game": payload}
+                )
+                return
         except PermissionDenied as exc:
             await self.send_json({"type": "error", "message": str(exc)})
             return
@@ -165,5 +171,14 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         game = Game.objects.select_related("white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
         actor = actor_from_scope(self.scope, game)
         decline_draw(game=game, actor=actor)
+        game.refresh_from_db()
+        return self._serialized_for_viewer(game)
+
+    @database_sync_to_async
+    def _rematch(self) -> dict[str, Any]:
+        from apps.games.models import Game
+        from apps.games.services import actor_from_scope, request_rematch
+        game = Game.objects.select_related("white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
+        request_rematch(game=game, actor=actor_from_scope(self.scope, game))
         game.refresh_from_db()
         return self._serialized_for_viewer(game)

@@ -53,7 +53,7 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
     }
   }
 
-  void _tap(String square) {
+  Future<void> _tap(String square) async {
     if (widget.mode == OfflinePlayMode.bot &&
         (_game.turn == chess.Chess.WHITE) != _playerIsWhite) {
       return;
@@ -65,8 +65,32 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
       }
       return;
     }
+    var promotion = 'q';
+    final piece = _game.get(_selected!);
+    if (piece?.type.name == 'p' &&
+        (square.endsWith('8') || square.endsWith('1'))) {
+      promotion = await showDialog<String>(
+              context: context,
+              builder: (_) => AlertDialog(
+                    title: const Text('Promote pawn to'),
+                    content: Wrap(
+                        spacing: 8,
+                        children: ['q', 'r', 'b', 'n']
+                            .map((value) => ActionChip(
+                                label: Text({
+                                  'q': 'Queen',
+                                  'r': 'Rook',
+                                  'b': 'Bishop',
+                                  'n': 'Knight'
+                                }[value]!),
+                                onPressed: () => Navigator.pop(context, value)))
+                            .toList()),
+                  )) ??
+          '';
+      if (promotion.isEmpty || !mounted) return;
+    }
     final moved =
-        _game.move({'from': _selected, 'to': square, 'promotion': 'q'});
+        _game.move({'from': _selected, 'to': square, 'promotion': promotion});
     setState(() => _selected = moved ? null : square);
     if (moved && widget.soundsEnabled) SystemSound.play(SystemSoundType.click);
     if (moved && widget.mode == OfflinePlayMode.bot) {
@@ -178,10 +202,9 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
         body: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(children: [
-            Text(
-                _botThinking
-                    ? 'Stockfish is thinking...'
-                    : '${_game.turn == chess.Chess.WHITE ? 'White' : 'Black'} to move'),
+            Text(_botThinking
+                ? 'Stockfish is thinking...'
+                : '${_game.turn == chess.Chess.WHITE ? 'White' : 'Black'} to move'),
             const SizedBox(height: 12),
             Expanded(
               child: Center(

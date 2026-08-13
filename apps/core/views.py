@@ -88,7 +88,22 @@ class HomeView(View):
 
 
 def health_check(request):
-    return JsonResponse({"status": "ok", "service": "chess-platform"})
+    from django.core.cache import cache
+    from django.db import connection
+    checks = {"database": False, "cache": False}
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT 1")
+            checks["database"] = cursor.fetchone()[0] == 1
+    except Exception:
+        pass
+    try:
+        cache.set("health-check", "ok", 10)
+        checks["cache"] = cache.get("health-check") == "ok"
+    except Exception:
+        pass
+    healthy = all(checks.values())
+    return JsonResponse({"status": "ok" if healthy else "degraded", "service": "chess-platform", "checks": checks}, status=200 if healthy else 503)
 
 
 class OfflineModeInfoView(View):

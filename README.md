@@ -128,3 +128,8 @@ Rated games now use a one-time Elo update, authenticated players can enter
 automatic 10-minute matchmaking, and the website includes a leaderboard,
 public player profiles, complete game history, and clickable board-based
 puzzles. Rating changes are stored on each game for an auditable history.
+## Push notifications and backups
+
+Production push delivery uses Firebase Cloud Messaging. Place the Firebase Admin service-account JSON at `secrets/firebase-service-account.json`, set the Firebase values in `.env.production`, and build Flutter with `FIREBASE_API_KEY`, `FIREBASE_APP_ID`, `FIREBASE_PROJECT_ID`, and `FIREBASE_SENDER_ID` as `--dart-define` values. Credentials and generated backups are ignored by Git.
+
+Create a timestamped PostgreSQL and media backup with `powershell -File scripts/backup_production.ps1`. Restore a database dump with `powershell -File scripts/restore_production.ps1 -DatabaseDump <path>`. Test restores regularly and copy backups to encrypted off-site storage.

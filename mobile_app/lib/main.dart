@@ -12,7 +12,8 @@ void main() => runApp(const ChessPlatformApp());
 class ChessPlatformApp extends StatefulWidget {
   const ChessPlatformApp({super.key});
 
-  @override State<ChessPlatformApp> createState() => _ChessPlatformAppState();
+  @override
+  State<ChessPlatformApp> createState() => _ChessPlatformAppState();
 }
 
 class _ChessPlatformAppState extends State<ChessPlatformApp> {
@@ -20,12 +21,35 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
   ThemeMode _themeMode = ThemeMode.system;
   bool _soundsEnabled = true;
 
-  @override void initState(){super.initState();_restore();}
-  Future<void> _restore() async { final theme=await _preferences.loadTheme();final sounds=await _preferences.loadSounds();if(mounted)setState((){_themeMode=theme;_soundsEnabled=sounds;}); }
-  Future<void> _setTheme(ThemeMode mode) async {await _preferences.saveTheme(mode);setState(()=>_themeMode=mode);}
-  Future<void> _setSounds(bool enabled) async {await _preferences.saveSounds(enabled);setState(()=>_soundsEnabled=enabled);}
+  @override
+  void initState() {
+    super.initState();
+    _restore();
+  }
 
-  @override Widget build(BuildContext context) => MaterialApp(
+  Future<void> _restore() async {
+    final theme = await _preferences.loadTheme();
+    final sounds = await _preferences.loadSounds();
+    if (mounted) {
+      setState(() {
+        _themeMode = theme;
+        _soundsEnabled = sounds;
+      });
+    }
+  }
+
+  Future<void> _setTheme(ThemeMode mode) async {
+    await _preferences.saveTheme(mode);
+    setState(() => _themeMode = mode);
+  }
+
+  Future<void> _setSounds(bool enabled) async {
+    await _preferences.saveSounds(enabled);
+    setState(() => _soundsEnabled = enabled);
+  }
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
         title: 'Chess Platform',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
@@ -57,9 +81,21 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
             ),
           ),
         ),
-        darkTheme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff62a85f),brightness: Brightness.dark),useMaterial3:true,scaffoldBackgroundColor:const Color(0xff111713),cardTheme:const CardThemeData(shape:RoundedRectangleBorder(borderRadius:BorderRadius.all(Radius.circular(20))))),
+        darkTheme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+                seedColor: const Color(0xff62a85f),
+                brightness: Brightness.dark),
+            useMaterial3: true,
+            scaffoldBackgroundColor: const Color(0xff111713),
+            cardTheme: const CardThemeData(
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(20))))),
         themeMode: _themeMode,
-        home: SimpleHomePage(themeMode:_themeMode,soundsEnabled:_soundsEnabled,onThemeChanged:_setTheme,onSoundsChanged:_setSounds),
+        home: SimpleHomePage(
+            themeMode: _themeMode,
+            soundsEnabled: _soundsEnabled,
+            onThemeChanged: _setTheme,
+            onSoundsChanged: _setSounds),
       );
 }
 
