@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db.models import Q
-from django.views.generic import TemplateView
+from django.views.generic import ListView, TemplateView
+
+from apps.accounts.models import User
 
 from apps.chat.models import Message
 from apps.friends.models import Friendship
@@ -58,3 +60,13 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             )[:5],
         )
         return context
+
+
+class LeaderboardView(ListView):
+    model = User
+    template_name = "dashboard/leaderboard.html"
+    context_object_name = "players"
+    paginate_by = 50
+
+    def get_queryset(self):
+        return User.objects.filter(is_active=True).order_by("-rating", "-rated_games", "display_name")

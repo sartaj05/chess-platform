@@ -134,6 +134,35 @@ def award_bot_level_if_won(game: Any) -> None:
     game.save(update_fields=["metadata", "updated_at"])
 
 
+def apply_elo_ratings(game: Any) -> None:
+    """Apply a standard K=32 Elo update once for a finished rated game."""
+    if game.ratings_applied or not game.rated or game.status != game.Status.FINISHED:
+        return
+    if game.white_user_id is None or game.black_user_id is None:
+        return
+    white = game.white_user
+    black = game.black_user
+    white_before, black_before = white.rating, black.rating
+    white_score = 1.0 if game.result == game.Result.WHITE_WIN else 0.0 if game.result == game.Result.BLACK_WIN else 0.5
+    expected_white = 1 / (1 + 10 ** ((black_before - white_before) / 400))
+    white_change = round(32 * (white_score - expected_white))
+    black_change = -white_change
+    white.rating = max(100, white_before + white_change)
+    black.rating = max(100, black_before + black_change)
+    white.peak_rating = max(white.peak_rating, white.rating)
+    black.peak_rating = max(black.peak_rating, black.rating)
+    white.rated_games += 1
+    black.rated_games += 1
+    white.save(update_fields=["rating", "peak_rating", "rated_games"])
+    black.save(update_fields=["rating", "peak_rating", "rated_games"])
+    game.white_rating_before = white_before
+    game.black_rating_before = black_before
+    game.white_rating_change = white_change
+    game.black_rating_change = black_change
+    game.ratings_applied = True
+    game.save(update_fields=["white_rating_before", "black_rating_before", "white_rating_change", "black_rating_change", "ratings_applied", "updated_at"])
+
+
 def actor_from_request(request: HttpRequest, game: Any) -> GameActor:
     identity = ensure_guest_identity(request)
 
@@ -613,6 +642,7 @@ def play_uci_move(
         ]
     )
     award_bot_level_if_won(game)
+    apply_elo_ratings(game)
 
     game_move = GameMove.objects.create(
         game=game,
@@ -697,6 +727,7 @@ def resign_game(*, game: Any, actor: GameActor):
         termination=game.Termination.RESIGNATION,
         winner_color=winner,
     )
+    apply_elo_ratings(game)
 
     GameEvent.objects.create(
         game=game,
@@ -765,6 +796,7 @@ def offer_or_accept_draw(*, game: Any, actor: GameActor):
             result=game.Result.DRAW,
             termination=game.Termination.AGREEMENT,
         )
+        apply_elo_ratings(game)
 
         GameEvent.objects.create(
             game=game,
@@ -927,6 +959,13 @@ def serialize_game(
         "bot_level": metadata.get("bot_level"),
         "player_color": metadata.get("player_color"),
         "level_unlocked": metadata.get("level_unlocked"),
+        "ratings": {
+            "white_before": game.white_rating_before,
+            "black_before": game.black_rating_before,
+            "white_change": game.white_rating_change,
+            "black_change": game.black_rating_change,
+            "applied": game.ratings_applied,
+        },
         "room_code": game.room.code if game.room_id else "",
         "status": game.status,
         "rated": game.rated,

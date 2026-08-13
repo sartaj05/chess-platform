@@ -84,8 +84,10 @@
                 Tournaments
               </a>
             </li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'dashboard:leaderboard' %}">Leaderboard</a></li>
 
             {% if request.user.is_authenticated %}
+            <li class="nav-item"><a class="nav-link" href="{% url 'rooms:matchmaking' %}">Matchmaking</a></li>
             <li class="nav-item">
               <a class="nav-link" href="{% url 'friends:list' %}">
                 Friends

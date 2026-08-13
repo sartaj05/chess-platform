@@ -7,6 +7,7 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views import View
 from django.views.generic import ListView, TemplateView
+import chess
 
 from .forms import PuzzleMoveForm
 from .models import Puzzle
@@ -44,7 +45,13 @@ class PuzzleDetailView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         puzzle = self._puzzle()
-        context.update(puzzle=puzzle, attempt=get_attempt(puzzle=puzzle, user=self.request.user), move_form=PuzzleMoveForm())
+        attempt = get_attempt(puzzle=puzzle, user=self.request.user)
+        board = chess.Board(attempt.current_fen)
+        symbols = {"P":"♙","N":"♘","B":"♗","R":"♖","Q":"♕","K":"♔","p":"♟","n":"♞","b":"♝","r":"♜","q":"♛","k":"♚"}
+        context.update(
+            puzzle=puzzle, attempt=attempt, move_form=PuzzleMoveForm(),
+            board_squares=[{"name": chess.square_name(square), "piece": symbols.get(board.piece_at(square).symbol(), "") if board.piece_at(square) else "", "dark": (file + rank) % 2 == 0} for rank in range(7, -1, -1) for file in range(8) for square in [chess.square(file, rank)]],
+        )
         return context
 
     def post(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:

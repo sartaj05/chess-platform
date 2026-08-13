@@ -99,3 +99,10 @@ Useful URLs:
 ## Module 4 - Stockfish Analysis
 
 Adds offline Stockfish integration, analysis board, full-game review jobs, move classification, evaluation graph data, and seeded opening explorer. See `docs_module4_analysis.md`.
+
+## Competitive play and player pages
+
+Rated games now use a one-time Elo update, authenticated players can enter
+automatic 10-minute matchmaking, and the website includes a leaderboard,
+public player profiles, complete game history, and clickable board-based
+puzzles. Rating changes are stored on each game for an auditable history.

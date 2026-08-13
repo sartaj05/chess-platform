@@ -19,7 +19,10 @@ from django.urls import reverse_lazy
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
 from django.views import View
-from django.views.generic import FormView, TemplateView, UpdateView
+from django.db.models import Q
+from django.views.generic import DetailView, FormView, ListView, TemplateView, UpdateView
+
+from apps.games.models import Game
 from django_ratelimit.decorators import ratelimit
 
 from .forms import DisableTwoFactorForm, EmailLoginForm, EmailOTPForm, EnableTwoFactorForm, ProfileForm, SignUpForm
@@ -189,6 +192,35 @@ class ProfileView(LoginRequiredMixin, UpdateView):
     def form_valid(self, form: ProfileForm) -> HttpResponse:
         messages.success(self.request, _("Profile updated."))
         return super().form_valid(form)
+
+
+class PublicProfileView(DetailView):
+    model = User
+    template_name = "accounts/public_profile.html"
+    context_object_name = "player"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        player = self.object
+        games = Game.objects.filter(Q(white_user=player) | Q(black_user=player))
+        finished = games.filter(status=Game.Status.FINISHED)
+        context.update(
+            total_games=games.count(),
+            wins=finished.filter(Q(white_user=player, result="1-0") | Q(black_user=player, result="0-1")).count(),
+            draws=finished.filter(result="1/2-1/2").count(),
+            recent_games=games[:10],
+        )
+        return context
+
+
+class GameHistoryView(LoginRequiredMixin, ListView):
+    model = Game
+    template_name = "accounts/game_history.html"
+    context_object_name = "games"
+    paginate_by = 25
+
+    def get_queryset(self):
+        return Game.objects.filter(Q(white_user=self.request.user) | Q(black_user=self.request.user)).select_related("white_user", "black_user")
 
 
 class SecuritySettingsView(LoginRequiredMixin, TemplateView):

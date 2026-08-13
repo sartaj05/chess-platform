@@ -6,6 +6,7 @@ from django.db.models import Prefetch
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import FormView, ListView, TemplateView, View
 
 from apps.rooms.forms import CreateRoomForm, JoinRoomForm
@@ -149,3 +150,31 @@ class LanModeView(TemplateView):
     """Instruction page for offline LAN play."""
 
     template_name = "rooms/lan_mode.html"
+
+
+class MatchmakingView(LoginRequiredMixin, View):
+    template_name = "rooms/matchmaking.html"
+
+    def get(self, request):
+        return render(request, self.template_name)
+
+    def post(self, request):
+        rating = request.user.rating
+        candidates = Room.objects.filter(
+            mode=Room.Mode.ONLINE, status=Room.Status.WAITING, rated=True,
+            visibility=Room.Visibility.PUBLIC, allow_guests=False,
+        ).exclude(host=request.user).select_related("host").order_by("created_at")
+        room = next((item for item in candidates if item.host and abs(item.host.rating - rating) <= 300), None)
+        if room:
+            join_room(request=request, room=room, display_name=request.user.display_name)
+            messages.success(request, f"Matched with {room.host_display_name}.")
+            return redirect(room.get_absolute_url())
+        room = create_room(request=request, cleaned_data={
+            "name": f"Rated match · {request.user.display_name}", "description": "Automatic rated matchmaking",
+            "host_display_name": request.user.display_name, "mode": Room.Mode.ONLINE,
+            "visibility": Room.Visibility.PUBLIC, "clock_initial_minutes": 10,
+            "increment_seconds": 0, "delay_seconds": 0, "color_preference": Room.ColorPreference.RANDOM,
+            "rated": True, "allow_guests": False, "spectator_enabled": True,
+        })
+        messages.info(request, "You are in the queue. Keep this lobby open while an opponent joins.")
+        return redirect(room.get_absolute_url())

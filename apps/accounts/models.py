@@ -33,6 +33,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     date_joined = models.DateTimeField(default=timezone.now)
     last_seen_at = models.DateTimeField(blank=True, null=True, db_index=True)
     bot_level = models.PositiveSmallIntegerField(default=1)
+    rating = models.PositiveIntegerField(default=1200, db_index=True)
+    peak_rating = models.PositiveIntegerField(default=1200)
+    rated_games = models.PositiveIntegerField(default=0)
     objects = UserManager()
     EMAIL_FIELD = "email"
     USERNAME_FIELD = "email"

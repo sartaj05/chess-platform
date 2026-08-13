@@ -113,6 +113,11 @@ class Game(TimeStampedModel):
     takeback_offer_at = models.DateTimeField(null=True, blank=True)
     offline_sync_id = models.UUIDField(null=True, blank=True, db_index=True)
     metadata = models.JSONField(default=dict, blank=True)
+    white_rating_before = models.PositiveIntegerField(null=True, blank=True)
+    black_rating_before = models.PositiveIntegerField(null=True, blank=True)
+    white_rating_change = models.SmallIntegerField(default=0)
+    black_rating_change = models.SmallIntegerField(default=0)
+    ratings_applied = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["-created_at"]
