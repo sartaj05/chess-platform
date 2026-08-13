@@ -32,6 +32,9 @@ For real Stockfish play, install Stockfish on the Django server and set
 `STOCKFISH_BINARY` in `.env` to its executable path. On Windows this can be a
 path such as `C:/stockfish/stockfish-windows-x86-64-avx2.exe`; restart Django
 after changing it. The mobile APK does not need its own engine binary.
+- Read and clear account notifications inside the app.
+- Choose system, light, or dark appearance and persist the preference.
+- Enable or disable move and game sounds.
 
 Next mobile screens should be local notifications, detailed PGN replay, and
 full Stockfish game analysis.

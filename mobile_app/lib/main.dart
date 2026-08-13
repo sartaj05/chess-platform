@@ -5,14 +5,27 @@ import 'package:flutter/material.dart';
 
 import 'offline_board_page.dart';
 import 'simple_home_page.dart';
+import 'app_preferences.dart';
 
 void main() => runApp(const ChessPlatformApp());
 
-class ChessPlatformApp extends StatelessWidget {
+class ChessPlatformApp extends StatefulWidget {
   const ChessPlatformApp({super.key});
 
-  @override
-  Widget build(BuildContext context) => MaterialApp(
+  @override State<ChessPlatformApp> createState() => _ChessPlatformAppState();
+}
+
+class _ChessPlatformAppState extends State<ChessPlatformApp> {
+  final _preferences = AppPreferences();
+  ThemeMode _themeMode = ThemeMode.system;
+  bool _soundsEnabled = true;
+
+  @override void initState(){super.initState();_restore();}
+  Future<void> _restore() async { final theme=await _preferences.loadTheme();final sounds=await _preferences.loadSounds();if(mounted)setState((){_themeMode=theme;_soundsEnabled=sounds;}); }
+  Future<void> _setTheme(ThemeMode mode) async {await _preferences.saveTheme(mode);setState(()=>_themeMode=mode);}
+  Future<void> _setSounds(bool enabled) async {await _preferences.saveSounds(enabled);setState(()=>_soundsEnabled=enabled);}
+
+  @override Widget build(BuildContext context) => MaterialApp(
         title: 'Chess Platform',
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
@@ -44,7 +57,9 @@ class ChessPlatformApp extends StatelessWidget {
             ),
           ),
         ),
-        home: const SimpleHomePage(),
+        darkTheme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff62a85f),brightness: Brightness.dark),useMaterial3:true,scaffoldBackgroundColor:const Color(0xff111713),cardTheme:const CardThemeData(shape:RoundedRectangleBorder(borderRadius:BorderRadius.all(Radius.circular(20))))),
+        themeMode: _themeMode,
+        home: SimpleHomePage(themeMode:_themeMode,soundsEnabled:_soundsEnabled,onThemeChanged:_setTheme,onSoundsChanged:_setSounds),
       );
 }
 

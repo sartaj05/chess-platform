@@ -6,3 +6,6 @@ build/
 .android/
 .flutter-plugins
 .flutter-plugins-dependencies
+android/key.properties
+android/app/*.jks
+android/app/*.keystore

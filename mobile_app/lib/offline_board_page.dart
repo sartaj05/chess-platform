@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:chess/chess.dart' as chess;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'offline_game_repository.dart';
 
@@ -17,6 +18,7 @@ class OfflineBoardPage extends StatefulWidget {
     this.botLevel = 1,
     this.onBotVictory,
     this.stockfishMove,
+    this.soundsEnabled = true,
   });
 
   final OfflinePlayMode mode;
@@ -24,6 +26,7 @@ class OfflineBoardPage extends StatefulWidget {
   final int botLevel;
   final Future<int> Function(int level)? onBotVictory;
   final Future<String?> Function(String fen, int level)? stockfishMove;
+  final bool soundsEnabled;
 
   @override
   State<OfflineBoardPage> createState() => _OfflineBoardPageState();
@@ -65,6 +68,7 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
     final moved =
         _game.move({'from': _selected, 'to': square, 'promotion': 'q'});
     setState(() => _selected = moved ? null : square);
+    if (moved && widget.soundsEnabled) SystemSound.play(SystemSoundType.click);
     if (moved && widget.mode == OfflinePlayMode.bot) {
       _checkResult();
       Future<void>.delayed(const Duration(milliseconds: 350), _playBotMove);
@@ -95,6 +99,7 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
       _game.move(move);
       _botThinking = false;
     });
+    if (widget.soundsEnabled) SystemSound.play(SystemSoundType.click);
     _checkResult();
   }
 

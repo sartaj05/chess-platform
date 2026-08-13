@@ -8,11 +8,16 @@ import 'offline_board_page.dart';
 import 'mobile_session.dart';
 import 'online_game_page.dart';
 import 'profile_history_pages.dart';
+import 'notification_page.dart';
 
 enum PlayerSide { white, black, random }
 
 class SimpleHomePage extends StatefulWidget {
-  const SimpleHomePage({super.key});
+  const SimpleHomePage({super.key,required this.themeMode,required this.soundsEnabled,required this.onThemeChanged,required this.onSoundsChanged});
+  final ThemeMode themeMode;
+  final bool soundsEnabled;
+  final ValueChanged<ThemeMode> onThemeChanged;
+  final ValueChanged<bool> onSoundsChanged;
 
   @override
   State<SimpleHomePage> createState() => _SimpleHomePageState();
@@ -176,6 +181,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
             token: _token,
             cookie: api.cookie,
             session: _session,
+            soundsEnabled: widget.soundsEnabled,
           ),
         ));
       });
@@ -193,6 +199,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
             token: _token,
             cookie: api.cookie,
             session: _session,
+            soundsEnabled: widget.soundsEnabled,
           ),
         ));
       });
@@ -224,6 +231,14 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
     ));
   }
 
+  Future<void> _openNotifications() async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => NotificationPage(
+      load: _authenticatedApi.notifications,
+      markRead: _authenticatedApi.markNotificationRead,
+      markAllRead: _authenticatedApi.markAllNotificationsRead,
+    )));
+  }
+
   Future<String?> _stockfishMove(String fen, int level) =>
       _authenticatedApi.stockfishMove(fen, level);
 
@@ -232,6 +247,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
         appBar: AppBar(
           title: const Text('Chess Platform'),
           actions: [
+            if (_signedIn) IconButton(onPressed:_openNotifications,tooltip:'Notifications',icon:const Icon(Icons.notifications_none)),
             if (_signedIn)
               IconButton(
                 onPressed: _openHistory,
@@ -387,7 +403,8 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                                 preferredSide: chessSide(),
                                 botLevel: _selectedBotLevel,
                                 onBotVictory: _recordBotVictory,
-                                stockfishMove: _stockfishMove),
+                                stockfishMove: _stockfishMove,
+                                soundsEnabled: widget.soundsEnabled),
                           )),
                           icon: const Icon(Icons.play_arrow),
                           label: const Text('Play Bot'),
@@ -402,6 +419,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => OfflineBoardPage(
                     preferredSide: chessSide(),
+                    soundsEnabled: widget.soundsEnabled,
                   ),
                 )),
               ),
@@ -425,8 +443,10 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                 child: const Text('Join with Code'),
               ),
               ExpansionTile(
-                title: const Text('Server settings'),
+                title: const Text('App settings'),
                 children: [
+                  DropdownButtonFormField<ThemeMode>(initialValue:widget.themeMode,decoration:const InputDecoration(labelText:'Theme'),items:ThemeMode.values.map((mode)=>DropdownMenuItem(value:mode,child:Text(mode.name))).toList(),onChanged:(mode){if(mode!=null)widget.onThemeChanged(mode);}),
+                  SwitchListTile(title:const Text('Move and game sounds'),value:widget.soundsEnabled,onChanged:widget.onSoundsChanged),
                   TextField(
                     controller: _server,
                     keyboardType: TextInputType.url,
@@ -600,13 +620,15 @@ class ShareCodePage extends StatefulWidget {
       required this.displayName,
       this.token,
       this.cookie,
-      required this.session});
+      required this.session,
+      required this.soundsEnabled});
   final String serverUrl;
   final String roomCode;
   final String displayName;
   final String? token;
   final String? cookie;
   final MobileSession session;
+  final bool soundsEnabled;
 
   @override
   State<ShareCodePage> createState() => _ShareCodePageState();
@@ -676,6 +698,7 @@ class _ShareCodePageState extends State<ShareCodePage> {
         initialGame: game,
         sessionCookie: api.cookie ?? widget.cookie,
         accessTokenProvider: api.validAccessToken,
+        soundsEnabled: widget.soundsEnabled,
       ),
     ));
     _openingGame = false;
@@ -803,6 +826,13 @@ class _MobileApi {
         'POST', 'api/stockfish/best-move/', {'fen': fen, 'level': level});
     return data['bestmove'] as String?;
   }
+
+  Future<List<Map<String,dynamic>>> notifications() async {
+    final data=await _request('GET','api/notifications/') as List;
+    return data.map((row)=>Map<String,dynamic>.from(row as Map)).toList();
+  }
+  Future<void> markNotificationRead(int id) async { await _request('POST','api/notifications/$id/read/'); }
+  Future<void> markAllNotificationsRead() async { await _request('POST','api/notifications/read-all/'); }
 
   Future<int> recordBotVictory(int level) async {
     final data =

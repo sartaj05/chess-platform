@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:chess/chess.dart' as chess;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class OnlineGamePage extends StatefulWidget {
   const OnlineGamePage({
@@ -12,12 +13,14 @@ class OnlineGamePage extends StatefulWidget {
     required this.initialGame,
     required this.accessTokenProvider,
     this.sessionCookie,
+    this.soundsEnabled = true,
   });
 
   final String serverUrl;
   final Map<String, dynamic> initialGame;
   final Future<String?> Function() accessTokenProvider;
   final String? sessionCookie;
+  final bool soundsEnabled;
 
   @override
   State<OnlineGamePage> createState() => _OnlineGamePageState();
@@ -90,8 +93,13 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
   void _receive(dynamic message) {
     final data = jsonDecode(message as String) as Map<String, dynamic>;
     if (data['game'] is Map) {
+      final previousPly = (_game['ply_count'] as num?)?.toInt() ?? 0;
+      final incoming = Map<String, dynamic>.from(data['game'] as Map);
+      if (widget.soundsEnabled && ((incoming['ply_count'] as num?)?.toInt() ?? 0) > previousPly) {
+        SystemSound.play(SystemSoundType.click);
+      }
       setState(() {
-        _game = Map<String, dynamic>.from(data['game'] as Map);
+        _game = incoming;
         _stateReceivedAt = DateTime.now();
         _selected = null;
         _error = null;

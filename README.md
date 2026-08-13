@@ -73,6 +73,28 @@ The production override removes public PostgreSQL/Redis ports and source-code
 bind mounts. Terminate TLS at the reverse proxy or load balancer before enabling
 the included HTTPS security settings.
 
+On Windows, copy `.env.production.example` to `.env.production`, replace every
+placeholder, then run:
+
+```powershell
+.\scripts\deploy_production.ps1 -Build
+```
+
+The script validates Compose, starts the production services, applies
+migrations, collects static assets, and runs Django deployment checks.
+
+To create a private Android signing keystore and signed APK/App Bundle, use:
+
+```powershell
+.\scripts\build_signed_apk.ps1 `
+  -StorePassword (Read-Host -AsSecureString "Store password") `
+  -KeyPassword (Read-Host -AsSecureString "Key password") `
+  -ServerUrl "https://chess.example.com"
+```
+
+The keystore and `key.properties` are ignored by Git. Back them up securely;
+future Play Store updates must be signed with the same key.
+
 ## Social login
 
 Create SocialApp records in `/admin/socialaccount/socialapp/` for Google and GitHub. Callback paths are `/social/google/login/callback/` and `/social/github/login/callback/`.
