@@ -23,6 +23,15 @@ The first Flutter build needs the Android SDK and locally cached Flutter artifac
   move history, reconnect handling, draw offers, resign, and abort actions.
 - Store access and refresh tokens in Android encrypted storage, restore login on
   app restart, and automatically refresh expired access tokens.
+- View and edit the signed-in player profile and browse server-backed game
+  history from the app bar.
+- Use the Django server's Stockfish engine for bot moves at the selected level,
+  with a local fallback when the server or engine is unavailable.
 
-Next mobile screens should be account profile, local notifications, PGN history,
-and Stockfish analysis.
+For real Stockfish play, install Stockfish on the Django server and set
+`STOCKFISH_BINARY` in `.env` to its executable path. On Windows this can be a
+path such as `C:/stockfish/stockfish-windows-x86-64-avx2.exe`; restart Django
+after changing it. The mobile APK does not need its own engine binary.
+
+Next mobile screens should be local notifications, detailed PGN replay, and
+full Stockfish game analysis.

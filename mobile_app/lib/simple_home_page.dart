@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'offline_board_page.dart';
 import 'mobile_session.dart';
 import 'online_game_page.dart';
+import 'profile_history_pages.dart';
 
 enum PlayerSide { white, black, random }
 
@@ -196,11 +197,53 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
         ));
       });
 
+  _MobileApi get _authenticatedApi =>
+      _MobileApi(_server.text, _token, _cookie, session: _session);
+
+  Future<void> _openProfile() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => ProfilePage(
+        load: _authenticatedApi.profile,
+        save: (data) async {
+          final profile = await _authenticatedApi.updateProfile(data);
+          if (mounted) {
+            setState(() {
+              _displayName = profile['display_name'] as String?;
+              _name.text = _displayName ?? _name.text;
+            });
+          }
+          return profile;
+        },
+      ),
+    ));
+  }
+
+  Future<void> _openHistory() async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => GameHistoryPage(load: _authenticatedApi.gameHistory),
+    ));
+  }
+
+  Future<String?> _stockfishMove(String fen, int level) =>
+      _authenticatedApi.stockfishMove(fen, level);
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
           title: const Text('Chess Platform'),
           actions: [
+            if (_signedIn)
+              IconButton(
+                onPressed: _openHistory,
+                tooltip: 'Game history',
+                icon: const Icon(Icons.history),
+              ),
+            if (_signedIn)
+              IconButton(
+                onPressed: _openProfile,
+                tooltip: 'Profile',
+                icon: const Icon(Icons.account_circle_outlined),
+              ),
             if (_signedIn)
               TextButton.icon(
                 onPressed: _logout,
@@ -343,7 +386,8 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                                 mode: OfflinePlayMode.bot,
                                 preferredSide: chessSide(),
                                 botLevel: _selectedBotLevel,
-                                onBotVictory: _recordBotVictory),
+                                onBotVictory: _recordBotVictory,
+                                stockfishMove: _stockfishMove),
                           )),
                           icon: const Icon(Icons.play_arrow),
                           label: const Text('Play Bot'),
@@ -743,6 +787,22 @@ class _MobileApi {
 
   Future<Map<String, dynamic>> profile() async => Map<String, dynamic>.from(
       await _request('GET', 'api/accounts/me/') as Map);
+
+  Future<Map<String, dynamic>> updateProfile(Map<String, dynamic> values) async =>
+      Map<String, dynamic>.from(
+          await _request('PATCH', 'api/accounts/me/', values) as Map);
+
+  Future<List<Map<String, dynamic>>> gameHistory() async {
+    final data = await _request('GET', 'api/games/');
+    final rows = data is Map ? (data['results'] as List? ?? const []) : data as List;
+    return rows.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
+  Future<String?> stockfishMove(String fen, int level) async {
+    final data = await _request(
+        'POST', 'api/stockfish/best-move/', {'fen': fen, 'level': level});
+    return data['bestmove'] as String?;
+  }
 
   Future<int> recordBotVictory(int level) async {
     final data =

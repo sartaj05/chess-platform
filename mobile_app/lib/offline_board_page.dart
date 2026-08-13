@@ -16,12 +16,14 @@ class OfflineBoardPage extends StatefulWidget {
     this.preferredSide = BoardSide.white,
     this.botLevel = 1,
     this.onBotVictory,
+    this.stockfishMove,
   });
 
   final OfflinePlayMode mode;
   final BoardSide preferredSide;
   final int botLevel;
   final Future<int> Function(int level)? onBotVictory;
+  final Future<String?> Function(String fen, int level)? stockfishMove;
 
   @override
   State<OfflineBoardPage> createState() => _OfflineBoardPageState();
@@ -33,6 +35,7 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
   final _id = DateTime.now().microsecondsSinceEpoch.toString();
   String? _selected;
   bool _reportedVictory = false;
+  bool _botThinking = false;
   late final bool _playerIsWhite = switch (widget.preferredSide) {
     BoardSide.white => true,
     BoardSide.black => false,
@@ -68,12 +71,30 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
     }
   }
 
-  void _playBotMove() {
+  Future<void> _playBotMove() async {
     if (!mounted || _game.game_over) return;
     final moves = _game.moves({'verbose': true});
     if (moves.isEmpty) return;
-    final move = _chooseBotMove(moves.cast<Map>());
-    setState(() => _game.move(move));
+    setState(() => _botThinking = true);
+    dynamic move;
+    try {
+      final uci = await widget.stockfishMove?.call(_game.fen, widget.botLevel);
+      if (uci != null && uci.length >= 4) {
+        move = {
+          'from': uci.substring(0, 2),
+          'to': uci.substring(2, 4),
+          if (uci.length > 4) 'promotion': uci.substring(4, 5),
+        };
+      }
+    } catch (_) {
+      // The local fallback keeps bot games playable when the server is offline.
+    }
+    move ??= _chooseBotMove(moves.cast<Map>());
+    if (!mounted) return;
+    setState(() {
+      _game.move(move);
+      _botThinking = false;
+    });
     _checkResult();
   }
 
@@ -153,7 +174,9 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
           padding: const EdgeInsets.all(12),
           child: Column(children: [
             Text(
-                '${_game.turn == chess.Chess.WHITE ? 'White' : 'Black'} to move'),
+                _botThinking
+                    ? 'Stockfish is thinking...'
+                    : '${_game.turn == chess.Chess.WHITE ? 'White' : 'Black'} to move'),
             const SizedBox(height: 12),
             Expanded(
               child: Center(

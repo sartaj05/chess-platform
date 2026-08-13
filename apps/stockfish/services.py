@@ -25,6 +25,7 @@ def analyse_fen_with_stockfish(
     movetime_ms: int | None = None,
     multipv: int = 1,
     command_type: str = "position_analysis",
+    skill_level: int | None = None,
 ) -> EngineResult:
     """Run offline Stockfish and persist an engine run audit record."""
 
@@ -36,7 +37,7 @@ def analyse_fen_with_stockfish(
             binary_path=profile.binary_path,
             threads=profile.threads,
             hash_mb=profile.hash_mb,
-            skill_level=profile.skill_level,
+            skill_level=profile.skill_level if skill_level is None else skill_level,
         ) as client:
             result = client.analyse_fen(
                 fen=fen,
