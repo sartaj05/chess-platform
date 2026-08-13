@@ -171,6 +171,10 @@ def apply_elo_ratings(game: Any) -> None:
     game.black_rating_change = black_change
     game.ratings_applied = True
     game.save(update_fields=["white_rating_before", "black_rating_before", "white_rating_change", "black_rating_change", "ratings_applied", "updated_at"])
+    from apps.games.tasks import evaluate_fair_play
+    transaction.on_commit(lambda: evaluate_fair_play.delay(str(game.pk)))
+    from apps.games.tasks import evaluate_fair_play
+    transaction.on_commit(lambda: evaluate_fair_play.delay(str(game.pk)))
 
 
 @transaction.atomic
@@ -446,6 +450,7 @@ def create_game_from_room(*, room: Any, request: HttpRequest):
     initial_ms = int(room.clock_initial_seconds) * 1000
     increment_ms = int(room.increment_seconds) * 1000
     delay_ms = int(room.delay_seconds) * 1000
+    grace = {"bullet":30,"blitz":90,"rapid":180,"classical":300,"daily":86400}.get(room.time_category,120)
 
     game = Game.objects.create(
         room=room,
@@ -466,6 +471,7 @@ def create_game_from_room(*, room: Any, request: HttpRequest):
         started_at=timezone.now(),
         last_move_at=timezone.now(),
         clock_started_at=timezone.now(),
+        reconnect_grace_seconds=grace,
     )
 
     room.status = Room.Status.IN_PROGRESS
@@ -1108,6 +1114,7 @@ def serialize_game(
         "is_live": game.is_live,
         "started_at": game.started_at.isoformat() if game.started_at else None,
         "ended_at": game.ended_at.isoformat() if game.ended_at else None,
+        "reconnection": {"grace_seconds":game.reconnect_grace_seconds,"white_disconnected_at":game.white_disconnected_at.isoformat() if game.white_disconnected_at else None,"black_disconnected_at":game.black_disconnected_at.isoformat() if game.black_disconnected_at else None},
         "chat": [{"id":str(row.pk),"sender":row.sender_name,"role":row.sender_role,"body":"Message removed by moderator" if row.is_removed else row.body,"audience":row.audience,"created_at":row.created_at.isoformat(),"removed":row.is_removed} for row in game.chat_messages.all().order_by("-created_at")[:50][::-1]] if hasattr(game, "chat_messages") else [],
     }
 

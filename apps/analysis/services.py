@@ -197,6 +197,8 @@ def run_game_review(*, job: GameAnalysisJob) -> dict[str, Any]:
         accuracy = {color: round(100 * (2.718281828 ** (-(sum(values) / max(len(values), 1)) / 300)), 1) if values else 100.0 for color, values in losses.items()}
         summary = {"counts": dict(summary_counter), "moves": len(moves), "evaluation": evaluation_points, "accuracy": accuracy}
         job.mark_completed(summary=summary)
+        from apps.games.tasks import evaluate_fair_play
+        transaction.on_commit(lambda: evaluate_fair_play.delay(str(game.pk)))
         return summary
     except Exception as exc:
         job.mark_failed(str(exc))

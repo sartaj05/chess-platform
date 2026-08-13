@@ -46,6 +46,7 @@ class Game(TimeStampedModel):
         TIMEOUT = "timeout", "Timeout"
         ABORTED = "aborted", "Aborted"
         IMPORTED = "imported", "Imported"
+        ABANDONMENT = "abandonment", "Abandonment"
 
     class Color(models.TextChoices):
         WHITE = "white", "White"
@@ -118,6 +119,9 @@ class Game(TimeStampedModel):
     white_rating_change = models.SmallIntegerField(default=0)
     black_rating_change = models.SmallIntegerField(default=0)
     ratings_applied = models.BooleanField(default=False)
+    white_disconnected_at = models.DateTimeField(null=True, blank=True)
+    black_disconnected_at = models.DateTimeField(null=True, blank=True)
+    reconnect_grace_seconds = models.PositiveIntegerField(default=120)
 
     class Meta:
         ordering = ["-created_at"]
@@ -298,3 +302,23 @@ class GameChatMessage(TimeStampedModel):
     class Meta:
         ordering = ["created_at"]
         indexes = [models.Index(fields=["game", "created_at"], name="game_chat_game_time_idx")]
+
+
+class FairPlayReview(TimeStampedModel):
+    class Status(models.TextChoices):
+        CLEAR = "clear", "Clear"
+        FLAGGED = "flagged", "Flagged"
+        REVIEWING = "reviewing", "Reviewing"
+        CONFIRMED = "confirmed", "Confirmed violation"
+        DISMISSED = "dismissed", "Dismissed"
+    game = models.OneToOneField(Game, on_delete=models.CASCADE, related_name="fair_play_review")
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.CLEAR, db_index=True)
+    risk_score = models.PositiveSmallIntegerField(default=0, db_index=True)
+    white_engine_match_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    black_engine_match_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    white_avg_loss_cp = models.PositiveIntegerField(default=0)
+    black_avg_loss_cp = models.PositiveIntegerField(default=0)
+    signals = models.JSONField(default=list, blank=True)
+    reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="fair_play_reviews")
+    moderator_notes = models.TextField(blank=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)

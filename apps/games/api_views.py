@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from rest_framework import permissions, status, viewsets
+from rest_framework.views import APIView
 from rest_framework.decorators import action as drf_action
 from rest_framework.response import Response
 
 from apps.api.throttles import OfflineSyncRateThrottle
-from apps.games.models import Game
+from apps.games.models import FairPlayReview, Game
+from django.utils import timezone
 from apps.games.serializers import (
     GameActionSerializer,
     GameSerializer,
@@ -148,3 +150,16 @@ class GameViewSet(viewsets.ReadOnlyModelViewSet):
     def pgn(self, request, pk=None):
         game = self.get_object()
         return Response({"pgn": game.cached_pgn})
+
+
+class FairPlayReviewAPIView(APIView):
+    permission_classes=[permissions.IsAdminUser]
+    def get(self,request,pk=None):
+        rows=FairPlayReview.objects.select_related("game","reviewer").order_by("-risk_score","-created_at")
+        if pk: rows=rows.filter(pk=pk)
+        return Response([{"id":row.pk,"game":str(row.game_id),"players":f"{row.game.white_display_name} vs {row.game.black_display_name}","status":row.status,"risk_score":row.risk_score,"engine_match":{"white":float(row.white_engine_match_rate),"black":float(row.black_engine_match_rate)},"average_loss":{"white":row.white_avg_loss_cp,"black":row.black_avg_loss_cp},"signals":row.signals,"notes":row.moderator_notes} for row in rows[:100]])
+    def post(self,request,pk=None):
+        review=FairPlayReview.objects.get(pk=pk);status_value=request.data.get("status")
+        if status_value not in {FairPlayReview.Status.REVIEWING,FairPlayReview.Status.CONFIRMED,FairPlayReview.Status.DISMISSED}: return Response({"detail":"Invalid review decision."},status=400)
+        review.status=status_value;review.moderator_notes=str(request.data.get("notes",""))[:4000];review.reviewer=request.user;review.reviewed_at=timezone.now();review.save(update_fields=["status","moderator_notes","reviewer","reviewed_at","updated_at"])
+        return Response({"id":review.pk,"status":review.status})

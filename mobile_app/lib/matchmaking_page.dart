@@ -43,6 +43,10 @@ class _MatchmakingPageState extends State<MatchmakingPage> {
   Future<void> _handle(Map<String, dynamic> result) async {
     if (_opening) return;
     final room = result['room'];
+    if (result['wait_seconds'] != null && mounted) {
+      setState(() => _message =
+          'Searching · ${result['wait_seconds']}s · rating range ±${result['rating_window']}');
+    }
     if (result['matched'] == true && room is Map) {
       _opening = true;
       _timer?.cancel();

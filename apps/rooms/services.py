@@ -10,6 +10,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.http import HttpRequest
 from django.urls import reverse
+from django.utils import timezone
 
 ROOM_CODE_ALPHABET = string.ascii_uppercase + string.digits
 GUEST_SESSION_KEY = "chess_guest_key"
@@ -176,7 +177,11 @@ def enter_matchmaking(*, request: HttpRequest, time_category: str = "blitz"):
     if existing:
         return existing, False
     candidates = Room.objects.select_for_update().filter(mode=Room.Mode.ONLINE, status=Room.Status.WAITING, rated=True, visibility=Room.Visibility.PUBLIC, allow_guests=False, metadata__matchmaking=True, time_category=time_category).exclude(host=user).select_related("host").order_by("created_at")
-    room = next((item for item in candidates if item.host and abs(getattr(item.host, f"{time_category}_rating") - rating) <= 300), None)
+    now = timezone.now()
+    def search_window(item):
+        waited_minutes = max((now - item.created_at).total_seconds() / 60, 0)
+        return min(800, 100 + int(waited_minutes * 35))
+    room = next((item for item in candidates if item.host and abs(getattr(item.host, f"{time_category}_rating") - rating) <= search_window(item)), None)
     if room:
         join_room(request=request, room=room, display_name=user.display_name)
         room.status = Room.Status.READY

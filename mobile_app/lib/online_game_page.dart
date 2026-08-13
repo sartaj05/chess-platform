@@ -46,6 +46,18 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
       ((_game['viewer'] as Map?)?['color'] as String?) ?? '';
   bool get _whiteView => _viewerColor != 'black';
   bool get _active => _game['status'] == 'active';
+  String get _connectionNotice {
+    final presence = _game['reconnection'] as Map?;
+    if (presence == null) return '';
+    final color = presence['white_disconnected_at'] != null
+        ? 'White'
+        : presence['black_disconnected_at'] != null
+            ? 'Black'
+            : '';
+    return color.isEmpty
+        ? ''
+        : '$color disconnected · grace period ${presence['grace_seconds']}s';
+  }
 
   @override
   void initState() {
@@ -272,6 +284,13 @@ class _OnlineGamePageState extends State<OnlineGamePage> {
                   padding: const EdgeInsets.only(top: 8),
                   child:
                       Text(_error!, style: const TextStyle(color: Colors.red))),
+            if (_connectionNotice.isNotEmpty)
+              Card(
+                  color: Colors.orange.shade50,
+                  child: Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Text(_connectionNotice,
+                          style: const TextStyle(color: Colors.deepOrange)))),
             if (!_active)
               Card(
                   child: Padding(

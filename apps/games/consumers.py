@@ -20,9 +20,11 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
         payload = await self._state()
         await self.channel_layer.group_add(self.group_name, self.channel_name)
         await self.accept()
+        await self._presence(True)
         await self.send_json({"type": "connection.accepted", "game": payload})
 
     async def disconnect(self, close_code: int) -> None:
+        await self._presence(False)
         await self.channel_layer.group_discard(self.group_name, self.channel_name)
 
     async def receive_json(self, content: dict[str, Any], **kwargs) -> None:
@@ -138,6 +140,17 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
             .get(pk=self.game_id)
         )
         return self._serialized_for_viewer(game)
+
+    @database_sync_to_async
+    def _presence(self, connected: bool) -> None:
+        from apps.games.models import Game
+        from apps.games.services import actor_from_scope
+        game=Game.objects.select_related("white_user","black_user").get(pk=self.game_id)
+        actor=actor_from_scope(self.scope,game)
+        if actor.color not in {"white","black"}: return
+        field=f"{actor.color}_disconnected_at"
+        setattr(game,field,None if connected else timezone.now())
+        game.save(update_fields=[field,"updated_at"])
 
     @database_sync_to_async
     def _play_move(self, uci: str, client_lag_ms: int) -> dict[str, Any]:

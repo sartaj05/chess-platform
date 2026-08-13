@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.contrib import admin
 
-from apps.games.models import Game, GameEvent, GameMove
+from apps.games.models import FairPlayReview, Game, GameEvent, GameMove
 
 
 class GameMoveInline(admin.TabularInline):
@@ -92,3 +92,10 @@ class GameEventAdmin(admin.ModelAdmin):
     list_filter = ("event_type", "actor_color")
     search_fields = ("game__id", "actor_display_name")
     readonly_fields = ("created_at", "updated_at")
+
+
+@admin.register(FairPlayReview)
+class FairPlayReviewAdmin(admin.ModelAdmin):
+    list_display=("game","status","risk_score","white_engine_match_rate","black_engine_match_rate","created_at")
+    list_filter=("status",)
+    search_fields=("game__white_display_name","game__black_display_name")

@@ -11,6 +11,7 @@ from apps.games.services import create_game_from_room, serialize_game
 from apps.rooms.models import Room
 from apps.rooms.serializers import CreateRoomSerializer, JoinRoomSerializer, RoomParticipantSerializer, RoomSerializer
 from apps.rooms.services import enter_matchmaking
+from django.utils import timezone
 
 
 class PublicRoomPagination(pagination.PageNumberPagination):
@@ -109,7 +110,8 @@ class MatchmakingAPIView(views.APIView):
         if room is None:
             return response.Response({"queued": False, "matched": False, "room": None})
         matched = room.status in {Room.Status.READY, Room.Status.IN_PROGRESS}
-        return response.Response({"queued": room.status == Room.Status.WAITING, "matched": matched, "room": RoomSerializer(room, context={"request": request}).data})
+        waited=max(int((timezone.now()-room.created_at).total_seconds()),0)
+        return response.Response({"queued": room.status == Room.Status.WAITING, "matched": matched, "wait_seconds":waited, "rating_window":min(800,100+(waited//60)*35), "room": RoomSerializer(room, context={"request": request}).data})
 
     def delete(self, request):
         updated = Room.objects.filter(host=request.user, status=Room.Status.WAITING, metadata__matchmaking=True).update(status=Room.Status.ABORTED)
