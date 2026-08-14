@@ -47,9 +47,15 @@ class PuzzleDetailView(LoginRequiredMixin, TemplateView):
         puzzle = self._puzzle()
         attempt = get_attempt(puzzle=puzzle, user=self.request.user)
         board = chess.Board(attempt.current_fen)
+        legal_moves: dict[str, dict[str, str]] = {}
+        for move in board.legal_moves:
+            source = chess.square_name(move.from_square)
+            destination = chess.square_name(move.to_square)
+            if destination not in legal_moves.setdefault(source, {}) or move.promotion == chess.QUEEN:
+                legal_moves[source][destination] = move.uci()
         symbols = {"P":"♙","N":"♘","B":"♗","R":"♖","Q":"♕","K":"♔","p":"♟","n":"♞","b":"♝","r":"♜","q":"♛","k":"♚"}
         context.update(
-            puzzle=puzzle, attempt=attempt, move_form=PuzzleMoveForm(),
+            puzzle=puzzle, attempt=attempt, move_form=PuzzleMoveForm(), legal_moves=legal_moves,
             board_squares=[{"name": chess.square_name(square), "piece": symbols.get(board.piece_at(square).symbol(), "") if board.piece_at(square) else "", "dark": (file + rank) % 2 == 0} for rank in range(7, -1, -1) for file in range(8) for square in [chess.square(file, rank)]],
         )
         return context

@@ -28,6 +28,7 @@ class DashboardView(LoginRequiredMixin, TemplateView):
             Q(white_user=user, result=Game.Result.BLACK_WIN) | Q(black_user=user, result=Game.Result.WHITE_WIN)
         ).count()
         draws = finished_games.filter(result=Game.Result.DRAW).count()
+        finished_count = finished_games.count()
 
         friend_count = Friendship.objects.filter(
             Q(requester=user) | Q(addressee=user),
@@ -54,6 +55,19 @@ class DashboardView(LoginRequiredMixin, TemplateView):
                 "solved": puzzle_attempts.filter(status=PuzzleAttempt.Status.SOLVED).count(),
             },
             unread_message_count=unread_messages.count(),
+            finished_game_count=finished_count,
+            win_percentage=round(wins * 100 / finished_count) if finished_count else 0,
+            result_loss_end=round((wins + losses) * 100 / finished_count) if finished_count else 0,
+            rating_progress={
+                "bullet": min(round(user.bullet_rating / 20), 100),
+                "blitz": min(round(user.blitz_rating / 20), 100),
+                "rapid": min(round(user.rapid_rating / 20), 100),
+            },
+            puzzle_percentage=round(
+                puzzle_attempts.filter(status=PuzzleAttempt.Status.SOLVED).count() * 100 / puzzle_attempts.count()
+            )
+            if puzzle_attempts.exists()
+            else 0,
             recent_games=games.select_related("white_user", "black_user")[:5],
             upcoming_tournaments=tournament_entries.filter(
                 tournament__status__in=[Tournament.Status.REGISTRATION, Tournament.Status.ACTIVE]

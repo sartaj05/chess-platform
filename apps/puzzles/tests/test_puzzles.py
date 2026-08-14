@@ -90,3 +90,12 @@ def test_unpublished_puzzle_is_not_accessible(client, puzzle_user, puzzle):
     puzzle.save(update_fields=["is_published"])
     client.force_login(puzzle_user)
     assert client.get(reverse("puzzles:detail", args=[puzzle.pk])).status_code == 404
+
+
+def test_puzzle_detail_exposes_only_legal_visual_moves(client, puzzle_user, puzzle):
+    client.force_login(puzzle_user)
+    response = client.get(reverse("puzzles:detail", args=[puzzle.pk]))
+
+    assert response.status_code == 200
+    assert response.context["legal_moves"]["e2"] == {"e3": "e2e3", "e4": "e2e4"}
+    assert "f2" not in response.context["legal_moves"]["e2"]
