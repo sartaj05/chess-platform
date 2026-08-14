@@ -305,11 +305,11 @@ USE_TZ = True
 CELERY_BROKER_URL = env(
     "CELERY_BROKER_URL",
     default=REDIS_URL or "memory://",
-)
+).strip() or REDIS_URL or "memory://"
 CELERY_RESULT_BACKEND = env(
     "CELERY_RESULT_BACKEND",
     default=REDIS_URL or "cache+memory://",
-)
+).strip() or REDIS_URL or "cache+memory://"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"

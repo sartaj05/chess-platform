@@ -7,3 +7,8 @@ INTERNAL_IPS = ["127.0.0.1"]
 # or through a changing private LAN address when testing on a physical phone.
 # Production settings continue to require an explicit DJANGO_ALLOWED_HOSTS list.
 ALLOWED_HOSTS = ["*"]
+
+# Local development must work with only `manage.py runserver`. Tasks execute
+# immediately and use the console email backend when Redis/Celery is absent.
+CELERY_TASK_ALWAYS_EAGER = True
+CELERY_TASK_EAGER_PROPAGATES = True

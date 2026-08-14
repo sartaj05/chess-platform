@@ -1,5 +1,7 @@
 import pytest
+from kombu.exceptions import OperationalError
 from django.urls import reverse
+from unittest.mock import patch
 
 from apps.accounts.models import EmailOTP, User
 
@@ -36,6 +38,31 @@ def test_verified_user_can_login_from_email_form(client):
     assert response.status_code == 302
     assert response.url == reverse("dashboard:home")
     assert "_auth_user_id" in client.session
+
+
+@pytest.mark.django_db
+@patch("apps.accounts.views.send_email_verification.apply")
+@patch(
+    "apps.accounts.views.send_email_verification.delay",
+    side_effect=OperationalError("broker unavailable"),
+)
+def test_unverified_login_survives_celery_broker_outage(delay, apply, client):
+    user = User.objects.create_user(
+        email="pending@example.com",
+        password="StrongPass123!",
+        is_active=False,
+        is_email_verified=False,
+    )
+
+    response = client.post(
+        reverse("accounts:login"),
+        {"email": user.email, "password": "StrongPass123!"},
+    )
+
+    assert response.status_code == 302
+    assert response.url == reverse("accounts:verify_email")
+    delay.assert_called_once()
+    apply.assert_called_once()
 
 
 @pytest.mark.django_db

@@ -3,6 +3,7 @@ from io import BytesIO
 
 import pyotp
 import qrcode
+from kombu.exceptions import OperationalError
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -39,13 +40,19 @@ def _client_ip(request: HttpRequest) -> str | None:
 
 
 def _send_verification(request: HttpRequest, user: User) -> None:
-    send_email_verification.delay(
+    args = (
         str(user.id),
         request.get_host(),
         "https" if request.is_secure() else "http",
         _client_ip(request),
         request.META.get("HTTP_USER_AGENT", ""),
     )
+    try:
+        send_email_verification.delay(*args)
+    except OperationalError:
+        # Authentication and verification must remain available during a
+        # temporary broker outage. Production still uses Celery normally.
+        send_email_verification.apply(args=args, throw=True)
 
 
 @method_decorator(ratelimit(key="ip", rate="10/h", method="POST", block=True), name="post")
