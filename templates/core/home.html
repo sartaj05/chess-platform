@@ -9,15 +9,17 @@
     <span class="hero-kicker">YOUR NEXT GAME STARTS HERE</span>
     <h1>Chess for every<br><em>kind of player.</em></h1>
     <p>Play against Stockfish or share one device with no internet. Connect only when you choose online play.</p>
+    <a class="hero-cta" href="#playStudio">Choose how to play <span>↓</span></a>
     <span class="offline-badge">● Bot and same-device modes work offline</span>
     <div class="hero-stats"><span><strong>3</strong> play modes</span><span><strong>10</strong> bot levels</span><span><strong>1</strong> shared platform</span></div>
   </div>
   <div class="hero-board" aria-hidden="true"><span>♜</span><span>♞</span><span>♝</span><span>♛</span><span>♚</span><span>♝</span><span>♞</span><span>♜</span></div>
 </section>
+<div class="trust-strip" aria-label="Platform benefits"><span><strong>Stockfish powered</strong><small>Progressive bot training</small></span><span><strong>Private by design</strong><small>Local modes stay offline</small></span><span><strong>Play anywhere</strong><small>Web, Android, and LAN</small></span></div>
 
 <div class="home-layout">
-  <main class="play-studio">
-    <div class="section-heading"><div><span class="step-number">01</span><h2>Set up your game</h2></div><p>Choose your identity and side.</p></div>
+  <main class="play-studio" id="playStudio">
+    <div class="section-heading centered-heading"><div><span class="step-number">01</span><h2>Set up your game</h2></div><p>Choose your identity and preferred side.</p></div>
     <form method="post" id="quickPlayForm">
       {% csrf_token %}
       <div class="game-setup-bar">
@@ -29,7 +31,7 @@
         </div></fieldset>
       </div>
 
-      <div class="section-heading modes-heading"><div><span class="step-number">02</span><h2>Choose a mode</h2></div></div>
+      <div class="section-heading modes-heading centered-heading"><div><span class="step-number">02</span><h2>Choose a mode</h2></div><p>Start instantly or invite another player.</p></div>
       <div class="mode-grid">
         <article class="mode-card featured-mode">
           <div class="mode-icon">♟</div><span class="mode-tag">PROGRESSIVE</span><h3>Play with Bot</h3>
@@ -61,3 +63,4 @@
   </aside>
 </div>
 {% endblock %}
+{% block extra_js %}<script src="{% static 'js/app-home.js' %}"></script>{% endblock %}
