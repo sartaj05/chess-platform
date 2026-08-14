@@ -74,7 +74,21 @@ class AnalysisJobDetailView(TemplateView):
             GameAnalysisJob.objects.select_related("game").prefetch_related("move_reviews"), pk=kwargs["pk"]
         )
         context["job"] = job
-        context["reviews"] = job.move_reviews.all()
+        reviews = list(job.move_reviews.all())
+        context["reviews"] = reviews
+        important = [review for review in reviews if review.classification in {"best", "inaccuracy", "mistake", "blunder"}]
+        story = []
+        for review in important[:10]:
+            if review.classification == "best":
+                headline, narrative = "Best-move moment", f"{review.move_san} matched Stockfish and kept the position on course."
+            elif review.classification == "blunder":
+                headline, narrative = "The game turned", f"{review.move_san} lost {review.score_loss_cp / 100:.1f} pawns of evaluation. {review.bestmove_san or review.bestmove_uci} was the stronger path."
+            elif review.classification == "mistake":
+                headline, narrative = "A costly decision", f"After {review.move_san}, the position became significantly harder. Consider {review.bestmove_san or review.bestmove_uci}."
+            else:
+                headline, narrative = "A small opportunity slipped", f"{review.move_san} was playable, but {review.bestmove_san or review.bestmove_uci} preserved more pressure."
+            story.append({"review": review, "headline": headline, "narrative": narrative})
+        context["story_moments"] = story
         return context
 
 

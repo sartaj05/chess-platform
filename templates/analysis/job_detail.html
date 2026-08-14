@@ -31,6 +31,8 @@
     </div>
   </div>
 
+  <section class="review-story mb-4"><div class="story-heading"><div><span>GAME STORY</span><h2>How the game unfolded</h2></div>{% if job.summary.accuracy %}<div class="accuracy-pills"><span>White <strong>{{ job.summary.accuracy.white }}%</strong></span><span>Black <strong>{{ job.summary.accuracy.black }}%</strong></span></div>{% endif %}</div><div class="story-timeline">{% for moment in story_moments %}<article class="story-moment {{ moment.review.classification }}"><div class="story-marker">{{ moment.review.ply_number }}</div><div><span>{{ moment.review.get_classification_display }}</span><h3>{{ moment.headline }}</h3><p>{{ moment.narrative }}</p>{% if moment.review.best_line %}<small>Best line: {{ moment.review.best_line|join:" " }}</small>{% endif %}</div></article>{% empty %}<div class="empty-state">The story will appear when Stockfish completes the move review.</div>{% endfor %}</div></section>
+
   <div class="card border-secondary">
     <div class="card-header"><h2 class="h5 mb-0">Move Review</h2></div>
     <div class="table-responsive">

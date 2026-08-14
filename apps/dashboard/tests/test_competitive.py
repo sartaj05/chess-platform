@@ -48,3 +48,13 @@ def test_public_profile_and_history_render(client):
     assert client.get(reverse("accounts:public_profile", args=[player.pk])).status_code == 200
     client.force_login(player)
     assert client.get(reverse("accounts:game_history")).status_code == 200
+
+
+@pytest.mark.django_db
+def test_player_comparison_renders_head_to_head(client):
+    first = User.objects.create_user(email="first-compare@example.com", password="StrongPass123!", display_name="First")
+    second = User.objects.create_user(email="second-compare@example.com", password="StrongPass123!", display_name="Second")
+    response = client.get(reverse("accounts:player_comparison"), {"first": first.pk, "second": second.pk})
+    assert response.status_code == 200
+    assert b"First vs Second" in response.content
+    assert b"Win rate" in response.content

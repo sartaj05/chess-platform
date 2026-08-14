@@ -76,7 +76,7 @@
         </div>
 
         <div class="chessboard-wrap">
-          <div id="chessboard" class="chessboard" :class="boardOrientation">
+          <div id="chessboard" class="chessboard" :class="boardOrientation" :data-theme="boardTheme">
             <template x-for="row in boardRows()" :key="row[0].rank">
               <template x-for="square in row" :key="square.square">
                 <div
@@ -222,7 +222,9 @@
           <a class="btn btn-outline-light" href="{% url 'games:fen_import' %}">
             Import FEN
           </a>
+          <button class="btn btn-outline-success" type="button" x-show="state.status === 'finished'" @click="shareGame()">Share result</button>
         </div>
+        <hr><h3 class="h6">Board experience</h3><label class="form-label" for="boardTheme">Board theme</label><select class="form-select" id="boardTheme" x-model="boardTheme" @change="saveExperience()"><option value="classic">Classic wood</option><option value="forest">Forest club</option><option value="midnight">Midnight</option></select><label class="form-label mt-3" for="soundPack">Sound set</label><select class="form-select" id="soundPack" x-model="soundPack" @change="saveExperience()"><option value="wood">Wood</option><option value="soft">Soft</option><option value="silent">Silent</option></select>
       </div>
     </div>
 

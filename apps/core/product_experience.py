@@ -30,7 +30,18 @@ def player_progress(user: User) -> dict:
         {"name": "Solve a puzzle", "current": min(PuzzleAttempt.objects.filter(user=user, solved_at__date=today).count(), 1), "target": 1},
         {"name": "Make five moves", "current": min(GameMove.objects.filter(played_by_user=user, created_at__date=today).count(), 5), "target": 5},
     ]
-    return {"achievements": achievements, "unlocked_count": sum(item["unlocked"] for item in achievements), "daily_goals": goals, "completed_goal_count": sum(item["current"] >= item["target"] for item in goals)}
+    recommendations = []
+    unfinished = PuzzleAttempt.objects.filter(user=user, status=PuzzleAttempt.Status.IN_PROGRESS).select_related("puzzle").first()
+    if unfinished:
+        recommendations.append({"kind": "PUZZLE", "title": f"Continue {unfinished.puzzle.title}", "detail": f"Resume at move {unfinished.next_move_index + 1}", "url": unfinished.puzzle.get_absolute_url() if hasattr(unfinished.puzzle, "get_absolute_url") else f"/puzzles/{unfinished.puzzle_id}/", "icon": "◆"})
+    if user.bot_level < 10:
+        recommendations.append({"kind": "TRAINING", "title": f"Try bot level {user.bot_level}", "detail": f"Win to unlock level {user.bot_level + 1}", "url": "/#playStudio", "icon": "♞"})
+    recent = games.filter(status=Game.Status.FINISHED).select_related("white_user", "black_user").first()
+    if recent:
+        opponent = recent.black_user if recent.white_user_id == user.pk else recent.white_user
+        if opponent:
+            recommendations.append({"kind": "REMATCH", "title": f"Play {opponent.display_name} again", "detail": "Your last opponent is one challenge away", "url": f"/players/{opponent.pk}/", "icon": "↻"})
+    return {"achievements": achievements, "unlocked_count": sum(item["unlocked"] for item in achievements), "daily_goals": goals, "completed_goal_count": sum(item["current"] >= item["target"] for item in goals), "recommendations": recommendations[:3]}
 
 
 def live_platform_activity() -> dict:

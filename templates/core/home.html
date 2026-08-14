@@ -64,6 +64,7 @@
 </div>
 
 {% if request.user.is_authenticated %}
+<section class="recommendation-section" aria-labelledby="recommendedTitle"><div class="product-section-heading"><div><span>JUST FOR YOU</span><h2 id="recommendedTitle">Your next best move</h2></div><p>Based on your recent activity</p></div><div class="recommendation-grid">{% for item in recommendations %}<a class="recommendation-card" href="{{ item.url }}"><span class="recommendation-icon">{{ item.icon }}</span><span><small>{{ item.kind }}</small><strong>{{ item.title }}</strong><em>{{ item.detail }}</em></span><b>→</b></a>{% empty %}<a class="recommendation-card" href="{% url 'puzzles:list' %}"><span class="recommendation-icon">◆</span><span><small>START HERE</small><strong>Solve your first puzzle</strong><em>Build tactical pattern recognition</em></span><b>→</b></a>{% endfor %}</div></section>
 <section class="progress-hub" aria-labelledby="progressTitle">
   <div class="product-section-heading"><div><span>PLAYER JOURNEY</span><h2 id="progressTitle">Build your chess story</h2></div><p>{{ unlocked_count }} of {{ achievements|length }} achievements unlocked</p></div>
   <div class="progress-layout">

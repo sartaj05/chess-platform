@@ -220,6 +220,23 @@ class PublicProfileView(DetailView):
         return context
 
 
+class PlayerComparisonView(TemplateView):
+    template_name = "accounts/player_comparison.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        first = get_object_or_404(User, pk=self.request.GET.get("first"))
+        second = get_object_or_404(User, pk=self.request.GET.get("second"))
+
+        def stats(player):
+            games = Game.objects.filter(Q(white_user=player) | Q(black_user=player), status=Game.Status.FINISHED)
+            wins = games.filter(Q(white_user=player, result=Game.Result.WHITE_WIN) | Q(black_user=player, result=Game.Result.BLACK_WIN)).count()
+            return {"player": player, "games": games.count(), "wins": wins, "draws": games.filter(result=Game.Result.DRAW).count(), "win_rate": round(wins * 100 / games.count()) if games.exists() else 0}
+
+        context.update(first=stats(first), second=stats(second))
+        return context
+
+
 class GameHistoryView(LoginRequiredMixin, ListView):
     model = Game
     template_name = "accounts/game_history.html"

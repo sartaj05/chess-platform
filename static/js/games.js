@@ -56,6 +56,8 @@
       clockTimer: null,
       lastTickAt: 0,
       promotionChoice: null,
+      boardTheme: localStorage.getItem("chess-board-theme") || "classic",
+      soundPack: localStorage.getItem("chess-sound-pack") || "wood",
 
       init() {
         const stateTag = document.getElementById("game-state-data");
@@ -186,6 +188,8 @@
 
       replaceState(nextState) {
         const oldViewer = this.state.viewer;
+        const previousMove = this.state.last_move_uci;
+        const previousStatus = this.state.status;
 
         this.state = nextState;
 
@@ -201,6 +205,8 @@
 
         this.selectedSquare = "";
         this.draggedSquare = "";
+        if (nextState.last_move_uci && nextState.last_move_uci !== previousMove) this.playSound("move");
+        if (previousStatus !== "finished" && nextState.status === "finished") this.playSound("finish");
       },
 
       boardRows() {
@@ -363,6 +369,45 @@
 
       sendAction(type) {
         this.send({ type });
+      },
+
+      saveExperience() {
+        localStorage.setItem("chess-board-theme", this.boardTheme);
+        localStorage.setItem("chess-sound-pack", this.soundPack);
+        this.playSound("move");
+      },
+
+      playSound(kind) {
+        if (this.soundPack === "silent" || !window.AudioContext) return;
+        const context = new AudioContext();
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = this.soundPack === "soft" ? "sine" : "triangle";
+        oscillator.frequency.value = kind === "finish" ? 660 : (this.soundPack === "soft" ? 310 : 220);
+        gain.gain.setValueAtTime(0.055, context.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + (kind === "finish" ? 0.32 : 0.09));
+        oscillator.connect(gain); gain.connect(context.destination); oscillator.start(); oscillator.stop(context.currentTime + (kind === "finish" ? 0.34 : 0.1));
+      },
+
+      async shareGame() {
+        const result = `${this.state.white.name} vs ${this.state.black.name} — ${this.state.result}`;
+        const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = 630;
+        const draw = canvas.getContext("2d");
+        draw.fillStyle = "#173b2a"; draw.fillRect(0, 0, 1200, 630);
+        draw.fillStyle = "#b7d7a9"; draw.font = "700 28px system-ui"; draw.fillText("CHESS PLATFORM · GAME RESULT", 72, 90);
+        draw.fillStyle = "#ffffff"; draw.font = "700 62px system-ui"; draw.fillText(this.state.white.name, 72, 230); draw.fillText(this.state.black.name, 72, 330);
+        draw.fillStyle = "#b7d7a9"; draw.font = "500 34px system-ui"; draw.fillText("versus", 72, 275);
+        draw.fillStyle = "#ffffff"; draw.font = "800 96px Georgia"; draw.textAlign = "right"; draw.fillText(this.state.result, 1128, 290);
+        draw.fillStyle = "#a9c7a9"; draw.font = "500 25px system-ui"; draw.fillText("Review and replay this game", 1128, 530); draw.textAlign = "left";
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+        const file = blob ? new File([blob], "chess-result.png", { type: "image/png" }) : null;
+        const data = { title: "Chess Platform game", text: result, url: window.location.href, files: file ? [file] : [] };
+        try {
+          if (navigator.share && (!file || !navigator.canShare || navigator.canShare({ files: [file] }))) await navigator.share(data);
+          else { if (blob) { const link = document.createElement("a"); link.download = "chess-result.png"; link.href = URL.createObjectURL(blob); link.click(); URL.revokeObjectURL(link.href); } await navigator.clipboard.writeText(`${result}\n${window.location.href}`); notify("Result card saved and link copied.", "success"); }
+        } catch (error) {
+          if (error.name !== "AbortError") notify("Could not share this result.", "error");
+        }
       },
 
       formatClock(ms) {
