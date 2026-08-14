@@ -8,6 +8,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val channelName = "chess_platform/deep_links"
+    private val shareChannelName = "chess_platform/share"
     private var channel: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -17,6 +18,22 @@ class MainActivity : FlutterActivity() {
             if (call.method == "getInitialLink") result.success(intent?.dataString)
             else result.notImplemented()
         }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, shareChannelName)
+            .setMethodCallHandler { call, result ->
+                if (call.method != "shareResult") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                }
+                val text = call.argument<String>("text").orEmpty()
+                val title = call.argument<String>("title") ?: "Chess Platform result"
+                val share = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_SUBJECT, title)
+                    putExtra(Intent.EXTRA_TEXT, text)
+                }
+                startActivity(Intent.createChooser(share, title))
+                result.success(null)
+            }
     }
 
     override fun onNewIntent(intent: Intent) {

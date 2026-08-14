@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'game_replay_page.dart';
 
 class PublicProfilePage extends StatelessWidget {
-  const PublicProfilePage({super.key, required this.profile});
+  const PublicProfilePage({super.key, required this.profile, this.comparison});
   final Map<String, dynamic> profile;
+  final Map<String, dynamic>? comparison;
 
   @override
   Widget build(BuildContext context) => Scaffold(
@@ -31,6 +32,7 @@ class PublicProfilePage extends StatelessWidget {
                       leading: const Icon(Icons.insights),
                       title: const Text('Rating'),
                       trailing: Text('${profile['rating'] ?? 'Unrated'}'))),
+              if (comparison != null) _MobileComparison(data: comparison!),
               if ((profile['bio']?.toString() ?? '').isNotEmpty)
                 Card(
                     child: Padding(
@@ -40,6 +42,22 @@ class PublicProfilePage extends StatelessWidget {
           ),
         ),
       );
+}
+
+class _MobileComparison extends StatelessWidget {
+  const _MobileComparison({required this.data});
+  final Map<String, dynamic> data;
+  @override
+  Widget build(BuildContext context) {
+    final first = data['first'] as Map? ?? const {};
+    final second = data['second'] as Map? ?? const {};
+    final a = first['profile'] as Map? ?? const {}, b = second['profile'] as Map? ?? const {};
+    return Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(children: [
+      Text('Head to head', style: Theme.of(context).textTheme.titleMedium),
+      _row('Player', a['display_name'], b['display_name']), _row('Games', first['games'], second['games']), _row('Win rate', '${first['win_rate']}%', '${second['win_rate']}%'), _row('Blitz', a['blitz_rating'], b['blitz_rating']), _row('Rapid', a['rapid_rating'], b['rapid_rating']), _row('Puzzles', a['puzzle_rating'], b['puzzle_rating'])
+    ])));
+  }
+  Widget _row(String label, Object? first, Object? second) => Padding(padding: const EdgeInsets.symmetric(vertical: 5), child: Row(children: [Expanded(child: Text('$first', textAlign: TextAlign.right)), Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold))), Expanded(child: Text('$second'))]));
 }
 
 class ProfilePage extends StatefulWidget {

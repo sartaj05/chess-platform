@@ -8,6 +8,8 @@ class AppPreferences {
   static const _themeKey = 'chess_theme_mode';
   static const _soundsKey = 'chess_sounds_enabled';
   static const _localeKey = 'chess_locale';
+  static const _boardKey = 'chess_board_theme';
+  static const _soundPackKey = 'chess_sound_pack';
 
   Future<ThemeMode> loadTheme() async {
     final value = await _storage.read(key: _themeKey);
@@ -21,6 +23,10 @@ class AppPreferences {
       _storage.write(key: _themeKey, value: mode.name);
   Future<void> saveSounds(bool enabled) =>
       _storage.write(key: _soundsKey, value: enabled.toString());
+  Future<String> loadBoardTheme() async => await _storage.read(key: _boardKey) ?? 'forest';
+  Future<String> loadSoundPack() async => await _storage.read(key: _soundPackKey) ?? 'wood';
+  Future<void> saveBoardTheme(String value) => _storage.write(key: _boardKey, value: value);
+  Future<void> saveSoundPack(String value) => _storage.write(key: _soundPackKey, value: value);
   Future<Locale?> loadLocale() async {
     final value = await _storage.read(key: _localeKey);
     return value == null || value.isEmpty ? null : Locale(value);

@@ -19,6 +19,8 @@ class OfflineBoardPage extends StatefulWidget {
     this.onBotVictory,
     this.stockfishMove,
     this.soundsEnabled = true,
+    this.boardTheme = 'forest',
+    this.soundPack = 'wood',
   });
 
   final OfflinePlayMode mode;
@@ -27,6 +29,8 @@ class OfflineBoardPage extends StatefulWidget {
   final Future<int> Function(int level)? onBotVictory;
   final Future<String?> Function(String fen, int level)? stockfishMove;
   final bool soundsEnabled;
+  final String boardTheme;
+  final String soundPack;
 
   @override
   State<OfflineBoardPage> createState() => _OfflineBoardPageState();
@@ -92,7 +96,7 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
     final moved =
         _game.move({'from': _selected, 'to': square, 'promotion': promotion});
     setState(() => _selected = moved ? null : square);
-    if (moved && widget.soundsEnabled) SystemSound.play(SystemSoundType.click);
+    if (moved && widget.soundsEnabled && widget.soundPack != 'silent') SystemSound.play(widget.soundPack == 'soft' ? SystemSoundType.alert : SystemSoundType.click);
     if (moved && widget.mode == OfflinePlayMode.bot) {
       _checkResult();
       Future<void>.delayed(const Duration(milliseconds: 350), _playBotMove);
@@ -123,7 +127,7 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
       _game.move(move);
       _botThinking = false;
     });
-    if (widget.soundsEnabled) SystemSound.play(SystemSoundType.click);
+    if (widget.soundsEnabled && widget.soundPack != 'silent') SystemSound.play(widget.soundPack == 'soft' ? SystemSoundType.alert : SystemSoundType.click);
     _checkResult();
   }
 
@@ -226,14 +230,17 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
                       final square = '${String.fromCharCode(97 + file)}$rank';
                       final piece = _game.get(square);
                       final dark = (file + rank).isOdd;
+                      final palette = switch (widget.boardTheme) {
+                        'classic' => dark ? const Color(0xff765f40) : const Color(0xffeee2cd),
+                        'midnight' => dark ? const Color(0xff374653) : const Color(0xffb8c1c8),
+                        _ => dark ? const Color(0xff63845d) : const Color(0xffe8efd9),
+                      };
                       return InkWell(
                         onTap: () => _tap(square),
                         child: Container(
                           color: _selected == square
                               ? Colors.amber
-                              : (dark
-                                  ? const Color(0xff769656)
-                                  : const Color(0xffeeeed2)),
+                              : palette,
                           alignment: Alignment.center,
                           child: Text(
                             _symbol(piece?.type.name,

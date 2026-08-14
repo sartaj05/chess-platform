@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:chess/chess.dart' as chess;
 import 'package:flutter/material.dart';
+import 'app_preferences.dart';
+import 'result_share_service.dart';
 
 class GameReplayPage extends StatefulWidget {
   const GameReplayPage(
@@ -22,7 +24,16 @@ class _GameReplayPageState extends State<GameReplayPage> {
   Map<String, dynamic>? _analysis;
   bool _analysing = false;
   String? _error;
+  String _boardTheme = 'forest';
   List get _moves => widget.game['moves'] as List? ?? const [];
+
+  @override
+  void initState() {
+    super.initState();
+    AppPreferences().loadBoardTheme().then((value) {
+      if (mounted) setState(() => _boardTheme = value);
+    });
+  }
   chess.Chess _position() {
     final game = chess.Chess.fromFEN(
         widget.game['initial_fen']?.toString() ?? chess.Chess.DEFAULT_POSITION);
@@ -61,7 +72,12 @@ class _GameReplayPageState extends State<GameReplayPage> {
     final board = _position();
     final reviewRows = _analysis?['reviews'] as List? ?? const [];
     return Scaffold(
-        appBar: AppBar(title: const Text('Game Replay')),
+        appBar: AppBar(title: const Text('Game Replay'), actions: [
+          IconButton(
+              tooltip: 'Share result',
+              onPressed: () => ResultShareService.shareGame(widget.game),
+              icon: const Icon(Icons.share))
+        ]),
         body: ListView(padding: const EdgeInsets.all(12), children: [
           Text(
               '${widget.game['white_display_name']} vs ${widget.game['black_display_name']}',
@@ -81,10 +97,15 @@ class _GameReplayPageState extends State<GameReplayPage> {
                         square = '${String.fromCharCode(97 + file)}${rank + 1}',
                         piece = board.get(square),
                         dark = (file + rank).isOdd;
+                    final palette = switch (_boardTheme) {
+                      'classic' =>
+                        (const Color(0xffb58863), const Color(0xfff0d9b5)),
+                      'midnight' =>
+                        (const Color(0xff334155), const Color(0xffcbd5e1)),
+                      _ => (const Color(0xff769656), const Color(0xffeeeed2)),
+                    };
                     return Container(
-                        color: dark
-                            ? const Color(0xff769656)
-                            : const Color(0xffeeeed2),
+                        color: dark ? palette.$1 : palette.$2,
                         alignment: Alignment.center,
                         child: Text(
                             _symbol(piece?.type.name,
@@ -130,6 +151,7 @@ class _GameReplayPageState extends State<GameReplayPage> {
                 child: CustomPaint(
                     painter: _EvaluationPainter(((_analysis!['summary']
                         as Map)['evaluation'] as List)))),
+          if (reviewRows.isNotEmpty) _GameStory(rows: reviewRows),
           if (_error != null)
             Text(_error!, style: const TextStyle(color: Colors.red)),
           ...reviewRows.map((row) => ListTile(
@@ -155,6 +177,47 @@ class _GameReplayPageState extends State<GameReplayPage> {
       if (state['status'] == 'completed' || state['status'] == 'failed') return;
       await Future<void>.delayed(const Duration(seconds: 2));
     }
+  }
+}
+
+class _GameStory extends StatelessWidget {
+  const _GameStory({required this.rows});
+  final List rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final moments = rows.where((item) {
+      final label = (item as Map)['classification']?.toString().toLowerCase();
+      return {'best', 'inaccuracy', 'mistake', 'blunder'}.contains(label);
+    }).take(6).toList();
+    if (moments.isEmpty) return const SizedBox.shrink();
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 12),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Game story', style: Theme.of(context).textTheme.titleLarge),
+          const Text('The moments that shaped the result.'),
+          const SizedBox(height: 10),
+          ...moments.map((item) {
+            final row = item as Map;
+            final classification = row['classification']?.toString() ?? 'move';
+            final best = row['bestmove_san'] ?? row['bestmove_uci'];
+            final detail = row['comment']?.toString().trim();
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(child: Text('${row['ply_number'] ?? ''}')),
+              title: Text('${row['move_san'] ?? ''} - $classification'),
+              subtitle: Text(detail?.isNotEmpty == true
+                  ? detail!
+                  : best == null
+                      ? 'This move changed the direction of the game.'
+                      : 'A stronger continuation was $best.'),
+            );
+          }),
+        ]),
+      ),
+    );
   }
 }
 

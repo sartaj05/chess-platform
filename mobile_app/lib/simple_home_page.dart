@@ -25,15 +25,23 @@ class SimpleHomePage extends StatefulWidget {
       {super.key,
       required this.themeMode,
       required this.soundsEnabled,
+      required this.boardTheme,
+      required this.soundPack,
       required this.locale,
       required this.onThemeChanged,
       required this.onSoundsChanged,
+      required this.onBoardThemeChanged,
+      required this.onSoundPackChanged,
       required this.onLocaleChanged});
   final ThemeMode themeMode;
   final bool soundsEnabled;
+  final String boardTheme;
+  final String soundPack;
   final Locale? locale;
   final ValueChanged<ThemeMode> onThemeChanged;
   final ValueChanged<bool> onSoundsChanged;
+  final ValueChanged<String> onBoardThemeChanged;
+  final ValueChanged<String> onSoundPackChanged;
   final ValueChanged<Locale?> onLocaleChanged;
 
   @override
@@ -60,6 +68,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
   int _botLevel = 1;
   int _selectedBotLevel = 1;
   String? _displayName;
+  Map<String, dynamic>? _experience;
   PlayerSide _side = PlayerSide.random;
 
   bool get _signedIn => _token != null;
@@ -90,9 +99,10 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
     await _perform((api) async {
       if (link.destination == MobileDestination.profile) {
         final profile = await api.publicProfile(link.id!);
+        final comparison = await api.compareProfile(link.id!);
         if (mounted) {
           await Navigator.of(context).push(MaterialPageRoute(
-              builder: (_) => PublicProfilePage(profile: profile)));
+              builder: (_) => PublicProfilePage(profile: profile, comparison: comparison)));
         }
       } else if (link.destination == MobileDestination.game) {
         final game = await api.game(link.id!);
@@ -118,12 +128,14 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
     try {
       final api = _MobileApi(_server.text, _token, _cookie, session: _session);
       final profile = await api.profile();
+      final experience = await api.experience();
       if (!mounted) return;
       setState(() {
         _token = _session.accessToken;
         _botLevel = profile['bot_level'] as int? ?? 1;
         _selectedBotLevel = _botLevel;
         _displayName = profile['display_name'] as String?;
+        _experience = experience;
         _name.text = _displayName ?? '';
       });
       await PushService.configure(api.registerPushDevice);
@@ -179,11 +191,13 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
         final profile =
             await _MobileApi(_server.text, _token, _cookie, session: _session)
                 .profile();
+        final experience = await _authenticatedApi.experience();
         if (mounted) {
           setState(() {
             _botLevel = profile['bot_level'] as int? ?? 1;
             _selectedBotLevel = _botLevel;
             _displayName = profile['display_name'] as String?;
+            _experience = experience;
             _name.text = _displayName ?? _name.text;
             _message = 'Welcome back, ${_displayName ?? 'Player'}.';
           });
@@ -466,6 +480,10 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                                   color: Color(0xffd4e2d5), height: 1.4)),
                         ]),
                   ),
+                  if (_signedIn && _experience != null) ...[
+                    const SizedBox(height: 16),
+                    _ExperiencePanel(data: _experience!),
+                  ],
                   const SizedBox(height: 22),
                   if (!_signedIn) ...[
                     Text(AppLocalizations.of(context)!.login,
@@ -573,7 +591,9 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                                     botLevel: _selectedBotLevel,
                                     onBotVictory: _recordBotVictory,
                                     stockfishMove: _stockfishMove,
-                                    soundsEnabled: widget.soundsEnabled),
+                                    soundsEnabled: widget.soundsEnabled,
+                                    boardTheme: widget.boardTheme,
+                                    soundPack: widget.soundPack),
                               )),
                               icon: const Icon(Icons.play_arrow),
                               label: const Text('Play Bot'),
@@ -595,6 +615,8 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                       builder: (_) => OfflineBoardPage(
                         preferredSide: chessSide(),
                         soundsEnabled: widget.soundsEnabled,
+                        boardTheme: widget.boardTheme,
+                        soundPack: widget.soundPack,
                       ),
                     )),
                   ),
@@ -663,6 +685,16 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                           title: const Text('Move and game sounds'),
                           value: widget.soundsEnabled,
                           onChanged: widget.onSoundsChanged),
+                      DropdownButtonFormField<String>(
+                          initialValue: widget.boardTheme,
+                          decoration: const InputDecoration(labelText: 'Board theme'),
+                          items: const [DropdownMenuItem(value: 'classic', child: Text('Classic wood')), DropdownMenuItem(value: 'forest', child: Text('Forest club')), DropdownMenuItem(value: 'midnight', child: Text('Midnight'))],
+                          onChanged: (value) { if (value != null) widget.onBoardThemeChanged(value); }),
+                      DropdownButtonFormField<String>(
+                          initialValue: widget.soundPack,
+                          decoration: const InputDecoration(labelText: 'Sound set'),
+                          items: const [DropdownMenuItem(value: 'wood', child: Text('Wood')), DropdownMenuItem(value: 'soft', child: Text('Soft')), DropdownMenuItem(value: 'silent', child: Text('Silent'))],
+                          onChanged: (value) { if (value != null) widget.onSoundPackChanged(value); }),
                       TextField(
                         controller: _server,
                         keyboardType: TextInputType.url,
@@ -687,6 +719,28 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
           ),
         ),
       );
+}
+
+class _ExperiencePanel extends StatelessWidget {
+  const _ExperiencePanel({required this.data});
+  final Map<String, dynamic> data;
+  @override
+  Widget build(BuildContext context) {
+    final recommendations = data['recommendations'] as List? ?? const [];
+    final achievements = data['achievements'] as List? ?? const [];
+    final goals = data['daily_goals'] as List? ?? const [];
+    return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Your next best move', style: Theme.of(context).textTheme.titleMedium),
+      ...recommendations.take(2).map((item) => ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.auto_awesome), title: Text((item as Map)['title']?.toString() ?? ''), subtitle: Text(item['detail']?.toString() ?? ''))),
+      const Divider(),
+      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Achievements', style: Theme.of(context).textTheme.titleSmall), Text('${data['unlocked_count'] ?? 0}/${achievements.length}')]),
+      const SizedBox(height: 8),
+      Wrap(spacing: 8, runSpacing: 8, children: achievements.map((item) { final row = item as Map; return Chip(avatar: Icon(row['unlocked'] == true ? Icons.verified : Icons.lock_outline, size: 17), label: Text(row['name']?.toString() ?? 'Achievement')); }).toList()),
+      const Divider(),
+      Text('Daily goals', style: Theme.of(context).textTheme.titleSmall),
+      ...goals.map((item) { final row = item as Map; final done = (row['current'] as num? ?? 0) >= (row['target'] as num? ?? 1); return ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: Icon(done ? Icons.check_circle : Icons.radio_button_unchecked, color: done ? Colors.green : null), title: Text(row['name']?.toString() ?? ''), trailing: Text('${row['current']}/${row['target']}')); }),
+    ])));
+  }
 }
 
 class _PlayCard extends StatelessWidget {
@@ -1038,10 +1092,15 @@ class _MobileApi {
 
   Future<Map<String, dynamic>> profile() async => Map<String, dynamic>.from(
       await _request('GET', 'api/accounts/me/') as Map);
+  Future<Map<String, dynamic>> experience() async => Map<String, dynamic>.from(
+      await _request('GET', 'api/accounts/experience/') as Map);
 
   Future<Map<String, dynamic>> publicProfile(String id) async =>
       Map<String, dynamic>.from(
           await _request('GET', 'api/accounts/players/$id/') as Map);
+  Future<Map<String, dynamic>> compareProfile(String id) async =>
+      Map<String, dynamic>.from(
+          await _request('GET', 'api/accounts/players/$id/compare/') as Map);
 
   Future<Map<String, dynamic>> game(String id) async =>
       Map<String, dynamic>.from(await _request('GET', 'api/games/$id/') as Map);

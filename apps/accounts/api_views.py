@@ -3,7 +3,12 @@ from django.utils import timezone
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.db.models import Q
 
+from apps.core.product_experience import player_progress
+from apps.games.models import Game
+
+from .models import User
 from .serializers import MobileEmailVerificationSerializer, MobileRegistrationSerializer, UserSerializer
 from .tasks import send_email_verification
 
@@ -27,6 +32,42 @@ class PublicProfileAPIView(APIView):
         if user is None:
             return Response({"detail": "Player not found."}, status=404)
         return Response(UserSerializer(user, context={"request": request}).data)
+
+
+class MobileExperienceAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response(player_progress(request.user))
+
+
+class PlayerComparisonAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, pk):
+        other = User.objects.filter(pk=pk, is_active=True).first()
+        if other is None:
+            return Response({"detail": "Player not found."}, status=404)
+
+        def stats(player):
+            games = Game.objects.filter(
+                Q(white_user=player) | Q(black_user=player),
+                status=Game.Status.FINISHED,
+            )
+            total = games.count()
+            wins = games.filter(
+                Q(white_user=player, result=Game.Result.WHITE_WIN)
+                | Q(black_user=player, result=Game.Result.BLACK_WIN)
+            ).count()
+            return {
+                "profile": UserSerializer(player, context={"request": request}).data,
+                "games": total,
+                "wins": wins,
+                "draws": games.filter(result=Game.Result.DRAW).count(),
+                "win_rate": round(wins * 100 / total) if total else 0,
+            }
+
+        return Response({"first": stats(request.user), "second": stats(other)})
 
 
 class PuzzleListAPIView(APIView):

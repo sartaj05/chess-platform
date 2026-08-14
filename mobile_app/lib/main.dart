@@ -29,6 +29,8 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
   final _preferences = AppPreferences();
   ThemeMode _themeMode = ThemeMode.system;
   bool _soundsEnabled = true;
+  String _boardTheme = 'forest';
+  String _soundPack = 'wood';
   Locale? _locale;
 
   @override
@@ -41,11 +43,15 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
     final theme = await _preferences.loadTheme();
     final sounds = await _preferences.loadSounds();
     final locale = await _preferences.loadLocale();
+    final boardTheme = await _preferences.loadBoardTheme();
+    final soundPack = await _preferences.loadSoundPack();
     if (mounted) {
       setState(() {
         _themeMode = theme;
         _soundsEnabled = sounds;
         _locale = locale;
+        _boardTheme = boardTheme;
+        _soundPack = soundPack;
       });
     }
   }
@@ -64,6 +70,8 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
     await _preferences.saveLocale(locale);
     setState(() => _locale = locale);
   }
+  Future<void> _setBoardTheme(String value) async { await _preferences.saveBoardTheme(value); setState(() => _boardTheme = value); }
+  Future<void> _setSoundPack(String value) async { await _preferences.saveSoundPack(value); setState(() => _soundPack = value); }
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -131,9 +139,13 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
         home: SimpleHomePage(
             themeMode: _themeMode,
             soundsEnabled: _soundsEnabled,
+            boardTheme: _boardTheme,
+            soundPack: _soundPack,
             locale: _locale,
             onThemeChanged: _setTheme,
             onSoundsChanged: _setSounds,
+            onBoardThemeChanged: _setBoardTheme,
+            onSoundPackChanged: _setSoundPack,
             onLocaleChanged: _setLocale),
       );
 }

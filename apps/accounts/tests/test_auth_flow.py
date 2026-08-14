@@ -128,3 +128,32 @@ def test_mobile_bot_victory_advances_current_level(client):
     )
     assert response.status_code == 200
     assert response.data["bot_level"] == 2
+
+
+@pytest.mark.django_db
+def test_mobile_experience_returns_recommendations_and_achievements(client):
+    user = User.objects.create_user(email="experience@example.com", password="StrongPass123!")
+    client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
+
+    response = client.get(reverse("api:accounts_api:experience"))
+
+    assert response.status_code == 200
+    assert response.data["recommendations"][0]["kind"] == "TRAINING"
+    assert response.data["achievements"][0]["name"] == "First Move"
+    assert len(response.data["daily_goals"]) == 3
+
+
+@pytest.mark.django_db
+def test_mobile_player_comparison_returns_both_players(client):
+    user = User.objects.create_user(email="first@example.com", password="StrongPass123!")
+    other = User.objects.create_user(email="second@example.com", password="StrongPass123!")
+    client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
+
+    response = client.get(
+        reverse("api:accounts_api:player-comparison", kwargs={"pk": other.pk})
+    )
+
+    assert response.status_code == 200
+    assert response.data["first"]["profile"]["email"] == user.email
+    assert response.data["second"]["profile"]["email"] == other.email
+    assert response.data["first"]["win_rate"] == 0
