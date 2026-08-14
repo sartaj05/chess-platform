@@ -16,6 +16,7 @@ import 'push_service.dart';
 import 'social_pages.dart';
 import 'deep_link_service.dart';
 import 'game_replay_page.dart';
+import 'onboarding_page.dart';
 import 'dart:async';
 
 enum PlayerSide { white, black, random }
@@ -332,6 +333,47 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
           builder: (_) => SocialPage(
               load: _authenticatedApi.social,
               action: _authenticatedApi.socialAction)));
+
+  Future<void> _openLiveGame(Map item, {bool spectate = false}) =>
+      _perform((api) async {
+        final code = item['room_code']?.toString();
+        final gameId = item['id']?.toString();
+        if (code == null || gameId == null) return;
+        if (spectate) {
+          await api.joinRoom(code, _name.text.trim(), asSpectator: true);
+        }
+        final game = await api.game(gameId);
+        if (!mounted) return;
+        await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => OnlineGamePage(
+            serverUrl: _server.text,
+            initialGame: game,
+            sessionCookie: api.cookie,
+            accessTokenProvider: api.validAccessToken,
+            soundsEnabled: widget.soundsEnabled,
+          ),
+        ));
+        final refreshed = await api.experience();
+        if (mounted) setState(() => _experience = refreshed);
+      });
+
+  Future<void> _challengePlayer(String playerId) => _perform((api) async {
+        final result = await api.challengePlayer(playerId);
+        final code = result['room_code']?.toString();
+        if (code == null || !mounted) return;
+        await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => ShareCodePage(
+            serverUrl: _server.text,
+            roomCode: code,
+            displayName: _name.text.trim(),
+            token: _token,
+            cookie: api.cookie,
+            session: _session,
+            soundsEnabled: widget.soundsEnabled,
+          ),
+        ));
+      });
+
   Future<void> _openTournaments() async =>
       Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => TournamentPage(
@@ -406,6 +448,12 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
       case 'profile':
         await _openProfile();
         return;
+      case 'tutorial':
+        await Navigator.of(context).push(MaterialPageRoute(
+            builder: (tutorialContext) => OnboardingPage(onComplete: () async {
+                  if (tutorialContext.mounted) Navigator.pop(tutorialContext);
+                })));
+        return;
       case 'logout':
         await _logout();
         return;
@@ -429,6 +477,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                   PopupMenuItem(value: 'social', child: ListTile(leading: Icon(Icons.people_outline), title: Text('Friends & chat'))),
                   PopupMenuItem(value: 'tournaments', child: ListTile(leading: Icon(Icons.workspace_premium_outlined), title: Text('Tournaments'))),
                   PopupMenuItem(value: 'openings', child: ListTile(leading: Icon(Icons.auto_graph), title: Text('Opening statistics'))),
+                  PopupMenuItem(value: 'tutorial', child: ListTile(leading: Icon(Icons.school_outlined), title: Text('Chess tutorial'))),
                   PopupMenuDivider(),
                   PopupMenuItem(value: 'logout', child: ListTile(leading: Icon(Icons.logout), title: Text('Logout'))),
                 ],
@@ -482,7 +531,13 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                   ),
                   if (_signedIn && _experience != null) ...[
                     const SizedBox(height: 16),
-                    _ExperiencePanel(data: _experience!),
+                    _ExperiencePanel(
+                      data: _experience!,
+                      onResume: (game) => _openLiveGame(game),
+                      onSpectate: (game) =>
+                          _openLiveGame(game, spectate: true),
+                      onChallenge: _challengePlayer,
+                    ),
                   ],
                   const SizedBox(height: 22),
                   if (!_signedIn) ...[
@@ -722,25 +777,143 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
 }
 
 class _ExperiencePanel extends StatelessWidget {
-  const _ExperiencePanel({required this.data});
+  const _ExperiencePanel({
+    required this.data,
+    required this.onResume,
+    required this.onSpectate,
+    required this.onChallenge,
+  });
   final Map<String, dynamic> data;
+  final ValueChanged<Map> onResume;
+  final ValueChanged<Map> onSpectate;
+  final ValueChanged<String> onChallenge;
+
   @override
   Widget build(BuildContext context) {
     final recommendations = data['recommendations'] as List? ?? const [];
     final achievements = data['achievements'] as List? ?? const [];
     final goals = data['daily_goals'] as List? ?? const [];
-    return Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Your next best move', style: Theme.of(context).textTheme.titleMedium),
-      ...recommendations.take(2).map((item) => ListTile(contentPadding: EdgeInsets.zero, leading: const Icon(Icons.auto_awesome), title: Text((item as Map)['title']?.toString() ?? ''), subtitle: Text(item['detail']?.toString() ?? ''))),
-      const Divider(),
-      Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Achievements', style: Theme.of(context).textTheme.titleSmall), Text('${data['unlocked_count'] ?? 0}/${achievements.length}')]),
-      const SizedBox(height: 8),
-      Wrap(spacing: 8, runSpacing: 8, children: achievements.map((item) { final row = item as Map; return Chip(avatar: Icon(row['unlocked'] == true ? Icons.verified : Icons.lock_outline, size: 17), label: Text(row['name']?.toString() ?? 'Achievement')); }).toList()),
-      const Divider(),
-      Text('Daily goals', style: Theme.of(context).textTheme.titleSmall),
-      ...goals.map((item) { final row = item as Map; final done = (row['current'] as num? ?? 0) >= (row['target'] as num? ?? 1); return ListTile(dense: true, contentPadding: EdgeInsets.zero, leading: Icon(done ? Icons.check_circle : Icons.radio_button_unchecked, color: done ? Colors.green : null), title: Text(row['name']?.toString() ?? ''), trailing: Text('${row['current']}/${row['target']}')); }),
-    ])));
+    final live = data['live_activity'] as Map? ?? const {};
+    final activeGames = live['active_games'] as List? ?? const [];
+    final resumeGames = live['resume_games'] as List? ?? const [];
+    final winners = live['recent_winners'] as List? ?? const [];
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text('Your next best move',
+              style: Theme.of(context).textTheme.titleMedium),
+          ...recommendations.take(2).map((item) {
+            final row = item as Map;
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.auto_awesome),
+              title: Text(row['title']?.toString() ?? ''),
+              subtitle: Text(row['detail']?.toString() ?? ''),
+              trailing: row['kind'] == 'REMATCH'
+                  ? const Text('Challenge')
+                  : null,
+              onTap: row['kind'] == 'REMATCH' && row['player_id'] != null
+                  ? () => onChallenge(row['player_id'].toString())
+                  : null,
+            );
+          }),
+          if (resumeGames.isNotEmpty) ...[
+            const Divider(),
+            Text('Continue playing',
+                style: Theme.of(context).textTheme.titleSmall),
+            ...resumeGames.map((item) {
+              final game = item as Map;
+              return _gameTile(game, 'Resume', onResume);
+            }),
+          ],
+          const Divider(),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('Live now', style: Theme.of(context).textTheme.titleSmall),
+            Text('${live['active_player_count'] ?? 0} players · '
+                '${live['active_game_count'] ?? 0} games'),
+          ]),
+          ...activeGames.take(3).map((item) {
+            final game = item as Map;
+            return _gameTile(game, 'Watch', onSpectate,
+                icon: Icons.visibility_outlined);
+          }),
+          if (winners.isNotEmpty) ...[
+            const Divider(),
+            Text('Recent champions',
+                style: Theme.of(context).textTheme.titleSmall),
+            ...winners.map((item) {
+              final winner = item as Map;
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.emoji_events_outlined),
+                title: Text(winner['player']?.toString() ?? 'Champion'),
+                subtitle: Text('${winner['tournament']} · '
+                    '${winner['score']} points'),
+                trailing: const Text('Challenge'),
+                onTap: () {
+                  final id = winner['player_id']?.toString();
+                  if (id != null) onChallenge(id);
+                },
+              );
+            }),
+          ],
+          const Divider(),
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text('Achievements',
+                style: Theme.of(context).textTheme.titleSmall),
+            Text('${(data['unlocked_count'] as num? ?? 0) + 1}/'
+                '${achievements.length + 1}'),
+          ]),
+          const SizedBox(height: 8),
+          Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                const Chip(
+                    avatar: Icon(Icons.verified, size: 17),
+                    label: Text('First Steps')),
+                ...achievements.map((item) {
+                  final row = item as Map;
+                  return Chip(
+                      avatar: Icon(
+                          row['unlocked'] == true
+                              ? Icons.verified
+                              : Icons.lock_outline,
+                          size: 17),
+                      label: Text(row['name']?.toString() ?? 'Achievement'));
+                }),
+              ]),
+          const Divider(),
+          Text('Daily goals', style: Theme.of(context).textTheme.titleSmall),
+          ...goals.map((item) {
+            final row = item as Map;
+            final done = (row['current'] as num? ?? 0) >=
+                (row['target'] as num? ?? 1);
+            return ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                    done ? Icons.check_circle : Icons.radio_button_unchecked,
+                    color: done ? Colors.green : null),
+                title: Text(row['name']?.toString() ?? ''),
+                trailing: Text('${row['current']}/${row['target']}'));
+          }),
+        ]),
+      ),
+    );
   }
+
+  Widget _gameTile(Map game, String action, ValueChanged<Map> callback,
+          {IconData icon = Icons.play_circle_outline}) =>
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(icon),
+        title: Text('${game['white']} vs ${game['black']}'),
+        subtitle: Text('${game['time_control']} · ${game['ply_count']} moves'),
+        trailing: Text(action),
+        onTap: () => callback(game),
+      );
 }
 
 class _PlayCard extends StatelessWidget {
@@ -1139,6 +1312,10 @@ class _MobileApi {
     await _request('POST', 'api/social/', values);
   }
 
+  Future<Map<String, dynamic>> challengePlayer(String playerId) async =>
+      Map<String, dynamic>.from(await _request('POST', 'api/social/',
+          {'action': 'challenge', 'user_id': playerId, 'minutes': 10}) as Map);
+
   Future<List<Map<String, dynamic>>> tournaments() async {
     final data = await _request('GET', 'api/tournaments/') as List;
     return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -1250,8 +1427,10 @@ class _MobileApi {
         'spectator_enabled': true
       }) as Map);
 
-  Future<void> joinRoom(String code, String name) =>
-      _request('POST', 'api/rooms/$code/join/', {'display_name': name});
+  Future<void> joinRoom(String code, String name,
+          {bool asSpectator = false}) =>
+      _request('POST', 'api/rooms/$code/join/',
+          {'display_name': name, 'as_spectator': asSpectator});
   Future<Map<String, dynamic>> room(String code) async =>
       Map<String, dynamic>.from(
           await _request('GET', 'api/rooms/$code/') as Map);

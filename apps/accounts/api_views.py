@@ -7,6 +7,7 @@ from django.db.models import Q
 
 from apps.core.product_experience import player_progress
 from apps.games.models import Game
+from apps.tournaments.models import Tournament, TournamentEntry
 
 from .models import User
 from .serializers import MobileEmailVerificationSerializer, MobileRegistrationSerializer, UserSerializer
@@ -38,7 +39,70 @@ class MobileExperienceAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        return Response(player_progress(request.user))
+        payload = player_progress(request.user)
+        public_active_games = Game.objects.filter(
+            status=Game.Status.ACTIVE,
+            allow_spectators=True,
+            room__visibility="public",
+        )
+        active_games = (
+            public_active_games
+            .select_related("room")
+            .order_by("-last_move_at", "-created_at")[:6]
+        )
+        resume_games = (
+            Game.objects.filter(
+                Q(white_user=request.user) | Q(black_user=request.user),
+                status__in=[Game.Status.CREATED, Game.Status.ACTIVE, Game.Status.PAUSED],
+                room__isnull=False,
+            )
+            .select_related("room")
+            .order_by("-updated_at")[:3]
+        )
+        recent_winners = []
+        tournaments = Tournament.objects.filter(
+            is_public=True, status=Tournament.Status.COMPLETED
+        ).order_by("-updated_at")[:3]
+        for tournament in tournaments:
+            winner = (
+                TournamentEntry.objects.filter(tournament=tournament)
+                .select_related("user")
+                .order_by("-score", "seed")
+                .first()
+            )
+            if winner:
+                recent_winners.append(
+                    {
+                        "tournament": tournament.name,
+                        "player": winner.user.display_name,
+                        "player_id": str(winner.user_id),
+                        "score": float(winner.score),
+                    }
+                )
+
+        def game_row(game):
+            return {
+                "id": str(game.pk),
+                "room_code": game.room.code,
+                "white": game.white_display_name,
+                "black": game.black_display_name,
+                "turn": game.turn,
+                "ply_count": game.ply_count,
+                "time_control": game.room.time_control_label,
+            }
+
+        active_user_ids = set(
+            public_active_games.values_list("white_user_id", flat=True)
+        ) | set(public_active_games.values_list("black_user_id", flat=True))
+        active_user_ids.discard(None)
+        payload["live_activity"] = {
+            "active_game_count": public_active_games.count(),
+            "active_player_count": len(active_user_ids),
+            "active_games": [game_row(game) for game in active_games],
+            "resume_games": [game_row(game) for game in resume_games],
+            "recent_winners": recent_winners,
+        }
+        return Response(payload)
 
 
 class PlayerComparisonAPIView(APIView):

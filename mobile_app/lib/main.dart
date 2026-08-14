@@ -10,6 +10,7 @@ import 'simple_home_page.dart';
 import 'app_preferences.dart';
 import 'deep_link_service.dart';
 import 'push_service.dart';
+import 'onboarding_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -32,6 +33,8 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
   String _boardTheme = 'forest';
   String _soundPack = 'wood';
   Locale? _locale;
+  bool _preferencesReady = false;
+  bool _onboardingComplete = false;
 
   @override
   void initState() {
@@ -45,6 +48,7 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
     final locale = await _preferences.loadLocale();
     final boardTheme = await _preferences.loadBoardTheme();
     final soundPack = await _preferences.loadSoundPack();
+    final onboardingComplete = await _preferences.loadOnboardingComplete();
     if (mounted) {
       setState(() {
         _themeMode = theme;
@@ -52,6 +56,8 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
         _locale = locale;
         _boardTheme = boardTheme;
         _soundPack = soundPack;
+        _onboardingComplete = onboardingComplete;
+        _preferencesReady = true;
       });
     }
   }
@@ -72,6 +78,11 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
   }
   Future<void> _setBoardTheme(String value) async { await _preferences.saveBoardTheme(value); setState(() => _boardTheme = value); }
   Future<void> _setSoundPack(String value) async { await _preferences.saveSoundPack(value); setState(() => _soundPack = value); }
+
+  Future<void> _completeOnboarding() async {
+    await _preferences.saveOnboardingComplete();
+    if (mounted) setState(() => _onboardingComplete = true);
+  }
 
   @override
   Widget build(BuildContext context) => MaterialApp(
@@ -136,7 +147,11 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
             child: child ?? const SizedBox.shrink(),
           );
         },
-        home: SimpleHomePage(
+        home: !_preferencesReady
+            ? const Scaffold(body: Center(child: CircularProgressIndicator()))
+            : !_onboardingComplete
+                ? OnboardingPage(onComplete: _completeOnboarding)
+                : SimpleHomePage(
             themeMode: _themeMode,
             soundsEnabled: _soundsEnabled,
             boardTheme: _boardTheme,
@@ -146,7 +161,7 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
             onSoundsChanged: _setSounds,
             onBoardThemeChanged: _setBoardTheme,
             onSoundPackChanged: _setSoundPack,
-            onLocaleChanged: _setLocale),
+                    onLocaleChanged: _setLocale),
       );
 }
 

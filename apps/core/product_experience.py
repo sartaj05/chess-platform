@@ -40,7 +40,7 @@ def player_progress(user: User) -> dict:
     if recent:
         opponent = recent.black_user if recent.white_user_id == user.pk else recent.white_user
         if opponent:
-            recommendations.append({"kind": "REMATCH", "title": f"Play {opponent.display_name} again", "detail": "Your last opponent is one challenge away", "url": f"/players/{opponent.pk}/", "icon": "↻"})
+            recommendations.append({"kind": "REMATCH", "title": f"Play {opponent.display_name} again", "detail": "Your last opponent is one challenge away", "url": f"/players/{opponent.pk}/", "player_id": str(opponent.pk), "icon": "↻"})
     return {"achievements": achievements, "unlocked_count": sum(item["unlocked"] for item in achievements), "daily_goals": goals, "completed_goal_count": sum(item["current"] >= item["target"] for item in goals), "recommendations": recommendations[:3]}
 
 

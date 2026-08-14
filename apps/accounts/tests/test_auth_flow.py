@@ -141,6 +141,20 @@ def test_mobile_experience_returns_recommendations_and_achievements(client):
     assert response.data["recommendations"][0]["kind"] == "TRAINING"
     assert response.data["achievements"][0]["name"] == "First Move"
     assert len(response.data["daily_goals"]) == 3
+    assert response.data["live_activity"] == {
+        "active_game_count": 0,
+        "active_player_count": 0,
+        "active_games": [],
+        "resume_games": [],
+        "recent_winners": [],
+    }
+    assert response.data["live_activity"] == {
+        "active_game_count": 0,
+        "active_player_count": 0,
+        "active_games": [],
+        "resume_games": [],
+        "recent_winners": [],
+    }
 
 
 @pytest.mark.django_db
