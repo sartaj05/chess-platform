@@ -369,62 +369,71 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
     });
   }
 
+  Future<void> _handleHomeMenu(String action) async {
+    switch (action) {
+      case 'openings':
+        await _openOpenings();
+        return;
+      case 'social':
+        await _openSocial();
+        return;
+      case 'tournaments':
+        await _openTournaments();
+        return;
+      case 'competitive':
+        await _openCompetitive();
+        return;
+      case 'notifications':
+        await _openNotifications();
+        return;
+      case 'history':
+        await _openHistory();
+        return;
+      case 'profile':
+        await _openProfile();
+        return;
+      case 'logout':
+        await _logout();
+        return;
+    }
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(
           title: Text(AppLocalizations.of(context)!.appTitle),
           actions: [
             if (_signedIn)
-              IconButton(
-                  onPressed: _openOpenings,
-                  tooltip: 'Opening statistics',
-                  icon: const Icon(Icons.auto_graph)),
-            if (_signedIn)
-              IconButton(
-                  onPressed: _openSocial,
-                  tooltip: 'Friends and chat',
-                  icon: const Icon(Icons.people_outline)),
-            if (_signedIn)
-              IconButton(
-                  onPressed: _openTournaments,
-                  tooltip: 'Tournaments',
-                  icon: const Icon(Icons.workspace_premium_outlined)),
-            if (_signedIn)
-              IconButton(
-                  onPressed: _openCompetitive,
-                  tooltip: 'Leaderboard and puzzles',
-                  icon: const Icon(Icons.emoji_events_outlined)),
-            if (_signedIn)
-              IconButton(
-                  onPressed: _openNotifications,
-                  tooltip: 'Notifications',
-                  icon: const Icon(Icons.notifications_none)),
-            if (_signedIn)
-              IconButton(
-                onPressed: _openHistory,
-                tooltip: 'Game history',
-                icon: const Icon(Icons.history),
-              ),
-            if (_signedIn)
-              IconButton(
-                onPressed: _openProfile,
-                tooltip: 'Profile',
-                icon: const Icon(Icons.account_circle_outlined),
-              ),
-            if (_signedIn)
-              TextButton.icon(
-                onPressed: _logout,
-                icon: const Icon(Icons.logout),
-                label: const Text('Logout'),
+              PopupMenuButton<String>(
+                tooltip: 'Account and chess features',
+                onSelected: _handleHomeMenu,
+                itemBuilder: (_) => const [
+                  PopupMenuItem(value: 'profile', child: ListTile(leading: Icon(Icons.account_circle_outlined), title: Text('Profile'))),
+                  PopupMenuItem(value: 'competitive', child: ListTile(leading: Icon(Icons.extension_outlined), title: Text('Puzzles & leaderboard'))),
+                  PopupMenuItem(value: 'history', child: ListTile(leading: Icon(Icons.history), title: Text('Game history'))),
+                  PopupMenuItem(value: 'notifications', child: ListTile(leading: Icon(Icons.notifications_none), title: Text('Notifications'))),
+                  PopupMenuItem(value: 'social', child: ListTile(leading: Icon(Icons.people_outline), title: Text('Friends & chat'))),
+                  PopupMenuItem(value: 'tournaments', child: ListTile(leading: Icon(Icons.workspace_premium_outlined), title: Text('Tournaments'))),
+                  PopupMenuItem(value: 'openings', child: ListTile(leading: Icon(Icons.auto_graph), title: Text('Opening statistics'))),
+                  PopupMenuDivider(),
+                  PopupMenuItem(value: 'logout', child: ListTile(leading: Icon(Icons.logout), title: Text('Logout'))),
+                ],
               ),
           ],
         ),
         body: SafeArea(
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.sizeOf(context).width >= 900 ? 900 : 760,
+              ),
               child: ListView(
-                padding: const EdgeInsets.fromLTRB(18, 8, 18, 32),
+                padding: EdgeInsets.fromLTRB(
+                  MediaQuery.sizeOf(context).width < 380 ? 12 : 18,
+                  8,
+                  MediaQuery.sizeOf(context).width < 380 ? 12 : 18,
+                  32,
+                ),
                 children: [
                   Container(
                     padding: const EdgeInsets.all(22),

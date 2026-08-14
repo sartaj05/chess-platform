@@ -116,6 +116,18 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.all(Radius.circular(20))))),
         themeMode: _themeMode,
+        builder: (context, child) {
+          final media = MediaQuery.of(context);
+          return MediaQuery(
+            data: media.copyWith(
+              textScaler: media.textScaler.clamp(
+                minScaleFactor: 0.85,
+                maxScaleFactor: 2.0,
+              ),
+            ),
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
         home: SimpleHomePage(
             themeMode: _themeMode,
             soundsEnabled: _soundsEnabled,

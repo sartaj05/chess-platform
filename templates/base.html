@@ -38,18 +38,18 @@
 
         <div class="collapse navbar-collapse" id="mainNavbar">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0" aria-label="Primary navigation">
-            <li class="nav-item"><a class="nav-link" href="{% url 'core:home' %}">Play</a></li>
-            <li class="nav-item"><a class="nav-link" href="{% url 'puzzles:list' %}">Puzzles</a></li>
-            <li class="nav-item"><a class="nav-link" href="{% url 'dashboard:leaderboard' %}">Leaderboard</a></li>
+            <li class="nav-item"><a class="nav-link{% if request.resolver_match.view_name == 'core:home' %} active{% endif %}" href="{% url 'core:home' %}"{% if request.resolver_match.view_name == 'core:home' %} aria-current="page"{% endif %}>Play</a></li>
+            <li class="nav-item"><a class="nav-link{% if request.resolver_match.namespace == 'puzzles' %} active{% endif %}" href="{% url 'puzzles:list' %}"{% if request.resolver_match.namespace == 'puzzles' %} aria-current="page"{% endif %}>Puzzles</a></li>
+            <li class="nav-item"><a class="nav-link{% if request.resolver_match.view_name == 'dashboard:leaderboard' %} active{% endif %}" href="{% url 'dashboard:leaderboard' %}"{% if request.resolver_match.view_name == 'dashboard:leaderboard' %} aria-current="page"{% endif %}>Leaderboard</a></li>
             {% if request.user.is_authenticated %}
-              <li class="nav-item"><a class="nav-link" href="{% url 'dashboard:home' %}">Dashboard</a></li>
-              <li class="nav-item"><a class="nav-link" href="{% url 'rooms:matchmaking' %}">Matchmaking</a></li>
-              <li class="nav-item"><a class="nav-link" href="{% url 'friends:list' %}">Friends</a></li>
+              <li class="nav-item"><a class="nav-link{% if request.resolver_match.namespace == 'dashboard' and request.resolver_match.view_name != 'dashboard:leaderboard' %} active{% endif %}" href="{% url 'dashboard:home' %}">Dashboard</a></li>
+              <li class="nav-item"><a class="nav-link{% if request.resolver_match.view_name == 'rooms:matchmaking' %} active{% endif %}" href="{% url 'rooms:matchmaking' %}">Matchmaking</a></li>
+              <li class="nav-item"><a class="nav-link{% if request.resolver_match.namespace == 'friends' %} active{% endif %}" href="{% url 'friends:list' %}">Friends</a></li>
             {% else %}
-              <li class="nav-item"><a class="nav-link" href="{% url 'rooms:list' %}">Live Rooms</a></li>
+              <li class="nav-item"><a class="nav-link{% if request.resolver_match.view_name == 'rooms:list' %} active{% endif %}" href="{% url 'rooms:list' %}">Live Rooms</a></li>
             {% endif %}
             <li class="nav-item dropdown">
-              <button class="nav-link nav-more" type="button" data-bs-toggle="dropdown" aria-expanded="false">More</button>
+              <button class="nav-link nav-more{% if request.resolver_match.namespace == 'tournaments' or request.resolver_match.view_name == 'rooms:lan_mode' or request.resolver_match.view_name == 'games:same_pc_new' %} active{% endif %}" type="button" data-bs-toggle="dropdown" aria-expanded="false">More</button>
               <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="{% url 'rooms:lan_mode' %}">LAN play</a></li>
                 <li><a class="dropdown-item" href="{% url 'games:same_pc_new' %}">Same device</a></li>

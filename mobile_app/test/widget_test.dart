@@ -36,4 +36,30 @@ void main() {
     expect(find.text('White to move'), findsOneWidget);
     expect(find.text('Save offline game'), findsOneWidget);
   });
+
+  testWidgets('home remains usable on a narrow phone', (tester) async {
+    tester.view.physicalSize = const Size(320, 700);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const ChessPlatformApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Chess Platform'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('home uses a stable tablet content width', (tester) async {
+    tester.view.physicalSize = const Size(1200, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(const ChessPlatformApp());
+    await tester.pumpAndSettle();
+
+    expect(find.text('Chess Platform'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

@@ -48,14 +48,20 @@ class _Leaderboard extends StatefulWidget {
 class _LeaderboardState extends State<_Leaderboard> {
   String category = 'blitz';
   @override
-  Widget build(BuildContext context) => Column(children: [
-        SegmentedButton<String>(segments: const [
+  Widget build(BuildContext context) => Center(
+      child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 900),
+          child: Column(children: [
+        SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            child: SegmentedButton<String>(segments: const [
           ButtonSegment(value: 'bullet', label: Text('Bullet')),
           ButtonSegment(value: 'blitz', label: Text('Blitz')),
           ButtonSegment(value: 'rapid', label: Text('Rapid'))
         ], selected: {
           category
-        }, onSelectionChanged: (v) => setState(() => category = v.first)),
+        }, onSelectionChanged: (v) => setState(() => category = v.first))),
         Expanded(
             child: FutureBuilder<List<Map<String, dynamic>>>(
                 future: widget.load(category),
@@ -84,7 +90,7 @@ class _LeaderboardState extends State<_Leaderboard> {
                                         'Bullet ${p['bullet_rating']}\nBlitz ${p['blitz_rating']}\nRapid ${p['rapid_rating']}\n${p['bio'] ?? ''}'))));
                       });
                 }))
-      ]);
+      ])));
 }
 
 class _Puzzles extends StatelessWidget {
@@ -100,7 +106,16 @@ class _Puzzles extends StatelessWidget {
         }
         final dashboard = snapshot.data!;
         final rows = dashboard['results'] as List? ?? const [];
-        return ListView(children: [
+        if (rows.isEmpty) {
+          return const Center(
+              child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text('No published puzzles are available yet.')));
+        }
+        return Center(
+            child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: ListView(padding: const EdgeInsets.all(12), children: [
           ListTile(
               leading: const Icon(Icons.local_fire_department),
               title: Text(
@@ -118,7 +133,7 @@ class _Puzzles extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                       builder: (_) => _PuzzlePlay(puzzle: p, play: play)))))
-        ]);
+        ])));
       });
 }
 
@@ -166,8 +181,11 @@ class _PuzzlePlayState extends State<_PuzzlePlay> {
   @override
   Widget build(BuildContext context) => Scaffold(
       appBar: AppBar(title: Text(widget.puzzle['title'].toString())),
-      body: Padding(
-          padding: const EdgeInsets.all(20),
+      body: Center(
+          child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: SingleChildScrollView(
+          padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 380 ? 10 : 20),
           child:
               Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             AspectRatio(
@@ -199,8 +217,8 @@ class _PuzzlePlayState extends State<_PuzzlePlay> {
                                   style: const TextStyle(fontSize: 32))));
                     })),
             const SizedBox(height: 16),
-            Text(result)
-          ])));
+            Text(result, textAlign: TextAlign.center)
+          ])))));
 
   String _piece(String? type, bool white) {
     const glyphs = {
