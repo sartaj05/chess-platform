@@ -186,6 +186,24 @@ SDK rather than this test suite. Close Android Studio, end stale Dart/Flutter
 processes, run `flutter doctor -v`, and reinstall the stable Flutter SDK if the
 command still cannot start. CI remains the authoritative clean-SDK test run.
 
+## Project handover documents
+
+The `project_documentation` folder contains the current feature/gap audit,
+production deployment guide, second-PC transfer/cleanup guide, and a complete
+knowledge-transfer presentation guide. Regenerate documents 04-07 after major
+feature changes with:
+
+```powershell
+python .\scripts\generate_handover_docs.py
+```
+
+Preview local files that can be removed before transferring a clean project
+copy (this command does not delete anything):
+
+```powershell
+python .\scripts\prepare_project_transfer.py
+```
+
 ## Firebase push notifications
 
 1. Create a Firebase project and Android app.
