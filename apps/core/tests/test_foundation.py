@@ -25,7 +25,7 @@ def test_expected_websocket_routes_are_registered():
     assert "ws/games/<uuid:game_id>/" in route_patterns
 
 
-def test_home_displays_mobile_style_quick_play(client):
+def test_home_displays_mobile_style_quick_play(client, db):
     response = client.get(reverse("core:home"))
 
     assert response.status_code == 200
@@ -54,6 +54,20 @@ def test_signed_in_header_shows_player_navigation_without_guest_actions(client, 
     assert b"My profile" in response.content
     assert b">Login<" not in response.content
     assert b"Create Account" not in response.content
+
+
+def test_signed_in_home_has_progress_and_live_activity(client, db):
+    user = User.objects.create_user(email="progress@example.com", password="StrongPass123!", display_name="Progress")
+    client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
+
+    response = client.get(reverse("core:home"))
+
+    assert response.status_code == 200
+    assert len(response.context["achievements"]) == 4
+    assert len(response.context["daily_goals"]) == 3
+    assert response.context["active_game_count"] >= 0
+    assert b"Build your chess story" in response.content
+    assert b"The club is active" in response.content
 
 
 def test_home_can_start_same_pc_game(client, db):

@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 
 from apps.games.services import actor_from_request, create_same_pc_game, play_local_bot_reply
+from apps.core.product_experience import live_platform_activity, player_progress
 from apps.rooms.models import Room
 from apps.rooms.services import create_room, join_room
 
@@ -16,7 +17,10 @@ class HomeView(View):
 
     def get(self, request):
         bot_level = request.user.bot_level if request.user.is_authenticated else 1
-        return render(request, self.template_name, {"bot_level": bot_level, "bot_levels": range(1, bot_level + 1)})
+        context = {"bot_level": bot_level, "bot_levels": range(1, bot_level + 1), **live_platform_activity()}
+        if request.user.is_authenticated:
+            context.update(player_progress(request.user))
+        return render(request, self.template_name, context)
 
     def post(self, request):
         action = request.POST.get("action", "")
