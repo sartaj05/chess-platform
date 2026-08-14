@@ -3,3 +3,12 @@
 .account-panel{position:sticky;top:105px;padding:25px;border:1px solid #d6dfd2;border-radius:18px;background:#fff;box-shadow:0 15px 42px rgba(31,63,38,.08)}.account-panel h2{margin:9px 0 5px;font-size:1.45rem}.account-panel>p{color:#6e776c;font-size:.84rem}.compact-login label{display:block;margin:14px 0 0;color:#657063;font-size:.68rem}.compact-login input{height:42px;margin-top:5px;border:1px solid #cbd6c7;border-radius:8px;background:#f8faf5}.compact-login button{justify-content:center;margin-top:16px}.account-divider{display:flex;align-items:center;gap:10px;margin:19px 0;color:#7b8479;font-size:.7rem}.account-divider::before,.account-divider::after{content:"";height:1px;flex:1;background:#dce3d9}.panel-secondary{display:block;width:100%;padding:10px;border:1px solid #b9c8b5;border-radius:9px;background:#fff;color:#315f32!important;text-align:center;font-weight:700;text-decoration:none}.guest-note{display:block;margin-top:12px;color:#838b81;text-align:center}.profile-avatar{display:grid;place-items:center;width:58px;height:58px;margin-top:18px;border-radius:50%;background:#dcebd7;color:#2d622f;font-size:1.5rem;font-weight:800}.profile-level{display:flex;justify-content:space-between;margin:22px 0;padding:13px;border-radius:10px;background:#f0f5ed;color:#536052}.profile-level strong{color:#2e6831}.account-panel form{margin-top:10px}
 @media(max-width:991px){.chess-hero{grid-template-columns:1fr}.hero-board{display:none}.home-layout{grid-template-columns:1fr}.account-panel{position:static;grid-row:1}.mode-grid{grid-template-columns:1fr 1fr}.featured-mode{grid-column:span 2}.join-strip{grid-template-columns:1fr 1fr}.join-strip>div{grid-column:span 2}}
 @media(max-width:600px){.chess-hero{min-height:auto;margin-bottom:32px;padding:45px 20px}.hero-stats{gap:18px}.home-layout{gap:25px}.game-setup-bar,.mode-grid{grid-template-columns:1fr}.featured-mode{grid-column:auto}.join-strip{grid-template-columns:1fr}.join-strip>div{grid-column:auto}.section-heading p{display:none}}
+
+/* Compact desktop presentation: use the viewport like a website, not a phone mockup. */
+@media(min-width:992px){
+  .chess-hero{min-height:290px;margin-bottom:38px;padding:44px max(calc((100vw - 1320px)/2),2rem)}
+  .chess-hero h1{font-size:clamp(2.8rem,4.4vw,4.7rem)}
+  .home-layout{grid-template-columns:minmax(0,1fr) 290px}
+}
+.offline-badge{display:inline-flex;align-items:center;margin-top:10px;padding:7px 10px;border:1px solid rgba(183,215,169,.35);border-radius:999px;color:#cce3c4;font-size:.72rem;font-weight:700}
+.panel-history{margin-top:10px}

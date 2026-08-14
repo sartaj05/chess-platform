@@ -8,14 +8,6 @@
     <title>{% block title %}{{ site_name }}{% endblock %}</title>
     <link rel="icon" type="image/png" href="{% static 'img/favicon.png' %}" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-
-    <link
-      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,560;9..144,650&family=Work+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap"
-      rel="stylesheet"
-    />
-
     <link
       rel="stylesheet"
       href="{% static 'vendor/bootstrap/bootstrap.min.css' %}"
@@ -45,92 +37,44 @@
         </button>
 
         <div class="collapse navbar-collapse" id="mainNavbar">
-          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'rooms:list' %}">Live Rooms</a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'rooms:create' %}">
-                Create Room
-              </a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'rooms:lan_mode' %}">
-                LAN Mode
-              </a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'core:offline_mode' %}">
-                Offline Mode
-              </a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'games:same_pc_new' %}">
-                Same PC
-              </a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'puzzles:list' %}">
-                Puzzles
-              </a>
-            </li>
-
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'tournaments:list' %}">
-                Tournaments
-              </a>
-            </li>
+          <ul class="navbar-nav me-auto mb-2 mb-lg-0" aria-label="Primary navigation">
+            <li class="nav-item"><a class="nav-link" href="{% url 'core:home' %}">Play</a></li>
+            <li class="nav-item"><a class="nav-link" href="{% url 'puzzles:list' %}">Puzzles</a></li>
             <li class="nav-item"><a class="nav-link" href="{% url 'dashboard:leaderboard' %}">Leaderboard</a></li>
-
             {% if request.user.is_authenticated %}
-            <li class="nav-item"><a class="nav-link" href="{% url 'rooms:matchmaking' %}">Matchmaking</a></li>
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'friends:list' %}">
-                Friends
-              </a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="{% url 'dashboard:home' %}">
-                Dashboard
-              </a>
-            </li>
+              <li class="nav-item"><a class="nav-link" href="{% url 'dashboard:home' %}">Dashboard</a></li>
+              <li class="nav-item"><a class="nav-link" href="{% url 'rooms:matchmaking' %}">Matchmaking</a></li>
+              <li class="nav-item"><a class="nav-link" href="{% url 'friends:list' %}">Friends</a></li>
+            {% else %}
+              <li class="nav-item"><a class="nav-link" href="{% url 'rooms:list' %}">Live Rooms</a></li>
             {% endif %}
+            <li class="nav-item dropdown">
+              <button class="nav-link nav-more" type="button" data-bs-toggle="dropdown" aria-expanded="false">More</button>
+              <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{% url 'rooms:lan_mode' %}">LAN play</a></li>
+                <li><a class="dropdown-item" href="{% url 'games:same_pc_new' %}">Same device</a></li>
+                <li><a class="dropdown-item" href="{% url 'rooms:list' %}">Live rooms</a></li>
+                <li><a class="dropdown-item" href="{% url 'tournaments:list' %}">Tournaments</a></li>
+              </ul>
+            </li>
           </ul>
 
           <div class="d-flex gap-2 align-items-center">
             {% if request.user.is_authenticated %}
-            <a
-              class="btn btn-outline-light btn-sm"
-              href="{% url 'chat:list' %}"
-            >
-              Messages
-            </a>
-
-            <a
-              class="btn btn-outline-light btn-sm"
-              href="{% url 'notifications:list' %}"
-            >
-              Notifications{% if unread_notification_count %} ({{ unread_notification_count }}){% endif %}
-            </a>
-
-            <a
-              class="btn btn-outline-light btn-sm"
-              href="{% url 'accounts:profile' %}"
-            >
-              {{ request.user.display_name }}
-            </a>
-
-            <form method="post" action="{% url 'accounts:logout' %}">
-              {% csrf_token %}
-              <button class="btn btn-warning btn-sm" type="submit">
-                Logout
+            <a class="header-icon-link" href="{% url 'chat:list' %}" aria-label="Messages" title="Messages">✉</a>
+            <a class="header-icon-link" href="{% url 'notifications:list' %}" aria-label="Notifications" title="Notifications">♟{% if unread_notification_count %}<span>{{ unread_notification_count }}</span>{% endif %}</a>
+            <div class="dropdown">
+              <button class="account-menu-button" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span>{{ request.user.display_name|first|upper }}</span>{{ request.user.display_name }}
               </button>
-            </form>
+              <div class="dropdown-menu dropdown-menu-end account-dropdown">
+                <a class="dropdown-item" href="{% url 'accounts:profile' %}">My profile</a>
+                <a class="dropdown-item" href="{% url 'accounts:game_history' %}">Game history</a>
+                <a class="dropdown-item" href="{% url 'accounts:security' %}">Security</a>
+                <div class="dropdown-divider"></div>
+                <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="dropdown-item" type="submit">Logout</button></form>
+              </div>
+            </div>
             {% else %}
             <a
               class="btn btn-outline-light btn-sm"

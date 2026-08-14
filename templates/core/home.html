@@ -8,7 +8,8 @@
   <div class="hero-copy">
     <span class="hero-kicker">YOUR NEXT GAME STARTS HERE</span>
     <h1>Chess for every<br><em>kind of player.</em></h1>
-    <p>Challenge the computer, share a board with a friend, or play live across devices—all from one account.</p>
+    <p>Play against Stockfish or share one device with no internet. Connect only when you choose online play.</p>
+    <span class="offline-badge">● Bot and same-device modes work offline</span>
     <div class="hero-stats"><span><strong>3</strong> play modes</span><span><strong>10</strong> bot levels</span><span><strong>1</strong> shared platform</span></div>
   </div>
   <div class="hero-board" aria-hidden="true"><span>♜</span><span>♞</span><span>♝</span><span>♛</span><span>♚</span><span>♝</span><span>♞</span><span>♜</span></div>
@@ -50,8 +51,8 @@
     {% if request.user.is_authenticated %}
       <span class="account-label">PLAYER PROFILE</span><div class="profile-avatar">{{ request.user.display_name|first|upper }}</div><h2>{{ request.user.display_name }}</h2><p>{{ request.user.email }}</p>
       <div class="profile-level"><span>Bot progress</span><strong>Level {{ request.user.bot_level }}</strong></div>
-      <a class="panel-primary" href="{% url 'dashboard:home' %}">Open dashboard</a>
-      <form method="post" action="{% url 'accounts:logout' %}">{% csrf_token %}<button class="panel-secondary" type="submit">Logout</button></form>
+      <a class="panel-primary" href="{% url 'accounts:profile' %}">View profile</a>
+      <a class="panel-secondary panel-history" href="{% url 'accounts:game_history' %}">Game history</a>
     {% else %}
       <span class="account-label">PLAYER ACCOUNT</span><h2>Welcome back</h2><p>Sign in to track games and unlock bot levels.</p>
       <form method="post" action="{% url 'accounts:login' %}" class="compact-login">{% csrf_token %}<label>Email<input name="email" type="email" required></label><label>Password<input name="password" type="password" required></label><button type="submit">Login</button></form>

@@ -109,6 +109,16 @@ Use `10.0.2.2` only for the Android emulator. For a physical phone, connect both
 
 If Django reports `Invalid HTTP_HOST header`, add the requested host (for example `10.0.2.2`) to `DJANGO_ALLOWED_HOSTS`, then restart Django.
 
+## Offline local operation
+
+The website does not load fonts, JavaScript, CSS, icons, or chess engines from
+the internet at runtime. Bootstrap, HTMX, Alpine, the favicon, and Stockfish are
+served locally. With Django running on the PC, bot games and same-device games
+work without an internet connection. LAN games also work without internet when
+the devices can reach the PC over the same Wi-Fi/router. Public internet is
+only required for remote online play, social login, Firebase delivery, package
+installation, and Play Store publishing.
+
 ## Redis, Celery, and background behavior
 
 Production must run both worker and beat processes. They handle Stockfish reviews, Firebase push delivery, clock timeouts, reconnect grace periods, abandoned games, fair-play analysis, and cleanup.

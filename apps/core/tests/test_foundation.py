@@ -2,6 +2,8 @@ from chess_platform.routing import websocket_urlpatterns
 from django.conf import settings
 from django.urls import resolve, reverse
 
+from apps.accounts.models import User
+
 
 def test_api_schema_is_available(client):
     response = client.get(reverse("schema"))
@@ -30,6 +32,28 @@ def test_home_displays_mobile_style_quick_play(client):
     assert b"Choose a mode" in response.content
     assert b"Play with Bot" in response.content
     assert b"Play Online" in response.content
+    assert b"fonts.googleapis.com" not in response.content
+    assert b"Dashboard" not in response.content
+    assert b"Matchmaking" not in response.content
+
+
+def test_signed_in_header_shows_player_navigation_without_guest_actions(client, db):
+    user = User.objects.create_user(
+        email="navigation@example.com",
+        password="StrongPass123!",
+        display_name="Navigator",
+        is_email_verified=True,
+    )
+    client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
+
+    response = client.get(reverse("core:home"))
+
+    assert response.status_code == 200
+    assert b"Dashboard" in response.content
+    assert b"Matchmaking" in response.content
+    assert b"My profile" in response.content
+    assert b">Login<" not in response.content
+    assert b"Create Account" not in response.content
 
 
 def test_home_can_start_same_pc_game(client, db):
