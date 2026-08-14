@@ -12,6 +12,22 @@ def test_api_schema_is_available(client):
     assert settings.REST_FRAMEWORK["DEFAULT_SCHEMA_CLASS"] == "drf_spectacular.openapi.AutoSchema"
 
 
+def test_responses_include_request_trace_and_server_timing(client):
+    response = client.get(reverse("core:health"), HTTP_X_REQUEST_ID="device-test-1")
+
+    assert response.headers["X-Request-ID"] == "device-test-1"
+    assert response.headers["Server-Timing"].startswith("app;dur=")
+    assert set(response.json()["timings"]) == {
+        "database_ms",
+        "cache_ms",
+        "total_ms",
+    }
+
+    sanitized = client.get(reverse("core:health"), HTTP_X_REQUEST_ID="bad value")
+    assert sanitized.headers["X-Request-ID"] != "bad value"
+    assert len(sanitized.headers["X-Request-ID"]) == 32
+
+
 def test_analysis_and_stockfish_routes_are_registered():
     assert resolve("/analysis/board/").view_name == "analysis:board"
     assert resolve("/stockfish/status/").view_name == "stockfish:status"

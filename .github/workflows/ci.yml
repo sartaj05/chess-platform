@@ -46,3 +46,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build --tag chess-platform:ci .
+
+  flutter-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - working-directory: mobile_app
+        run: flutter pub get
+      - working-directory: mobile_app
+        run: flutter analyze
+      - working-directory: mobile_app
+        run: flutter test --concurrency=1
+
+  android-emulator:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - working-directory: mobile_app
+        run: flutter pub get
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          working-directory: mobile_app
+          script: flutter test integration_test/app_test.dart -d emulator-5554

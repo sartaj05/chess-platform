@@ -1,10 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 import 'package:chess_platform_mobile/main.dart';
 import 'package:chess_platform_mobile/deep_link_service.dart';
 
 void main() {
+  setUp(() {
+    FlutterSecureStorage.setMockInitialValues(
+        {'chess_onboarding_complete_v1': 'true'});
+  });
+
   test('parses supported mobile deep links', () {
     expect(MobileLink.parse('chessplatform://rooms/abc123')?.id, 'ABC123');
     expect(

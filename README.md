@@ -168,6 +168,24 @@ flutter analyze
 flutter test
 ```
 
+For the complete Android validation flow on Windows:
+
+```powershell
+.\scripts\test_mobile.ps1
+.\scripts\test_mobile.ps1 -Integration -DeviceId emulator-5554
+```
+
+Use the second command with both an Android Studio emulator and at least one
+physical phone before a release. CI runs Flutter analysis/unit tests and the
+offline integration journey on an Android emulator. HTTP responses include an
+`X-Request-ID` correlation value and `Server-Timing` latency so slow requests
+can be matched to server logs. Online games show connection quality in the app.
+
+If even `flutter --version` hangs on Windows, the problem is the local Flutter
+SDK rather than this test suite. Close Android Studio, end stale Dart/Flutter
+processes, run `flutter doctor -v`, and reinstall the stable Flutter SDK if the
+command still cannot start. CI remains the authoritative clean-SDK test run.
+
 ## Firebase push notifications
 
 1. Create a Firebase project and Android app.

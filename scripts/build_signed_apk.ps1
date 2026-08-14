@@ -6,6 +6,9 @@ param(
     [string]$ServerUrl = "https://chess.example.com"
 )
 $ErrorActionPreference = "Stop"
+if ($ServerUrl -match 'example\.com|REPLACE' -or -not $ServerUrl.StartsWith('https://')) {
+    throw "ServerUrl must be the real production HTTPS address; placeholders and HTTP are refused."
+}
 $Root = Split-Path -Parent $PSScriptRoot
 $Android = Join-Path $Root "mobile_app\android"
 $Keystore = Join-Path $Android "app\release-keystore.jks"
@@ -32,4 +35,20 @@ try {
     flutter build apk --release --dart-define="CHESS_SERVER_URL=$ServerUrl"
     if ($LASTEXITCODE -ne 0) { throw "Signed APK build failed." }
 } finally { Pop-Location; $StorePlain = $null; $KeyPlain = $null }
+$Apk = Join-Path $Root "mobile_app\build\app\outputs\flutter-apk\app-release.apk"
+$Bundle = Join-Path $Root "mobile_app\build\app\outputs\bundle\release\app-release.aab"
+if (-not (Test-Path $Apk) -or -not (Test-Path $Bundle)) {
+    throw "Expected signed APK/AAB outputs were not created."
+}
+$ApkSigner = Get-ChildItem -Path (Join-Path $env:LOCALAPPDATA "Android\Sdk\build-tools") -Filter apksigner.bat -Recurse -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
+if ($ApkSigner) {
+    & $ApkSigner.FullName verify --verbose --print-certs $Apk
+    if ($LASTEXITCODE -ne 0) { throw "APK signature verification failed." }
+} else {
+    Write-Warning "apksigner was not found; install Android SDK Build Tools to verify the APK signature."
+}
+$ApkHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $Apk).Hash
+$BundleHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $Bundle).Hash
+Write-Host "APK SHA256: $ApkHash"
+Write-Host "AAB SHA256: $BundleHash"
 Write-Host "Signed outputs created under mobile_app\build\app\outputs." -ForegroundColor Green

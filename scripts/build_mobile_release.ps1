@@ -5,6 +5,9 @@ param(
     [int]$VersionCode = 0
 )
 $ErrorActionPreference = 'Stop'
+if ($ServerUrl -match 'example\.com|REPLACE' -or -not $ServerUrl.StartsWith('https://')) {
+    throw 'ServerUrl must be the real production HTTPS address.'
+}
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $mobileRoot = Join-Path $repoRoot 'mobile_app'
 if (-not $VersionName) {
@@ -17,6 +20,7 @@ Push-Location $mobileRoot
 try {
     flutter pub get
     flutter build $Format --release "--build-name=$VersionName" "--build-number=$VersionCode" "--dart-define=CHESS_SERVER_URL=$ServerUrl"
+    if ($LASTEXITCODE -ne 0) { throw "Flutter $Format build failed." }
 } finally {
     Pop-Location
 }

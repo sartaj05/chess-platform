@@ -6,8 +6,8 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 
-from apps.games.services import actor_from_request, create_same_pc_game, play_local_bot_reply
 from apps.core.product_experience import live_platform_activity, player_progress
+from apps.games.services import actor_from_request, create_same_pc_game, play_local_bot_reply
 from apps.rooms.models import Room
 from apps.rooms.services import create_room, join_room
 
@@ -92,22 +92,41 @@ class HomeView(View):
 
 
 def health_check(request):
+    import time
+
     from django.core.cache import cache
     from django.db import connection
     checks = {"database": False, "cache": False}
+    timings = {}
+    started = time.perf_counter()
     try:
+        check_started = time.perf_counter()
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
             checks["database"] = cursor.fetchone()[0] == 1
+        timings["database_ms"] = round((time.perf_counter() - check_started) * 1000, 2)
     except Exception:
+        timings["database_ms"] = None
         pass
     try:
+        check_started = time.perf_counter()
         cache.set("health-check", "ok", 10)
         checks["cache"] = cache.get("health-check") == "ok"
+        timings["cache_ms"] = round((time.perf_counter() - check_started) * 1000, 2)
     except Exception:
+        timings["cache_ms"] = None
         pass
     healthy = all(checks.values())
-    return JsonResponse({"status": "ok" if healthy else "degraded", "service": "chess-platform", "checks": checks}, status=200 if healthy else 503)
+    timings["total_ms"] = round((time.perf_counter() - started) * 1000, 2)
+    return JsonResponse(
+        {
+            "status": "ok" if healthy else "degraded",
+            "service": "chess-platform",
+            "checks": checks,
+            "timings": timings,
+        },
+        status=200 if healthy else 503,
+    )
 
 
 class OfflineModeInfoView(View):

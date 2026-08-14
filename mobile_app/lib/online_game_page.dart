@@ -42,12 +42,20 @@ class _OnlineGamePageState extends State<OnlineGamePage>
   bool _connecting = true;
   bool _disposed = false;
   int _reconnectAttempt = 0;
+  int _handshakeMs = 0;
+  bool _hasReconnected = false;
   DateTime _stateReceivedAt = DateTime.now();
 
   String get _viewerColor =>
       ((_game['viewer'] as Map?)?['color'] as String?) ?? '';
   bool get _whiteView => _viewerColor != 'black';
   bool get _active => _game['status'] == 'active';
+  String get _connectionQuality {
+    if (_connecting) return 'Reconnecting';
+    if (_hasReconnected || _handshakeMs > 900) return 'Slow';
+    if (_handshakeMs > 350) return 'Fair';
+    return 'Good';
+  }
   String get _connectionNotice {
     final presence = _game['reconnection'] as Map?;
     if (presence == null) return '';
@@ -78,6 +86,7 @@ class _OnlineGamePageState extends State<OnlineGamePage>
   Future<void> _connect() async {
     if (_disposed) return;
     setState(() => _connecting = true);
+    final started = Stopwatch()..start();
     try {
       final token = await widget.accessTokenProvider();
       final base = Uri.parse(widget.serverUrl);
@@ -103,6 +112,7 @@ class _OnlineGamePageState extends State<OnlineGamePage>
       _socket = socket;
       _reconnectAttempt = 0;
       setState(() {
+        _handshakeMs = started.elapsedMilliseconds;
         _connecting = false;
         _error = null;
       });
@@ -156,6 +166,7 @@ class _OnlineGamePageState extends State<OnlineGamePage>
   void _connectionLost() {
     if (_disposed || _reconnectTimer?.isActive == true) return;
     _socket = null;
+    _hasReconnected = true;
     final delay = Duration(seconds: 1 << _reconnectAttempt.clamp(0, 4));
     _reconnectAttempt++;
     if (mounted) setState(() => _connecting = true);
@@ -294,8 +305,21 @@ class _OnlineGamePageState extends State<OnlineGamePage>
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
-            child: Icon(_connecting ? Icons.sync : Icons.cloud_done,
-                color: _connecting ? Colors.orange : Colors.green),
+            child: Semantics(
+              liveRegion: true,
+              label: 'Connection quality: $_connectionQuality',
+              child: Chip(
+                avatar: Icon(
+                    _connecting ? Icons.sync : Icons.network_check,
+                    size: 18,
+                    color: _connecting
+                        ? Colors.orange
+                        : _connectionQuality == 'Good'
+                            ? Colors.green
+                            : Colors.amber.shade800),
+                label: Text(_connectionQuality),
+              ),
+            ),
           ),
         ],
       ),
@@ -451,9 +475,15 @@ class _OnlineGamePageState extends State<OnlineGamePage>
               (lastMove.length >= 4 &&
                   (lastMove.substring(0, 2) == square ||
                       lastMove.substring(2, 4) == square));
-          return InkWell(
-            onTap: () => _tapSquare(square),
-            child: Container(
+          final pieceName = piece == null
+              ? 'empty'
+              : '${piece.color == chess.Color.WHITE ? 'white' : 'black'} ${piece.type.name}';
+          return Semantics(
+            button: true,
+            label: '$square, $pieceName${highlighted ? ', highlighted' : ''}',
+            child: InkWell(
+              onTap: () => _tapSquare(square),
+              child: Container(
               color: highlighted
                   ? Colors.amber.shade400
                   : (dark ? const Color(0xff769656) : const Color(0xffeeeed2)),
@@ -461,6 +491,7 @@ class _OnlineGamePageState extends State<OnlineGamePage>
               child: Text(
                   _piece(piece?.type.name, piece?.color == chess.Color.WHITE),
                   style: const TextStyle(fontSize: 34)),
+              ),
             ),
           );
         },
