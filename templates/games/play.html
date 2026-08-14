@@ -29,6 +29,11 @@
             · Turn <span x-text="state.turn"></span>
             <template x-if="state.mode === 'local_ai'"><span> · Bot Level <span x-text="state.bot_level"></span></span></template>
           </span>
+          <template x-if="state.mode === 'local_ai' && state.bot_engine">
+            <div class="small text-secondary mt-1">
+              Bot engine: <strong x-text="state.bot_engine === 'stockfish' ? 'Stockfish' : 'Built-in fallback'"></strong>
+            </div>
+          </template>
         </div>
 
         <span
@@ -39,8 +44,17 @@
       </div>
 
       <div class="card-body">
-        <div class="alert alert-success" x-show="state.level_unlocked" x-cloak>
-          Victory! Bot Level <strong x-text="state.level_unlocked"></strong> is now unlocked.
+        <div class="alert alert-success" x-show="state.mode === 'local_ai' && state.status === 'finished' && state.winner_color === state.player_color" x-cloak role="status" aria-live="polite">
+          <strong>You won!</strong>
+          {% if request.user.is_authenticated %}
+            <template x-if="state.level_unlocked"><span> Bot Level <strong x-text="state.level_unlocked"></strong> is now unlocked.</span></template>
+            <template x-if="!state.level_unlocked"><span> This result is saved. Beat your highest unlocked level to advance.</span></template>
+          {% else %}
+            <span> <a href="{% url 'account_login' %}?next={% url 'core:home' %}">Sign in</a> before starting a bot game to save and increase your level.</span>
+          {% endif %}
+        </div>
+        <div class="alert alert-secondary" x-show="state.mode === 'local_ai' && state.status === 'finished' && state.winner_color !== state.player_color" x-cloak role="status">
+          Game finished. Try the level again when you are ready.
         </div>
         <div class="d-flex justify-content-between align-items-center mb-2">
           <div>
@@ -212,47 +226,6 @@
       </div>
     </div>
 
-    <div class="card border-secondary mb-4">
-      <div class="card-header">
-        <h2 class="h5 mb-0">Move History</h2>
-      </div>
-
-      <div class="card-body move-history">
-        <template x-for="move in state.moves" :key="move.id">
-          <span class="move-pill">
-            <span
-              x-show="move.color === 'white'"
-              x-text="move.move_number + '.'"
-            ></span>
-            <span x-text="move.san"></span>
-          </span>
-        </template>
-      </div>
-    </div>
-
-    <div class="card border-secondary">
-      <div class="card-header">
-        <h2 class="h5 mb-0">Current Position</h2>
-      </div>
-
-      <div class="card-body small">
-        <label class="form-label">FEN</label>
-
-        <textarea
-          class="form-control font-monospace"
-          rows="4"
-          readonly
-          x-text="state.fen"
-        ></textarea>
-
-        <label class="form-label mt-3">Last move</label>
-
-        <div>
-          <span x-text="state.last_move_san || 'None'"></span>
-          <span class="text-secondary" x-text="state.last_move_uci"></span>
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 

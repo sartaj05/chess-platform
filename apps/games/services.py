@@ -77,7 +77,7 @@ def is_same_browser_game(game: Any) -> bool:
 
 
 def play_local_bot_reply(*, game: Any, actor: GameActor) -> None:
-    """Play a simple legal reply for local bot games."""
+    """Play a Stockfish reply, with a legal local fallback if unavailable."""
 
     metadata = game.metadata or {}
     if metadata.get("mode") != "local_ai" or game.status != game.Status.ACTIVE:
@@ -88,7 +88,29 @@ def play_local_bot_reply(*, game: Any, actor: GameActor) -> None:
     legal_moves = list(board.legal_moves)
     if legal_moves:
         level = max(1, min(int(metadata.get("bot_level", 1)), 10))
-        play_uci_move(game=game, actor=actor, uci=choose_bot_move(board, legal_moves, level).uci())
+        move = None
+        try:
+            from apps.stockfish.services import analyse_fen_with_stockfish
+
+            result = analyse_fen_with_stockfish(
+                fen=board.fen(),
+                game=game,
+                skill_level=min(20, level * 2),
+                depth=min(16, 6 + level),
+                movetime_ms=100 + level * 75,
+                command_type="website_bot_move",
+            )
+            candidate = chess.Move.from_uci(result.bestmove)
+            if candidate in legal_moves:
+                move = candidate
+                metadata["bot_engine"] = "stockfish"
+        except Exception:
+            metadata["bot_engine"] = "built_in_fallback"
+        game.metadata = metadata
+        game.save(update_fields=["metadata", "updated_at"])
+        if move is None:
+            move = choose_bot_move(board, legal_moves, level)
+        play_uci_move(game=game, actor=actor, uci=move.uci())
 
 
 def choose_bot_move(board: chess.Board, legal_moves: list[chess.Move], level: int) -> chess.Move:
@@ -129,7 +151,7 @@ def award_bot_level_if_won(game: Any) -> None:
         user.bot_level = played_level + 1
         user.save(update_fields=["bot_level"])
         metadata["level_unlocked"] = user.bot_level
-    metadata["progress_awarded"] = True
+    metadata["progress_awarded"] = user is not None
     game.metadata = metadata
     game.save(update_fields=["metadata", "updated_at"])
 
@@ -1086,6 +1108,8 @@ def serialize_game(
         "bot_level": metadata.get("bot_level"),
         "player_color": metadata.get("player_color"),
         "level_unlocked": metadata.get("level_unlocked"),
+        "bot_engine": metadata.get("bot_engine", ""),
+        "progress_awarded": metadata.get("progress_awarded", False),
         "rematch_offers": metadata.get("rematch_offers", []),
         "rematch_game_id": metadata.get("rematch_game_id"),
         "ratings": {

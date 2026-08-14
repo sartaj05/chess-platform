@@ -56,7 +56,10 @@ def test_home_bot_plays_first_when_player_selects_black(client, db):
     from apps.games.models import Game
 
     game = Game.objects.latest("created_at")
-    assert game.metadata == {"mode": "local_ai", "player_color": "black", "bot_level": 1}
+    assert game.metadata["mode"] == "local_ai"
+    assert game.metadata["player_color"] == "black"
+    assert game.metadata["bot_level"] == 1
+    assert game.metadata["bot_engine"] in {"stockfish", "built_in_fallback"}
     assert game.white_display_name == "Bot"
     assert game.ply_count == 1
     assert game.turn == "black"

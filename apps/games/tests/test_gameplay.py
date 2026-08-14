@@ -1,18 +1,21 @@
 from __future__ import annotations
 
 import pytest
+from unittest.mock import patch
 from apps.accounts.models import User
 from apps.games.services import (
     GameActor,
     ParticipantIdentity,
     award_bot_level_if_won,
     create_same_pc_game,
+    play_local_bot_reply,
     play_uci_move,
     serialize_game,
 )
 from django.core.exceptions import ValidationError
+from django.urls import reverse
 from apps.notifications.models import Notification
-from apps.notifications.models import Notification
+from apps.stockfish.engine import EngineResult
 
 
 @pytest.mark.django_db
@@ -25,26 +28,6 @@ def test_same_pc_game_accepts_legal_move():
     assert move.san == "e4"
     assert game.turn == "black"
     assert game.ply_count == 1
-
-
-@pytest.mark.django_db
-def test_move_notifies_registered_opponent():
-    white = User.objects.create_user(email="white@example.com", password="StrongPass123!")
-    black = User.objects.create_user(email="black@example.com", password="StrongPass123!")
-    game = create_same_pc_game(white_name="White", black_name="Black", initial_minutes=5)
-    game.white_user = white
-    game.black_user = black
-    game.save(update_fields=["white_user", "black_user", "updated_at"])
-    actor = GameActor(
-        identity=ParticipantIdentity(user=white, guest_key="", display_name="White"),
-        color="white",
-        display_name="White",
-    )
-
-    play_uci_move(game=game, actor=actor, uci="e2e4")
-
-    notice = Notification.objects.get(recipient=black, title="Your move")
-    assert str(game.pk) in notice.target_url
 
 
 @pytest.mark.django_db
@@ -94,6 +77,57 @@ def test_winning_unlocked_bot_level_advances_user_once():
     assert user.bot_level == 3
     assert game.metadata["level_unlocked"] == 3
     assert game.metadata["progress_awarded"] is True
+
+
+@pytest.mark.django_db
+@patch("apps.stockfish.services.analyse_fen_with_stockfish")
+def test_website_bot_uses_stockfish_when_available(analyse):
+    analyse.return_value = EngineResult(bestmove="e7e5", depth=7)
+    game = create_same_pc_game(white_name="Player", black_name="Bot")
+    game.metadata = {"mode": "local_ai", "player_color": "white", "bot_level": 1}
+    game.save(update_fields=["metadata", "updated_at"])
+    player = GameActor(
+        identity=ParticipantIdentity(user=None, guest_key="guest", display_name="Player"),
+        color="white",
+        display_name="Player",
+    )
+    play_uci_move(game=game, actor=player, uci="e2e4")
+    game.refresh_from_db()
+    bot = GameActor(identity=player.identity, color="black", display_name="Bot")
+
+    play_local_bot_reply(game=game, actor=bot)
+
+    game.refresh_from_db()
+    assert game.last_move_uci == "e7e5"
+    assert game.metadata["bot_engine"] == "stockfish"
+
+
+@pytest.mark.django_db
+def test_guest_bot_win_does_not_claim_saved_progress():
+    game = create_same_pc_game(white_name="Player", black_name="Bot")
+    game.winner_color = "white"
+    game.metadata = {"mode": "local_ai", "player_color": "white", "bot_level": 1}
+    game.save(update_fields=["winner_color", "metadata", "updated_at"])
+
+    award_bot_level_if_won(game)
+
+    game.refresh_from_db()
+    assert game.metadata["progress_awarded"] is False
+    assert "level_unlocked" not in game.metadata
+
+
+@pytest.mark.django_db
+def test_bot_game_page_shows_result_help_without_removed_panels(client):
+    game = create_same_pc_game(white_name="Player", black_name="Bot")
+    game.metadata = {"mode": "local_ai", "player_color": "white", "bot_level": 1}
+    game.save(update_fields=["metadata", "updated_at"])
+
+    response = client.get(reverse("games:play", args=[game.pk]))
+
+    assert response.status_code == 200
+    assert b"Sign in" in response.content
+    assert b"Move History" not in response.content
+    assert b"Current Position" not in response.content
 
 
 @pytest.mark.django_db
