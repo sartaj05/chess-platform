@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+from django.utils import timezone
 from rest_framework import permissions, status, viewsets
-from rest_framework.views import APIView
 from rest_framework.decorators import action as drf_action
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
 from apps.api.throttles import OfflineSyncRateThrottle
 from apps.games.models import FairPlayReview, Game
-from django.utils import timezone
 from apps.games.serializers import (
     GameActionSerializer,
     GameSerializer,

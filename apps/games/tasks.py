@@ -31,6 +31,7 @@ def mark_timeout_games() -> int:
 @shared_task
 def mark_abandoned_games() -> int:
     from datetime import timedelta
+
     from apps.games.models import Game
     from apps.games.services import apply_elo_ratings
     count=0;now=timezone.now()

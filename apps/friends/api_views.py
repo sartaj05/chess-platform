@@ -2,7 +2,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
 from rest_framework import permissions, response, views
 
-from apps.accounts.models import User
+from apps.accounts.models import User, UserPreference
 from apps.accounts.serializers import UserSerializer
 from apps.chat.models import Conversation, Message
 from apps.chat.services import (
@@ -97,6 +97,9 @@ class SocialAPIView(views.APIView):
                 message = send_message(conversation=chat, sender=request.user, body=request.data.get("body", ""))
                 return response.Response({"id": message.pk}, status=201)
             if action == "challenge":
+                preferences, _ = UserPreference.objects.get_or_create(user=other)
+                if not preferences.allow_challenges:
+                    raise PermissionDenied("This player is not accepting challenges.")
                 room = create_room(
                     request=request,
                     cleaned_data={

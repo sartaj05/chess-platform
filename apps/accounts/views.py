@@ -1,9 +1,9 @@
 import base64
+import json
 from io import BytesIO
 
 import pyotp
 import qrcode
-from kombu.exceptions import OperationalError
 from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -14,20 +14,32 @@ from django.contrib.auth.views import (
     PasswordResetView,
 )
 from django.core.exceptions import ValidationError
-from django.http import HttpRequest, HttpResponse
+from django.core.serializers.json import DjangoJSONEncoder
+from django.db.models import Q
+from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
+from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
 from django.views import View
-from django.db.models import Q
 from django.views.generic import DetailView, FormView, ListView, TemplateView, UpdateView
+from django_ratelimit.decorators import ratelimit
+from kombu.exceptions import OperationalError
 
 from apps.games.models import Game
-from django_ratelimit.decorators import ratelimit
 
-from .forms import DisableTwoFactorForm, EmailLoginForm, EmailOTPForm, EnableTwoFactorForm, ProfileForm, SignUpForm
-from .models import EmailOTP, User
+from .forms import (
+    DeleteAccountForm,
+    DisableTwoFactorForm,
+    EmailLoginForm,
+    EmailOTPForm,
+    EnableTwoFactorForm,
+    ProfileForm,
+    SignUpForm,
+    UserPreferenceForm,
+)
+from .models import EmailOTP, User, UserPreference
 from .tasks import send_email_verification
 from .tokens import read_email_verification_token
 
@@ -206,6 +218,18 @@ class PublicProfileView(DetailView):
     template_name = "accounts/public_profile.html"
     context_object_name = "player"
 
+    def get_object(self, queryset=None):
+        player = super().get_object(queryset)
+        preferences, _ = UserPreference.objects.get_or_create(user=player)
+        if preferences.profile_visibility == UserPreference.ProfileVisibility.PRIVATE and self.request.user != player:
+            raise Http404
+        if (
+            preferences.profile_visibility == UserPreference.ProfileVisibility.PLAYERS
+            and not self.request.user.is_authenticated
+        ):
+            raise Http404
+        return player
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         player = self.object
@@ -230,8 +254,16 @@ class PlayerComparisonView(TemplateView):
 
         def stats(player):
             games = Game.objects.filter(Q(white_user=player) | Q(black_user=player), status=Game.Status.FINISHED)
-            wins = games.filter(Q(white_user=player, result=Game.Result.WHITE_WIN) | Q(black_user=player, result=Game.Result.BLACK_WIN)).count()
-            return {"player": player, "games": games.count(), "wins": wins, "draws": games.filter(result=Game.Result.DRAW).count(), "win_rate": round(wins * 100 / games.count()) if games.exists() else 0}
+            wins = games.filter(
+                Q(white_user=player, result=Game.Result.WHITE_WIN) | Q(black_user=player, result=Game.Result.BLACK_WIN)
+            ).count()
+            return {
+                "player": player,
+                "games": games.count(),
+                "wins": wins,
+                "draws": games.filter(result=Game.Result.DRAW).count(),
+                "win_rate": round(wins * 100 / games.count()) if games.exists() else 0,
+            }
 
         context.update(first=stats(first), second=stats(second))
         return context
@@ -244,7 +276,9 @@ class GameHistoryView(LoginRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        return Game.objects.filter(Q(white_user=self.request.user) | Q(black_user=self.request.user)).select_related("white_user", "black_user")
+        return Game.objects.filter(Q(white_user=self.request.user) | Q(black_user=self.request.user)).select_related(
+            "white_user", "black_user"
+        )
 
 
 class SecuritySettingsView(LoginRequiredMixin, TemplateView):
@@ -267,6 +301,86 @@ class SecuritySettingsView(LoginRequiredMixin, TemplateView):
             }
         )
         return context
+
+
+class PrivacySettingsView(LoginRequiredMixin, FormView):
+    template_name = "accounts/privacy.html"
+    form_class = UserPreferenceForm
+    success_url = reverse_lazy("accounts:privacy")
+
+    def get_object(self):
+        return UserPreference.objects.get_or_create(user=self.request.user)[0]
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["instance"] = self.get_object()
+        return kwargs
+
+    def form_valid(self, form):
+        form.save()
+        messages.success(self.request, _("Privacy and notification preferences updated."))
+        return super().form_valid(form)
+
+
+class PersonalDataExportView(LoginRequiredMixin, View):
+    def get(self, request):
+        user = request.user
+        games = Game.objects.filter(Q(white_user=user) | Q(black_user=user))
+        payload = {
+            "exported_at": timezone.now(),
+            "account": {
+                "id": user.pk,
+                "email": user.email,
+                "display_name": user.display_name,
+                "first_name": user.first_name,
+                "last_name": user.last_name,
+                "bio": user.bio,
+                "country": user.country,
+                "date_joined": user.date_joined,
+                "ratings": {"bullet": user.bullet_rating, "blitz": user.blitz_rating, "rapid": user.rapid_rating},
+            },
+            "preferences": list(
+                UserPreference.objects.filter(user=user).values(
+                    "profile_visibility",
+                    "show_online_status",
+                    "allow_friend_requests",
+                    "allow_direct_messages",
+                    "allow_challenges",
+                    "notify_friend_activity",
+                    "notify_messages",
+                    "notify_tournaments",
+                    "notify_system",
+                    "push_enabled",
+                )
+            ),
+            "games": list(
+                games.values("id", "white_display_name", "black_display_name", "status", "result", "created_at")
+            ),
+            "notifications": list(user.notifications.values("kind", "title", "message", "created_at", "read_at")),
+            "tournaments": list(user.tournament_entries.values("tournament__name", "score", "created_at")),
+        }
+        response = HttpResponse(
+            json.dumps(payload, cls=DjangoJSONEncoder, indent=2), content_type="application/json; charset=utf-8"
+        )
+        response["Content-Disposition"] = 'attachment; filename="chess-platform-data.json"'
+        return response
+
+
+class DeleteAccountView(LoginRequiredMixin, FormView):
+    template_name = "accounts/delete_account.html"
+    form_class = DeleteAccountForm
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs
+
+    def form_valid(self, form):
+        user = self.request.user
+        logout(self.request)
+        user.delete()
+        messages.success(self.request, _("Your account and personal data were deleted."))
+        return redirect("core:home")
 
 
 class EnableTwoFactorView(LoginRequiredMixin, FormView):

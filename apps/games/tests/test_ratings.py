@@ -1,5 +1,4 @@
 import pytest
-
 from apps.accounts.models import User
 from apps.games.services import apply_elo_ratings, create_same_pc_game
 

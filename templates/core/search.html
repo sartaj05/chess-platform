@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}Search | {{ site_name }}{% endblock %}{% block body_class %}product-page{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/product-pages.css' %}">{% endblock %}
+{% block content %}<header class="product-header"><div><span class="eyebrow">DISCOVER</span><h1>Search Chess Platform</h1><p>Find players, public tournaments, and games from one place.</p></div></header>
+<form class="surface global-search" method="get"><input type="search" name="q" value="{{ query }}" minlength="2" placeholder="Player, tournament, game ID…" autofocus><button class="primary-action">Search</button></form>
+{% if query %}<div class="search-results">
+<section class="surface content-section"><div class="section-title"><h2>Players</h2></div>{% for player in players %}<a class="person-row" href="{% url 'accounts:public_profile' player.pk %}"><span class="person-avatar">{{ player.display_name|first|upper }}</span><span class="person-copy"><strong>{{ player.display_name }}</strong><span>{{ player.country|default:"International" }} · {{ player.rapid_rating }} rapid</span></span></a>{% empty %}<div class="mini-empty">No matching players.</div>{% endfor %}</section>
+<section class="surface content-section"><div class="section-title"><h2>Tournaments</h2></div>{% for tournament in tournaments %}<a class="person-row" href="{{ tournament.get_absolute_url }}"><span class="person-copy"><strong>{{ tournament.name }}</strong><span>{{ tournament.get_status_display }} · {{ tournament.starts_at|date:"M j, Y" }}</span></span></a>{% empty %}<div class="mini-empty">No matching tournaments.</div>{% endfor %}</section>
+<section class="surface content-section"><div class="section-title"><h2>Games</h2></div>{% for game in games %}<a class="person-row" href="{{ game.get_absolute_url }}"><span class="person-copy"><strong>{{ game.white_display_name }} vs {{ game.black_display_name }}</strong><span>{{ game.get_status_display }} · {{ game.result }}</span></span></a>{% empty %}<div class="mini-empty">No matching games.</div>{% endfor %}</section>
+</div>{% endif %}{% endblock %}

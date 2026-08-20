@@ -73,7 +73,11 @@ class User(AbstractBaseUser, PermissionsMixin):
             self.email = self.email.lower().strip()
         if not self.display_name and self.email:
             self.display_name = self.email.split("@")[0]
-        if self._state.adding and self.rating != 1200 and self.bullet_rating == self.blitz_rating == self.rapid_rating == 1200:
+        if (
+            self._state.adding
+            and self.rating != 1200
+            and self.bullet_rating == self.blitz_rating == self.rapid_rating == 1200
+        ):
             self.bullet_rating = self.blitz_rating = self.rapid_rating = self.rating
         super().save(*args, **kwargs)
 
@@ -141,3 +145,27 @@ class EmailOTP(TimeStampedModel):
             self.save(update_fields=["used_at", "updated_at"])
             return True
         return False
+
+
+class UserPreference(TimeStampedModel):
+    class ProfileVisibility(models.TextChoices):
+        PUBLIC = "public", "Public"
+        PLAYERS = "players", "Signed-in players"
+        PRIVATE = "private", "Private"
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="preferences")
+    profile_visibility = models.CharField(
+        max_length=12, choices=ProfileVisibility.choices, default=ProfileVisibility.PUBLIC
+    )
+    show_online_status = models.BooleanField(default=True)
+    allow_friend_requests = models.BooleanField(default=True)
+    allow_direct_messages = models.BooleanField(default=True)
+    allow_challenges = models.BooleanField(default=True)
+    notify_friend_activity = models.BooleanField(default=True)
+    notify_messages = models.BooleanField(default=True)
+    notify_tournaments = models.BooleanField(default=True)
+    notify_system = models.BooleanField(default=True)
+    push_enabled = models.BooleanField(default=True)
+
+    def __str__(self) -> str:
+        return f"Preferences for {self.user}"

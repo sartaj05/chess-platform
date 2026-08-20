@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 from apps.accounts.models import User
 from apps.games.services import (
     GameActor,
@@ -12,10 +13,10 @@ from apps.games.services import (
     play_uci_move,
     serialize_game,
 )
-from django.core.exceptions import ValidationError
-from django.urls import reverse
 from apps.notifications.models import Notification
 from apps.stockfish.engine import EngineResult
+from django.core.exceptions import ValidationError
+from django.urls import reverse
 
 
 @pytest.mark.django_db

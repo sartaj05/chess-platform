@@ -10,6 +10,8 @@ from django.shortcuts import get_object_or_404, redirect
 from django.views import View
 from django.views.generic import TemplateView
 
+from apps.accounts.models import UserPreference
+
 from .forms import FriendRequestForm
 from .models import FriendChallenge, Friendship
 from .services import remove_friendship, respond_to_request, send_friend_request
@@ -21,17 +23,20 @@ class FriendListView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         relationships = Friendship.objects.select_related("requester", "addressee")
-        context["friends"] = [
-            {
-                "relationship": relationship,
-                "user": relationship.other_user(self.request.user),
-                "online": bool(cache.get(f"presence:user:{relationship.other_user(self.request.user).pk}")),
-            }
-            for relationship in relationships.filter(
-                Q(requester=self.request.user) | Q(addressee=self.request.user),
-                status=Friendship.Status.ACCEPTED,
+        context["friends"] = []
+        for relationship in relationships.filter(
+            Q(requester=self.request.user) | Q(addressee=self.request.user),
+            status=Friendship.Status.ACCEPTED,
+        ):
+            other = relationship.other_user(self.request.user)
+            preferences, _ = UserPreference.objects.get_or_create(user=other)
+            context["friends"].append(
+                {
+                    "relationship": relationship,
+                    "user": other,
+                    "online": preferences.show_online_status and bool(cache.get(f"presence:user:{other.pk}")),
+                }
             )
-        ]
         context["incoming"] = relationships.filter(
             addressee=self.request.user,
             status=Friendship.Status.PENDING,
@@ -54,8 +59,8 @@ class SendFriendRequestView(LoginRequiredMixin, View):
             try:
                 send_friend_request(requester=request.user, email=form.cleaned_data["email"])
                 messages.success(request, "Friend request sent.")
-            except ValidationError as exc:
-                messages.error(request, "; ".join(exc.messages))
+            except (PermissionDenied, ValidationError) as exc:
+                messages.error(request, "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
         else:
             messages.error(request, "Enter a valid email address.")
         return redirect("friends:list")

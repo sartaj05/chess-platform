@@ -195,7 +195,6 @@ def apply_elo_ratings(game: Any) -> None:
     game.save(update_fields=["white_rating_before", "black_rating_before", "white_rating_change", "black_rating_change", "ratings_applied", "updated_at"])
     from apps.games.tasks import evaluate_fair_play
     transaction.on_commit(lambda: evaluate_fair_play.delay(str(game.pk)))
-    from apps.games.tasks import evaluate_fair_play
     transaction.on_commit(lambda: evaluate_fair_play.delay(str(game.pk)))
 
 

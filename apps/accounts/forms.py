@@ -5,7 +5,7 @@ from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 
-from .models import EmailOTP, User
+from .models import EmailOTP, User, UserPreference
 
 
 class SignUpForm(UserCreationForm):
@@ -109,6 +109,44 @@ class ProfileForm(forms.ModelForm):
     class Meta:
         model = User
         fields = ("first_name", "last_name", "display_name", "bio", "avatar", "country", "time_zone")
+
+
+class UserPreferenceForm(forms.ModelForm):
+    class Meta:
+        model = UserPreference
+        fields = (
+            "profile_visibility",
+            "show_online_status",
+            "allow_friend_requests",
+            "allow_direct_messages",
+            "allow_challenges",
+            "notify_friend_activity",
+            "notify_messages",
+            "notify_tournaments",
+            "notify_system",
+            "push_enabled",
+        )
+
+
+class DeleteAccountForm(forms.Form):
+    password = forms.CharField(widget=forms.PasswordInput(attrs={"class": "form-control"}))
+    confirmation = forms.CharField(help_text='Type "DELETE" to confirm.')
+
+    def __init__(self, *args, user: User, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+
+    def clean_password(self):
+        value = self.cleaned_data["password"]
+        if not self.user.check_password(value):
+            raise ValidationError(_("Password is incorrect."))
+        return value
+
+    def clean_confirmation(self):
+        value = self.cleaned_data["confirmation"].strip()
+        if value != "DELETE":
+            raise ValidationError(_('Type "DELETE" exactly.'))
+        return value
 
 
 class EnableTwoFactorForm(forms.Form):

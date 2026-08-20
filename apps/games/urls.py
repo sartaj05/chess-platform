@@ -4,10 +4,14 @@ from apps.games.views import (
     AbortGameView,
     DeclineDrawView,
     DrawOfferView,
+    FairPlayAppealCreateView,
+    FairPlayAppealResolveView,
     FenDownloadView,
     FenImportView,
     GamePlayView,
     GameStateView,
+    ModeratorDashboardView,
+    ModeratorReviewView,
     PgnDownloadView,
     ResignGameView,
     SamePcGameCreateView,
@@ -17,6 +21,10 @@ from apps.games.views import (
 app_name = "games"
 
 urlpatterns = [
+    path("moderation/", ModeratorDashboardView.as_view(), name="moderator_dashboard"),
+    path("moderation/reviews/<int:pk>/", ModeratorReviewView.as_view(), name="moderator_review"),
+    path("moderation/appeals/<int:pk>/", FairPlayAppealResolveView.as_view(), name="appeal_resolve"),
+    path("fair-play/<int:pk>/appeal/", FairPlayAppealCreateView.as_view(), name="appeal_create"),
     path("games/same-pc/new/", SamePcGameCreateView.as_view(), name="same_pc_new"),
     path("games/fen/import/", FenImportView.as_view(), name="fen_import"),
     path("games/<uuid:pk>/", GamePlayView.as_view(), name="play"),

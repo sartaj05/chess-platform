@@ -3,8 +3,9 @@ from __future__ import annotations
 import pytest
 from django.urls import reverse
 
-from apps.accounts.models import User
+from apps.accounts.models import User, UserPreference
 from apps.notifications.models import Notification
+from apps.notifications.services import notify
 
 
 @pytest.fixture
@@ -61,3 +62,11 @@ def test_mark_all_only_updates_current_user(client, notification_users):
     other.refresh_from_db()
     assert own.is_read
     assert not other.is_read
+
+
+def test_disabled_notification_category_is_respected(notification_users):
+    first, _ = notification_users
+    UserPreference.objects.create(user=first, notify_messages=False, push_enabled=False)
+    result = notify(recipient=first, kind=Notification.Kind.DIRECT_MESSAGE, title="Muted message")
+    assert result is None
+    assert not Notification.objects.filter(recipient=first, title="Muted message").exists()

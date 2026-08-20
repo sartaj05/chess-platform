@@ -7,7 +7,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from apps.accounts.models import User
+from apps.accounts.models import User, UserPreference
 from apps.friends.models import Friendship, UserBlock
 from apps.notifications.models import Notification
 from apps.notifications.services import notify
@@ -43,6 +43,9 @@ def send_message(*, conversation: Conversation, sender: User, body: str) -> Mess
     recipient = conversation.other_user(sender)
     if not users_are_friends(sender, recipient):
         raise PermissionDenied("You can only message accepted friends.")
+    preferences, _ = UserPreference.objects.get_or_create(user=recipient)
+    if not preferences.allow_direct_messages:
+        raise PermissionDenied("This player is not accepting direct messages.")
     clean_body = body.strip()
     if not clean_body:
         raise ValidationError("Message cannot be empty.")

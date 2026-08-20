@@ -1,8 +1,17 @@
 from django.urls import path
 
-from .api_views import (LeaderboardAPIView, MeAPIView, MobileBotVictoryAPIView, MobileExperienceAPIView, PlayerComparisonAPIView,
-    MobileRegisterAPIView, MobileVerifyEmailAPIView, PublicProfileAPIView,
-    PuzzleListAPIView, PuzzlePlayAPIView)
+from .api_views import (
+    LeaderboardAPIView,
+    MeAPIView,
+    MobileBotVictoryAPIView,
+    MobileExperienceAPIView,
+    MobileRegisterAPIView,
+    MobileVerifyEmailAPIView,
+    PlayerComparisonAPIView,
+    PublicProfileAPIView,
+    PuzzleListAPIView,
+    PuzzlePlayAPIView,
+)
 
 app_name = "accounts_api"
 urlpatterns = [

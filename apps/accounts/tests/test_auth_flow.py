@@ -1,7 +1,8 @@
-import pytest
-from kombu.exceptions import OperationalError
-from django.urls import reverse
 from unittest.mock import patch
+
+import pytest
+from django.urls import reverse
+from kombu.exceptions import OperationalError
 
 from apps.accounts.models import EmailOTP, User
 

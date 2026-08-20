@@ -1,5 +1,6 @@
-from celery import shared_task
 from django.conf import settings
+
+from celery import shared_task
 
 
 @shared_task(ignore_result=True, autoretry_for=(ConnectionError,), retry_backoff=True, max_retries=3)

@@ -239,6 +239,12 @@
       </div>
     </div>
 
+    {% if game.fair_play_review and request.user.is_authenticated %}
+      {% if request.user == game.white_user or request.user == game.black_user %}
+      <div class="card border-secondary mb-4"><div class="card-body"><h2 class="h5">Fair-play appeal</h2><p>If you believe a fair-play decision is incorrect, submit context for moderator review.</p><form method="post" action="{% url 'games:appeal_create' game.fair_play_review.pk %}">{% csrf_token %}<textarea class="form-control" name="statement" maxlength="4000" required></textarea><button class="btn btn-outline-success mt-2" type="submit">Submit appeal</button></form></div></div>
+      {% endif %}
+    {% endif %}
+
   </div>
 </div>
 

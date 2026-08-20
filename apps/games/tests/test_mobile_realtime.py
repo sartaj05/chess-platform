@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import pytest
-from asgiref.sync import async_to_sync
-from rest_framework_simplejwt.tokens import AccessToken
-
 from apps.accounts.models import User
 from apps.games.consumers import GameConsumer
 from apps.games.services import create_same_pc_game
+from asgiref.sync import async_to_sync
 from chess_platform.jwt_websocket import JwtAuthMiddleware, _user_for_token
+from rest_framework_simplejwt.tokens import AccessToken
 
 
 @pytest.mark.django_db(transaction=True)

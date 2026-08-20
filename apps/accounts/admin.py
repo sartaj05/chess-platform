@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 
-from .models import EmailOTP, User
+from .models import EmailOTP, User, UserPreference
 
 
 @admin.register(User)
@@ -46,3 +46,10 @@ class EmailOTPAdmin(admin.ModelAdmin):
     list_filter = ("purpose", "used_at", "created_at")
     search_fields = ("user__email",)
     readonly_fields = ("code_hash", "created_at", "updated_at")
+
+
+@admin.register(UserPreference)
+class UserPreferenceAdmin(admin.ModelAdmin):
+    list_display = ("user", "profile_visibility", "show_online_status", "push_enabled", "updated_at")
+    list_filter = ("profile_visibility", "show_online_status", "push_enabled")
+    search_fields = ("user__email", "user__display_name")

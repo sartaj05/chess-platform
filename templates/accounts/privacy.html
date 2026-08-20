@@ -1,0 +1,11 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}Privacy & notifications | {{ site_name }}{% endblock %}
+{% block body_class %}product-page{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/product-pages.css' %}">{% endblock %}
+{% block content %}
+<header class="product-header"><div><span class="eyebrow">ACCOUNT CONTROL</span><h1>Privacy & notifications</h1><p>Choose who can find and contact you, and which updates you receive.</p></div></header>
+<div class="request-grid">
+  <section class="surface content-section"><div class="section-title"><h2>Your preferences</h2></div><form class="settings-form" method="post">{% csrf_token %}{{ form.as_p }}<button class="primary-action" type="submit">Save preferences</button></form></section>
+  <aside class="surface content-section"><div class="section-title"><h2>Your data</h2></div><div class="settings-form"><p>Download a portable JSON copy of your profile, ratings, games, notifications, and tournament entries.</p><a class="secondary-action full" href="{% url 'accounts:data_export' %}">Download personal data</a><hr><h3>Delete account</h3><p>Permanently remove your account and associated personal records.</p><a class="quiet-action danger" href="{% url 'accounts:delete_account' %}">Delete my account</a></div></aside>
+</div>
+{% endblock %}

@@ -290,6 +290,7 @@ class GameChatMessage(TimeStampedModel):
         ALL = "all", "Everyone"
         PLAYERS = "players", "Players"
         SPECTATORS = "spectators", "Spectators"
+
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name="chat_messages")
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     sender_name = models.CharField(max_length=80)
@@ -311,6 +312,7 @@ class FairPlayReview(TimeStampedModel):
         REVIEWING = "reviewing", "Reviewing"
         CONFIRMED = "confirmed", "Confirmed violation"
         DISMISSED = "dismissed", "Dismissed"
+
     game = models.OneToOneField(Game, on_delete=models.CASCADE, related_name="fair_play_review")
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.CLEAR, db_index=True)
     risk_score = models.PositiveSmallIntegerField(default=0, db_index=True)
@@ -319,6 +321,34 @@ class FairPlayReview(TimeStampedModel):
     white_avg_loss_cp = models.PositiveIntegerField(default=0)
     black_avg_loss_cp = models.PositiveIntegerField(default=0)
     signals = models.JSONField(default=list, blank=True)
-    reviewer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="fair_play_reviews")
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="fair_play_reviews"
+    )
     moderator_notes = models.TextField(blank=True)
     reviewed_at = models.DateTimeField(null=True, blank=True)
+
+
+class FairPlayAppeal(TimeStampedModel):
+    class Status(models.TextChoices):
+        OPEN = "open", "Open"
+        REVIEWING = "reviewing", "Reviewing"
+        UPHELD = "upheld", "Decision upheld"
+        OVERTURNED = "overturned", "Decision overturned"
+
+    review = models.ForeignKey(FairPlayReview, on_delete=models.CASCADE, related_name="appeals")
+    appellant = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="fair_play_appeals")
+    statement = models.TextField(max_length=4000)
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.OPEN, db_index=True)
+    moderator_response = models.TextField(blank=True, max_length=4000)
+    resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="fair_play_appeals_resolved",
+    )
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        constraints = [models.UniqueConstraint(fields=["review", "appellant"], name="games_unique_fair_play_appeal")]

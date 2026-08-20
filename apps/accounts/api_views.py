@@ -1,9 +1,9 @@
-from drf_spectacular.utils import extend_schema
+from django.db.models import Q
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.db.models import Q
 
 from apps.core.product_experience import player_progress
 from apps.games.models import Game

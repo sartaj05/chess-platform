@@ -1,0 +1,4 @@
+{% extends "base.html" %}{% load static %}
+{% block title %}Delete account | {{ site_name }}{% endblock %}{% block body_class %}product-page{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{% static 'css/product-pages.css' %}">{% endblock %}
+{% block content %}<section class="surface danger-panel"><span class="eyebrow">PERMANENT ACTION</span><h1>Delete your account</h1><p>This removes your login, profile, social data, notifications, and entries. Export your data first if you need a copy.</p><form method="post">{% csrf_token %}{{ form.as_p }}<button class="primary-action danger-button" type="submit">Permanently delete account</button></form></section>{% endblock %}

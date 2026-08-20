@@ -1,6 +1,11 @@
 from django.urls import path
 
-from apps.notifications.api_views import MobileNotificationListAPIView, MobileNotificationReadAllAPIView, MobileNotificationReadAPIView, PushDeviceAPIView
+from apps.notifications.api_views import (
+    MobileNotificationListAPIView,
+    MobileNotificationReadAllAPIView,
+    MobileNotificationReadAPIView,
+    PushDeviceAPIView,
+)
 
 app_name = "notifications_api"
 urlpatterns = [

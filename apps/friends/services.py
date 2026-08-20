@@ -4,7 +4,7 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Q
 
-from apps.accounts.models import User
+from apps.accounts.models import User, UserPreference
 from apps.notifications.models import Notification
 from apps.notifications.services import notify
 
@@ -19,7 +19,12 @@ def send_friend_request(*, requester: User, email: str) -> Friendship:
         raise ValidationError("No account exists with that email address.") from exc
     if requester.pk == addressee.pk:
         raise ValidationError("You cannot send a friend request to yourself.")
-    if UserBlock.objects.filter(Q(blocker=requester, blocked=addressee) | Q(blocker=addressee, blocked=requester)).exists():
+    preferences, _ = UserPreference.objects.get_or_create(user=addressee)
+    if not preferences.allow_friend_requests:
+        raise PermissionDenied("This player is not accepting friend requests.")
+    if UserBlock.objects.filter(
+        Q(blocker=requester, blocked=addressee) | Q(blocker=addressee, blocked=requester)
+    ).exists():
         raise PermissionDenied("Friend requests are unavailable between these accounts.")
 
     existing = Friendship.objects.filter(

@@ -1,16 +1,21 @@
 import random
+import uuid
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views import View
 
+from apps.accounts.models import User, UserPreference
 from apps.core.product_experience import live_platform_activity, player_progress
+from apps.games.models import Game
 from apps.games.services import actor_from_request, create_same_pc_game, play_local_bot_reply
 from apps.rooms.models import Room
 from apps.rooms.services import create_room, join_room
+from apps.tournaments.models import Tournament
 
 
 class HomeView(View):
@@ -114,6 +119,7 @@ def health_check(request):
 
     from django.core.cache import cache
     from django.db import connection
+
     checks = {"database": False, "cache": False}
     timings = {}
     started = time.perf_counter()
@@ -150,3 +156,36 @@ def health_check(request):
 class OfflineModeInfoView(View):
     def get(self, request):
         return render(request, "core/offline_mode.html")
+
+
+class GlobalSearchView(View):
+    def get(self, request):
+        query = request.GET.get("q", "").strip()[:100]
+        players = User.objects.none()
+        tournaments = Tournament.objects.none()
+        games = Game.objects.none()
+        if len(query) >= 2:
+            players = User.objects.filter(
+                Q(display_name__icontains=query) | Q(first_name__icontains=query) | Q(last_name__icontains=query),
+                is_active=True,
+            ).exclude(preferences__profile_visibility=UserPreference.ProfileVisibility.PRIVATE)
+            if not request.user.is_authenticated:
+                players = players.exclude(preferences__profile_visibility=UserPreference.ProfileVisibility.PLAYERS)
+            players = players[:20]
+            tournaments = Tournament.objects.filter(
+                Q(name__icontains=query) | Q(description__icontains=query), is_public=True
+            ).select_related("organizer")[:20]
+            game_filter = Q(white_display_name__icontains=query) | Q(black_display_name__icontains=query)
+            try:
+                game_filter |= Q(pk=uuid.UUID(query))
+            except ValueError:
+                pass
+            visible_games = Q(allow_spectators=True)
+            if request.user.is_authenticated:
+                visible_games |= Q(white_user=request.user) | Q(black_user=request.user)
+            games = Game.objects.filter(game_filter, visible_games).select_related("white_user", "black_user")[:20]
+        return render(
+            request,
+            "core/search.html",
+            {"query": query, "players": players, "tournaments": tournaments, "games": games},
+        )
