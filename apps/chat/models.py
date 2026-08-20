@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.db import models
 from django.db.models import F, Q
 from django.utils import timezone
-from datetime import timedelta
 
 from apps.core.models import TimeStampedModel
 
@@ -43,6 +44,7 @@ class Message(TimeStampedModel):
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="chat_messages_sent")
     body = models.TextField(max_length=2000)
     read_at = models.DateTimeField(blank=True, null=True, db_index=True)
+    delivered_at = models.DateTimeField(blank=True, null=True, db_index=True)
     edited_at = models.DateTimeField(blank=True, null=True)
     unsent_at = models.DateTimeField(blank=True, null=True)
     deleted_for_sender = models.BooleanField(default=False)

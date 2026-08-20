@@ -11,8 +11,17 @@ from django.views import View
 from django.views.generic import CreateView, DetailView, ListView
 
 from .forms import TournamentForm
-from .models import Tournament, TournamentPairing
-from .services import join_tournament, report_pairing_result, start_tournament, withdraw_from_tournament
+from .models import Tournament, TournamentEntry, TournamentPairing
+from .services import (
+    cancel_tournament,
+    join_tournament,
+    post_tournament_announcement,
+    post_tournament_message,
+    remove_tournament_player,
+    report_pairing_result,
+    start_tournament,
+    withdraw_from_tournament,
+)
 
 
 class TournamentListView(ListView):
@@ -22,7 +31,11 @@ class TournamentListView(ListView):
     paginate_by = 20
 
     def get_queryset(self):
-        return Tournament.objects.filter(is_public=True).select_related("organizer").annotate(player_count=Count("entries"))
+        return (
+            Tournament.objects.filter(is_public=True)
+            .select_related("organizer")
+            .annotate(player_count=Count("entries"))
+        )
 
 
 class TournamentInviteView(LoginRequiredMixin, View):
@@ -63,13 +76,17 @@ class TournamentDetailView(DetailView):
         )
         if self.request.user.is_authenticated:
             return queryset.filter(
-                models.Q(is_public=True) | models.Q(organizer=self.request.user) | models.Q(entries__user=self.request.user)
+                models.Q(is_public=True)
+                | models.Q(organizer=self.request.user)
+                | models.Q(entries__user=self.request.user)
             ).distinct()
         return queryset.filter(is_public=True)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["is_registered"] = self.request.user.is_authenticated and self.object.entries.filter(user=self.request.user).exists()
+        context["is_registered"] = (
+            self.request.user.is_authenticated and self.object.entries.filter(user=self.request.user).exists()
+        )
         return context
 
 
@@ -120,3 +137,45 @@ class ReportPairingResultView(LoginRequiredMixin, View):
         except (PermissionDenied, ValidationError) as exc:
             messages.error(request, "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
         return redirect(tournament.get_absolute_url())
+
+
+class TournamentManageView(LoginRequiredMixin, View):
+    action = ""
+
+    def post(self, request, pk, entry_pk=None):
+        tournament = get_object_or_404(Tournament, pk=pk)
+        try:
+            if self.action == "cancel":
+                cancel_tournament(tournament=tournament, actor=request.user)
+            elif self.action == "remove":
+                remove_tournament_player(
+                    tournament=tournament,
+                    actor=request.user,
+                    entry=get_object_or_404(TournamentEntry, pk=entry_pk, tournament=tournament),
+                )
+            elif self.action == "announce":
+                post_tournament_announcement(
+                    tournament=tournament, actor=request.user, body=request.POST.get("body", "")
+                )
+            else:
+                post_tournament_message(tournament=tournament, actor=request.user, body=request.POST.get("body", ""))
+            messages.success(request, "Tournament updated.")
+        except (PermissionDenied, ValidationError) as exc:
+            messages.error(request, "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
+        return redirect(tournament.get_absolute_url())
+
+
+class CancelTournamentView(TournamentManageView):
+    action = "cancel"
+
+
+class RemoveTournamentPlayerView(TournamentManageView):
+    action = "remove"
+
+
+class TournamentAnnouncementView(TournamentManageView):
+    action = "announce"
+
+
+class TournamentChatView(TournamentManageView):
+    action = "chat"

@@ -49,6 +49,7 @@ class Friendship(TimeStampedModel):
 class UserBlock(TimeStampedModel):
     blocker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="blocks_created")
     blocked = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="blocks_received")
+
     class Meta:
         constraints = [models.UniqueConstraint(fields=["blocker", "blocked"], name="friends_unique_block")]
 
@@ -59,3 +60,17 @@ class UserReport(TimeStampedModel):
     reason = models.CharField(max_length=32, default="other")
     details = models.TextField(max_length=1000, blank=True)
     status = models.CharField(max_length=16, default="open", db_index=True)
+
+
+class FriendChallenge(TimeStampedModel):
+    challenger = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="challenges_sent")
+    challenged = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="challenges_received"
+    )
+    room = models.ForeignKey(
+        "rooms.Room", on_delete=models.SET_NULL, null=True, blank=True, related_name="friend_challenges"
+    )
+    status = models.CharField(max_length=16, default="pending", db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]

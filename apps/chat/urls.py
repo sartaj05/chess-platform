@@ -1,6 +1,13 @@
 from django.urls import path
 
-from .views import ConversationDetailView, ConversationListView, DeleteMessageView, EditMessageView, StartConversationView, UnsendMessageView
+from .views import (
+    ConversationDetailView,
+    ConversationListView,
+    DeleteMessageView,
+    EditMessageView,
+    StartConversationView,
+    UnsendMessageView,
+)
 
 app_name = "chat"
 urlpatterns = [

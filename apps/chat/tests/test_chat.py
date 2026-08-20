@@ -69,6 +69,7 @@ def test_opening_thread_marks_only_received_messages_read(client, chat_users):
     assert response.status_code == 200
     received.refresh_from_db()
     sent.refresh_from_db()
+    assert received.delivered_at is not None
     assert received.read_at is not None
     assert sent.read_at is None
 

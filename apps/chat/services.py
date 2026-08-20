@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
-from datetime import timedelta
 
 from apps.accounts.models import User
 from apps.friends.models import Friendship, UserBlock
@@ -15,10 +16,13 @@ from .models import Conversation, Message
 
 
 def users_are_friends(first: User, second: User) -> bool:
-    return not UserBlock.objects.filter(Q(blocker=first, blocked=second) | Q(blocker=second, blocked=first)).exists() and Friendship.objects.filter(
-        Q(requester=first, addressee=second) | Q(requester=second, addressee=first),
-        status=Friendship.Status.ACCEPTED,
-    ).exists()
+    return (
+        not UserBlock.objects.filter(Q(blocker=first, blocked=second) | Q(blocker=second, blocked=first)).exists()
+        and Friendship.objects.filter(
+            Q(requester=first, addressee=second) | Q(requester=second, addressee=first),
+            status=Friendship.Status.ACCEPTED,
+        ).exists()
+    )
 
 
 @transaction.atomic

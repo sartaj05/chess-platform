@@ -25,7 +25,9 @@ class Tournament(TimeStampedModel):
 
     name = models.CharField(max_length=120)
     description = models.TextField(max_length=1000, blank=True)
-    organizer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="organized_tournaments")
+    organizer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="organized_tournaments"
+    )
     format = models.CharField(max_length=20, choices=Format.choices, default=Format.SWISS)
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.REGISTRATION, db_index=True)
     starts_at = models.DateTimeField(db_index=True)
@@ -69,9 +71,11 @@ class TournamentEntry(TimeStampedModel):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="tournament_entries")
     seed = models.PositiveSmallIntegerField(blank=True, null=True)
     score = models.DecimalField(max_digits=5, decimal_places=1, default=0)
+    buchholz = models.DecimalField(max_digits=7, decimal_places=2, default=0)
+    sonneborn_berger = models.DecimalField(max_digits=7, decimal_places=2, default=0)
 
     class Meta:
-        ordering = ["-score", "seed", "created_at"]
+        ordering = ["-score", "-buchholz", "-sonneborn_berger", "seed", "created_at"]
         constraints = [models.UniqueConstraint(fields=["tournament", "user"], name="tournament_unique_player")]
 
     def __str__(self) -> str:
@@ -122,3 +126,21 @@ class TournamentPairing(TimeStampedModel):
     def __str__(self) -> str:
         opponent = self.black_entry.user if self.black_entry_id else "Bye"
         return f"Board {self.board_number}: {self.white_entry.user} vs {opponent}"
+
+
+class TournamentAnnouncement(TimeStampedModel):
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="announcements")
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    body = models.CharField(max_length=500)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
+class TournamentMessage(TimeStampedModel):
+    tournament = models.ForeignKey(Tournament, on_delete=models.CASCADE, related_name="chat_messages")
+    sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    body = models.CharField(max_length=500)
+
+    class Meta:
+        ordering = ["created_at"]

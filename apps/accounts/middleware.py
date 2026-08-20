@@ -11,6 +11,7 @@ class UserActivityMiddleware:
         response = self.get_response(request)
         user = getattr(request, "user", None)
         if user and user.is_authenticated:
+            cache.set(f"presence:user:{user.pk}", True, 75)
             key = f"user-last-seen-written:{user.pk}"
             if not cache.get(key):
                 user.last_seen_at = timezone.now()

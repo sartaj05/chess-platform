@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import pytest
+from django.core.cache import cache
 from django.urls import reverse
 
 from apps.accounts.models import User
-from apps.friends.models import Friendship
-from apps.notifications.models import Notification
 from apps.chat.models import Conversation, Message
+from apps.friends.models import FriendChallenge, Friendship
+from apps.notifications.models import Notification
 
 
 @pytest.fixture
@@ -89,7 +90,12 @@ def test_mobile_social_api_exposes_and_applies_message_controls(client, users):
 
     response = client.post(
         "/api/social/",
-        {"action": "edit_message", "conversation_id": conversation.pk, "message_id": message.pk, "body": "Mobile edited"},
+        {
+            "action": "edit_message",
+            "conversation_id": conversation.pk,
+            "message_id": message.pk,
+            "body": "Mobile edited",
+        },
         content_type="application/json",
     )
     assert response.status_code == 200
@@ -104,3 +110,22 @@ def test_mobile_social_api_exposes_and_applies_message_controls(client, users):
     assert response.status_code == 200
     message.refresh_from_db()
     assert message.unsent_at is not None
+
+
+def test_challenge_history_and_friend_presence_are_visible(client, users):
+    first, second, _ = users
+    Friendship.objects.create(requester=first, addressee=second, status=Friendship.Status.ACCEPTED)
+    client.force_login(first)
+
+    response = client.post(
+        "/api/social/",
+        {"action": "challenge", "user_id": second.pk, "minutes": 10, "increment": 0},
+        content_type="application/json",
+    )
+    assert response.status_code == 201
+    assert FriendChallenge.objects.filter(challenger=first, challenged=second).exists()
+
+    cache.set(f"presence:user:{second.pk}", True, 75)
+    page = client.get(reverse("friends:list"))
+    assert b"Challenge history" in page.content
+    assert b"Online" in page.content

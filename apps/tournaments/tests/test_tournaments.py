@@ -8,7 +8,15 @@ from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.notifications.models import Notification
-from apps.tournaments.models import Tournament, TournamentEntry, TournamentPairing, TournamentRound
+from apps.tournaments.models import (
+    Tournament,
+    TournamentAnnouncement,
+    TournamentEntry,
+    TournamentMessage,
+    TournamentPairing,
+    TournamentRound,
+)
+from apps.tournaments.services import report_pairing_result, start_tournament
 
 
 @pytest.fixture
@@ -196,3 +204,74 @@ def test_odd_player_receives_automatic_bye(client, tournament_users):
     assert bye.black_entry is None
     bye.white_entry.refresh_from_db()
     assert bye.white_entry.score == 1
+
+
+def test_all_swiss_rounds_are_generated_and_tiebreaks_are_calculated(db):
+    users = [User.objects.create_user(email=f"swiss-{index}@example.com") for index in range(4)]
+    tournament = Tournament.objects.create(
+        name="Complete Swiss",
+        organizer=users[0],
+        starts_at=timezone.now(),
+        max_players=4,
+    )
+    for user in users:
+        TournamentEntry.objects.create(tournament=tournament, user=user)
+
+    start_tournament(tournament=tournament, actor=users[0])
+    first_round = TournamentRound.objects.get(tournament=tournament, number=1)
+    for pairing in first_round.pairings.all():
+        report_pairing_result(
+            tournament=tournament,
+            pairing=pairing,
+            actor=users[0],
+            result=TournamentPairing.Result.WHITE_WIN,
+        )
+
+    assert TournamentRound.objects.filter(tournament=tournament, number=2).exists()
+    second_round = TournamentRound.objects.get(tournament=tournament, number=2)
+    for pairing in second_round.pairings.all():
+        report_pairing_result(
+            tournament=tournament,
+            pairing=pairing,
+            actor=users[0],
+            result=TournamentPairing.Result.DRAW,
+        )
+
+    tournament.refresh_from_db()
+    assert tournament.status == Tournament.Status.COMPLETED
+    assert tournament.entries.filter(buchholz__gt=0).exists()
+    assert tournament.entries.filter(sonneborn_berger__gt=0).exists()
+
+
+def test_organizer_can_announce_remove_and_cancel(client, tournament_users, tournament):
+    organizer, player, outsider = tournament_users
+    organizer_entry = TournamentEntry.objects.create(tournament=tournament, user=organizer)
+    player_entry = TournamentEntry.objects.create(tournament=tournament, user=player)
+
+    client.force_login(outsider)
+    client.post(reverse("tournaments:remove_player", args=[tournament.pk, player_entry.pk]))
+    assert TournamentEntry.objects.filter(pk=player_entry.pk).exists()
+
+    client.force_login(organizer)
+    client.post(reverse("tournaments:announce", args=[tournament.pk]), {"body": "Round one starts soon."})
+    assert TournamentAnnouncement.objects.filter(tournament=tournament, body__contains="starts soon").exists()
+    client.post(reverse("tournaments:remove_player", args=[tournament.pk, player_entry.pk]))
+    assert not TournamentEntry.objects.filter(pk=player_entry.pk).exists()
+    assert TournamentEntry.objects.filter(pk=organizer_entry.pk).exists()
+    client.post(reverse("tournaments:cancel", args=[tournament.pk]))
+    tournament.refresh_from_db()
+    assert tournament.status == Tournament.Status.CANCELLED
+
+
+def test_registered_player_can_use_tournament_chat(client, tournament_users, tournament):
+    organizer, player, outsider = tournament_users
+    TournamentEntry.objects.create(tournament=tournament, user=organizer)
+    TournamentEntry.objects.create(tournament=tournament, user=player)
+
+    client.force_login(outsider)
+    client.post(reverse("tournaments:chat", args=[tournament.pk]), {"body": "Not allowed"})
+    assert not TournamentMessage.objects.exists()
+
+    client.force_login(player)
+    client.post(reverse("tournaments:chat", args=[tournament.pk]), {"body": "Good luck everyone"})
+    assert TournamentMessage.objects.filter(sender=player, body="Good luck everyone").exists()

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
@@ -10,7 +11,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from .forms import FriendRequestForm
-from .models import Friendship
+from .models import FriendChallenge, Friendship
 from .services import remove_friendship, respond_to_request, send_friend_request
 
 
@@ -21,7 +22,11 @@ class FriendListView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         relationships = Friendship.objects.select_related("requester", "addressee")
         context["friends"] = [
-            {"relationship": relationship, "user": relationship.other_user(self.request.user)}
+            {
+                "relationship": relationship,
+                "user": relationship.other_user(self.request.user),
+                "online": bool(cache.get(f"presence:user:{relationship.other_user(self.request.user).pk}")),
+            }
             for relationship in relationships.filter(
                 Q(requester=self.request.user) | Q(addressee=self.request.user),
                 status=Friendship.Status.ACCEPTED,
@@ -36,6 +41,9 @@ class FriendListView(LoginRequiredMixin, TemplateView):
             status=Friendship.Status.PENDING,
         )
         context["request_form"] = FriendRequestForm()
+        context["challenge_history"] = FriendChallenge.objects.filter(
+            Q(challenger=self.request.user) | Q(challenged=self.request.user)
+        ).select_related("challenger", "challenged", "room")[:10]
         return context
 
 

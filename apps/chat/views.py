@@ -62,9 +62,9 @@ class ConversationDetailView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         conversation = self._conversation()
-        Message.objects.filter(conversation=conversation, read_at__isnull=True).exclude(sender=self.request.user).update(
-            read_at=timezone.now()
-        )
+        now = timezone.now()
+        Message.objects.filter(conversation=conversation, delivered_at__isnull=True).exclude(sender=self.request.user).update(delivered_at=now)
+        Message.objects.filter(conversation=conversation, read_at__isnull=True).exclude(sender=self.request.user).update(read_at=now)
         context.update(
             conversation=conversation,
             other=conversation.other_user(self.request.user),
