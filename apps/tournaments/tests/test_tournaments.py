@@ -114,6 +114,29 @@ def test_private_tournament_hidden_from_non_organizer(client, tournament_users, 
     assert client.get(tournament.get_absolute_url()).status_code == 200
 
 
+def test_player_can_join_private_tournament_with_invite_code(client, tournament_users, tournament):
+    _, player, _ = tournament_users
+    tournament.is_public = False
+    tournament.save(update_fields=["is_public"])
+    client.force_login(player)
+
+    response = client.post(reverse("tournaments:join_code"), {"invite_code": tournament.invite_code.lower()})
+
+    assert response.status_code == 302
+    assert response.url == tournament.get_absolute_url()
+    assert TournamentEntry.objects.filter(tournament=tournament, user=player).exists()
+    assert client.get(tournament.get_absolute_url()).status_code == 200
+
+
+def test_tournament_page_displays_share_code(client, tournament_users, tournament):
+    organizer, _, _ = tournament_users
+    client.force_login(organizer)
+    response = client.get(tournament.get_absolute_url())
+
+    assert tournament.invite_code.encode() in response.content
+    assert b"Copy code" in response.content
+
+
 def test_organizer_reports_result_and_updates_standings(client, tournament_users, tournament):
     organizer, player, outsider = tournament_users
     first = TournamentEntry.objects.create(tournament=tournament, user=organizer)

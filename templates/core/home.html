@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}Play Chess Online | Chess Platform{% endblock %}
-{% block body_class %}app-home-page{% endblock %}
+{% block body_class %}app-home-page{% if request.user.is_authenticated %} play-workspace-page{% endif %}{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/app-home.css' %}">{% endblock %}
 {% block content %}
 {% if show_marketing %}
@@ -19,9 +19,8 @@
 <div class="trust-strip" aria-label="Platform benefits"><span><strong>Stockfish powered</strong><small>Progressive bot training</small></span><span><strong>Private by design</strong><small>Local modes stay offline</small></span><span><strong>Play anywhere</strong><small>Web, Android, and LAN</small></span></div>
 {% else %}
 <header class="play-workspace-heading">
-  <span>PLAY</span>
-  <h1>Start your next game</h1>
-  <p>Choose a side and play instantly, locally, or online.</p>
+  <div><span>PLAY STUDIO</span><h1>Start your next game</h1><p>Choose a side and play instantly, locally, or online.</p></div>
+  <div class="workspace-summary"><span><strong>{{ bot_level }}</strong> bot level</span><span><strong>3</strong> play modes</span><span><strong>10 min</strong> default clock</span></div>
 </header>
 {% endif %}
 

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import secrets
+import string
+
 from django.conf import settings
 from django.db import models
 from django.db.models import Q
@@ -30,6 +33,7 @@ class Tournament(TimeStampedModel):
     clock_initial_minutes = models.PositiveSmallIntegerField(default=10)
     increment_seconds = models.PositiveSmallIntegerField(default=0)
     is_public = models.BooleanField(default=True, db_index=True)
+    invite_code = models.CharField(max_length=8, unique=True, editable=False, db_index=True)
 
     class Meta:
         ordering = ["starts_at", "name"]
@@ -41,6 +45,16 @@ class Tournament(TimeStampedModel):
 
     def __str__(self) -> str:
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.invite_code:
+            alphabet = string.ascii_uppercase + string.digits
+            while True:
+                candidate = "".join(secrets.choice(alphabet) for _ in range(8))
+                if not type(self).objects.filter(invite_code=candidate).exists():
+                    self.invite_code = candidate
+                    break
+        return super().save(*args, **kwargs)
 
     def get_absolute_url(self) -> str:
         return reverse("tournaments:detail", kwargs={"pk": self.pk})

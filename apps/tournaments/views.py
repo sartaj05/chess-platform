@@ -25,6 +25,18 @@ class TournamentListView(ListView):
         return Tournament.objects.filter(is_public=True).select_related("organizer").annotate(player_count=Count("entries"))
 
 
+class TournamentInviteView(LoginRequiredMixin, View):
+    def post(self, request: HttpRequest) -> HttpResponse:
+        code = request.POST.get("invite_code", "").strip().upper()
+        tournament = get_object_or_404(Tournament, invite_code=code)
+        try:
+            join_tournament(tournament=tournament, user=request.user)
+            messages.success(request, f"You joined {tournament.name}.")
+        except ValidationError as exc:
+            messages.error(request, "; ".join(exc.messages))
+        return redirect(tournament.get_absolute_url())
+
+
 class TournamentCreateView(LoginRequiredMixin, CreateView):
     model = Tournament
     form_class = TournamentForm
@@ -50,7 +62,9 @@ class TournamentDetailView(DetailView):
             "rounds__pairings__black_entry__user",
         )
         if self.request.user.is_authenticated:
-            return queryset.filter(models.Q(is_public=True) | models.Q(organizer=self.request.user))
+            return queryset.filter(
+                models.Q(is_public=True) | models.Q(organizer=self.request.user) | models.Q(entries__user=self.request.user)
+            ).distinct()
         return queryset.filter(is_public=True)
 
     def get_context_data(self, **kwargs):
