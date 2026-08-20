@@ -128,6 +128,9 @@ def test_bot_game_page_shows_result_help_without_removed_panels(client):
     assert b"Sign in" in response.content
     assert b"Move History" not in response.content
     assert b"Current Position" not in response.content
+    assert b"game-result-modal" in response.content
+    assert b"New game" in response.content
+    assert b"Share result" in response.content
 
 
 @pytest.mark.django_db

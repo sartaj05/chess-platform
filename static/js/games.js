@@ -58,6 +58,8 @@
       promotionChoice: null,
       boardTheme: localStorage.getItem("chess-board-theme") || "classic",
       soundPack: localStorage.getItem("chess-sound-pack") || "wood",
+      resultModalOpen: false,
+      resultPresented: false,
 
       init() {
         const stateTag = document.getElementById("game-state-data");
@@ -88,6 +90,10 @@
 
         this.lastTickAt = Date.now();
         this.clockTimer = window.setInterval(() => this.tickClock(), 1000);
+
+        if (this.state.status === "finished") {
+          window.setTimeout(() => this.presentResult(), 250);
+        }
 
         window.addEventListener("beforeunload", () => {
           if (this.reconnectTimer) window.clearTimeout(this.reconnectTimer);
@@ -206,8 +212,43 @@
         this.selectedSquare = "";
         this.draggedSquare = "";
         if (nextState.last_move_uci && nextState.last_move_uci !== previousMove) this.playSound("move");
-        if (previousStatus !== "finished" && nextState.status === "finished") this.playSound("finish");
+        if (previousStatus !== "finished" && nextState.status === "finished") {
+          this.playSound("finish");
+          this.presentResult();
+        }
       },
+
+      resultOutcome() {
+        if (this.state.result === "1/2-1/2") return "draw";
+        const winner = this.state.winner_color || (this.state.result === "1-0" ? "white" : this.state.result === "0-1" ? "black" : "");
+        const player = this.isBotGame() ? this.state.player_color : (this.state.viewer ? this.state.viewer.color : "");
+        if (!player) return winner ? "complete" : "draw";
+        return winner === player ? "win" : "loss";
+      },
+
+      resultTitle() {
+        const outcome = this.resultOutcome();
+        if (outcome === "win") return "Brilliant. You won!";
+        if (outcome === "loss") return "Tough game";
+        if (outcome === "draw") return "Game drawn";
+        return `${this.state.winner_color === "white" ? "White" : "Black"} wins`;
+      },
+
+      resultMessage() {
+        const outcome = this.resultOutcome();
+        if (outcome === "win") return this.state.level_unlocked ? `Level ${this.state.level_unlocked} unlocked. Your next challenge is ready.` : "A strong finish. Your result has been saved.";
+        if (outcome === "loss") return "Every game teaches something. Review the position or start a fresh challenge.";
+        if (outcome === "draw") return "An even battle. One more game could settle it.";
+        return "The game is complete. Start another when you are ready.";
+      },
+
+      presentResult() {
+        if (this.resultPresented || this.state.status !== "finished") return;
+        this.resultPresented = true;
+        this.resultModalOpen = true;
+      },
+
+      closeResult() { this.resultModalOpen = false; },
 
       boardRows() {
         const board = clone(this.state.board);

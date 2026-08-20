@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'offline_game_repository.dart';
+import 'game_result_dialog.dart';
 
 enum OfflinePlayMode { friend, bot }
 
@@ -97,8 +98,10 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
         _game.move({'from': _selected, 'to': square, 'promotion': promotion});
     setState(() => _selected = moved ? null : square);
     if (moved && widget.soundsEnabled && widget.soundPack != 'silent') SystemSound.play(widget.soundPack == 'soft' ? SystemSoundType.alert : SystemSoundType.click);
-    if (moved && widget.mode == OfflinePlayMode.bot) {
-      _checkResult();
+    if (moved) {
+      await _checkResult();
+    }
+    if (moved && widget.mode == OfflinePlayMode.bot && !_game.game_over) {
       Future<void>.delayed(const Duration(milliseconds: 350), _playBotMove);
     }
   }
@@ -146,27 +149,24 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
   }
 
   Future<void> _checkResult() async {
-    if (!_game.in_checkmate || _reportedVictory) return;
-    final playerWon = (_game.turn == chess.Chess.BLACK) == _playerIsWhite;
-    if (!playerWon) return;
+    if (!_game.game_over || _reportedVictory) return;
     _reportedVictory = true;
-    final unlocked = await widget.onBotVictory?.call(widget.botLevel);
-    if (mounted) {
-      showDialog<void>(
-        context: context,
-        builder: (_) => AlertDialog(
-          icon: const Icon(Icons.emoji_events, size: 42),
-          title: const Text('You won!'),
-          content: Text(unlocked != null && unlocked > widget.botLevel
-              ? 'Level $unlocked is now unlocked.'
-              : 'Great game. Sign in to save your progress.'),
-          actions: [
-            TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Continue'))
-          ],
-        ),
-      );
+    final whiteWon = _game.turn == chess.Chess.BLACK;
+    final playerWon = whiteWon == _playerIsWhite;
+    final isDraw = !_game.in_checkmate;
+    final unlocked = playerWon && widget.mode == OfflinePlayMode.bot
+        ? await widget.onBotVictory?.call(widget.botLevel)
+        : null;
+    if (!mounted) return;
+    final action = await showGameResultDialog(context,
+        outcome: isDraw ? PlayerGameOutcome.draw : widget.mode == OfflinePlayMode.friend ? PlayerGameOutcome.complete : playerWon ? PlayerGameOutcome.win : PlayerGameOutcome.loss,
+        score: isDraw ? '½ – ½' : whiteWon ? '1 – 0' : '0 – 1',
+        message: unlocked != null && unlocked > widget.botLevel ? 'Level $unlocked is now unlocked. Your next challenge is ready.' : null);
+    if (!mounted) return;
+    if (action == GameResultAction.home) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    } else if (action == GameResultAction.newGame) {
+      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => OfflineBoardPage(mode: widget.mode, preferredSide: widget.preferredSide, botLevel: widget.botLevel, onBotVictory: widget.onBotVictory, stockfishMove: widget.stockfishMove, soundsEnabled: widget.soundsEnabled, boardTheme: widget.boardTheme, soundPack: widget.soundPack)));
     }
   }
 

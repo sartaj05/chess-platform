@@ -6,6 +6,7 @@ import 'package:chess/chess.dart' as chess;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'push_service.dart';
+import 'game_result_dialog.dart';
 
 class OnlineGamePage extends StatefulWidget {
   const OnlineGamePage({
@@ -45,6 +46,7 @@ class _OnlineGamePageState extends State<OnlineGamePage>
   int _handshakeMs = 0;
   bool _hasReconnected = false;
   DateTime _stateReceivedAt = DateTime.now();
+  bool _resultShown = false;
 
   String get _viewerColor =>
       ((_game['viewer'] as Map?)?['color'] as String?) ?? '';
@@ -78,6 +80,7 @@ class _OnlineGamePageState extends State<OnlineGamePage>
         .map((e) => Map<String, dynamic>.from(e as Map)));
     _connect();
     _syncTurnReminder();
+    if (!_active) WidgetsBinding.instance.addPostFrameCallback((_) => _showResult());
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _active) setState(() {});
     });
@@ -132,6 +135,7 @@ class _OnlineGamePageState extends State<OnlineGamePage>
           ((incoming['ply_count'] as num?)?.toInt() ?? 0) > previousPly) {
         SystemSound.play(SystemSoundType.click);
       }
+      final wasActive = _active;
       setState(() {
         _game = incoming;
         _stateReceivedAt = DateTime.now();
@@ -140,6 +144,7 @@ class _OnlineGamePageState extends State<OnlineGamePage>
       });
       _syncTurnReminder();
       _playQueuedPremove();
+      if (wasActive && !_active) _showResult();
     } else if (data['type'] == 'game.chat' && data['message'] is Map) {
       setState(
           () => _chat.add(Map<String, dynamic>.from(data['message'] as Map)));
@@ -160,6 +165,25 @@ class _OnlineGamePageState extends State<OnlineGamePage>
     } else if (data['type'] == 'error') {
       setState(
           () => _error = data['message']?.toString() ?? 'Game action failed.');
+    }
+  }
+
+  Future<void> _showResult() async {
+    if (!mounted || _active || _resultShown) return;
+    _resultShown = true;
+    final winner = (_game['winner_color'] ?? '').toString();
+    final result = (_game['result'] ?? '*').toString();
+    final outcome = result == '1/2-1/2'
+        ? PlayerGameOutcome.draw
+        : _viewerColor.isEmpty
+            ? PlayerGameOutcome.complete
+            : winner == _viewerColor
+                ? PlayerGameOutcome.win
+                : PlayerGameOutcome.loss;
+    final action = await showGameResultDialog(context, outcome: outcome, score: result);
+    if (!mounted) return;
+    if (action == GameResultAction.home || action == GameResultAction.newGame) {
+      Navigator.of(context).pop();
     }
   }
 

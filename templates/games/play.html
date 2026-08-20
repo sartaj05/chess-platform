@@ -13,6 +13,17 @@
 {{ game_state|json_script:"game-state-data" }}
 
 <div class="row g-4" x-data="gameClient()" x-init="init()" x-cloak>
+  <div class="game-result-overlay" x-show="resultModalOpen" x-transition.opacity role="presentation">
+    <section class="game-result-modal" :class="'outcome-' + resultOutcome()" role="dialog" aria-modal="true" aria-labelledby="gameResultTitle">
+      <div class="celebration-particles" x-show="resultOutcome() === 'win'" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <button class="result-close" type="button" @click="closeResult()" aria-label="Close result">×</button>
+      <div class="result-emblem" x-text="resultOutcome() === 'win' ? '♛' : resultOutcome() === 'loss' ? '♟' : '½'"></div>
+      <span class="result-kicker" x-text="resultOutcome() === 'win' ? 'VICTORY' : resultOutcome() === 'loss' ? 'GAME COMPLETE' : 'FINAL RESULT'"></span>
+      <h2 id="gameResultTitle" x-text="resultTitle()"></h2><p x-text="resultMessage()"></p>
+      <div class="result-score"><span x-text="state.white.name"></span><strong x-text="state.result"></strong><span x-text="state.black.name"></span></div>
+      <div class="result-actions"><a class="result-primary" href="{% if request.user.is_authenticated %}{% url 'core:play' %}{% else %}{% url 'core:home' %}{% endif %}">New game</a><button type="button" @click="shareGame()">Share result</button><a href="{% if request.user.is_authenticated %}{% url 'dashboard:home' %}{% else %}{% url 'core:home' %}{% endif %}">Home</a></div>
+    </section>
+  </div>
   <div class="col-xl-8">
     <div class="card border-secondary shadow-sm">
       <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
