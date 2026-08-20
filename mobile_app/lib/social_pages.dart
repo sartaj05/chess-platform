@@ -496,11 +496,26 @@ class _LegacyTournamentPageState extends State<LegacyTournamentPage> {
 }
 
 class OpeningStatsPage extends StatelessWidget {
-  const OpeningStatsPage({super.key, required this.load});
+  const OpeningStatsPage(
+      {super.key,
+      required this.load,
+      required this.loadPractice,
+      required this.gradePractice});
   final Future<List<Map<String, dynamic>>> Function() load;
+  final Future<Map<String, dynamic>> Function() loadPractice;
+  final Future<void> Function(String, int) gradePractice;
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(title: const Text('My openings')),
+      appBar: AppBar(title: const Text('My openings'), actions: [
+        IconButton(
+            tooltip: 'Practice openings',
+            icon: const Icon(Icons.school),
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => _OpeningPracticePage(
+                        load: loadPractice, grade: gradePractice))))
+      ]),
       body: FutureBuilder<List<Map<String, dynamic>>>(
           future: load(),
           builder: (_, snapshot) {
@@ -524,4 +539,65 @@ class OpeningStatsPage extends StatelessWidget {
                             trailing: Text('${row['losses']} losses'))))
                     .toList());
           }));
+}
+
+class _OpeningPracticePage extends StatefulWidget {
+  const _OpeningPracticePage({required this.load, required this.grade});
+  final Future<Map<String, dynamic>> Function() load;
+  final Future<void> Function(String, int) grade;
+  @override
+  State<_OpeningPracticePage> createState() => _OpeningPracticePageState();
+}
+
+class _OpeningPracticePageState extends State<_OpeningPracticePage> {
+  late Future<Map<String, dynamic>> data = widget.load();
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Opening practice')),
+        body: FutureBuilder<Map<String, dynamic>>(
+            future: data,
+            builder: (_, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final due = (snapshot.data!['results'] as List? ?? const [])
+                  .where((row) => (row as Map)['due'] == true)
+                  .toList();
+              return ListView(padding: const EdgeInsets.all(12), children: [
+                ListTile(
+                    leading: const Icon(Icons.event_repeat),
+                    title: Text('${snapshot.data!['due_count']} lines due'),
+                    subtitle: const Text(
+                        'Recall each continuation, then grade your memory.')),
+                if (due.isEmpty)
+                  const Card(
+                      child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text('Training complete for today.'))),
+                ...due.map((row) => Card(
+                        child: ExpansionTile(
+                      leading: CircleAvatar(child: Text(row['eco'].toString())),
+                      title: Text(row['name'].toString()),
+                      subtitle: const Text('Tap to reveal the line'),
+                      children: [
+                        Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Text(row['moves_san'].toString())),
+                        Wrap(
+                            spacing: 8,
+                            children: [(1, 'Again'), (3, 'Good'), (5, 'Easy')]
+                                .map((choice) => OutlinedButton(
+                                    onPressed: () async {
+                                      await widget.grade(
+                                          row['id'].toString(), choice.$1);
+                                      setState(() => data = widget.load());
+                                    },
+                                    child: Text(choice.$2)))
+                                .toList()),
+                        const SizedBox(height: 10),
+                      ],
+                    )))
+              ]);
+            }),
+      );
 }

@@ -139,11 +139,12 @@ class PuzzleListAPIView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        from apps.puzzles.models import Puzzle
+        from apps.puzzles.models import Puzzle, PuzzleCourse
         rows = Puzzle.objects.filter(is_published=True).order_by("rating")[:100]
         daily = Puzzle.objects.filter(is_published=True).order_by("id")[timezone.localdate().toordinal() % max(Puzzle.objects.filter(is_published=True).count(), 1)] if rows else None
         leaders = User.objects.filter(is_active=True).order_by("-puzzle_rating", "display_name")[:20]
-        return Response({"daily_id": daily.pk if daily else None, "puzzle_rating": request.user.puzzle_rating, "streak": request.user.puzzle_streak, "best_streak": request.user.puzzle_best_streak, "leaderboard": [{"name":u.display_name,"rating":u.puzzle_rating,"streak":u.puzzle_streak} for u in leaders], "results":[{"id": row.pk, "title": row.title, "fen": row.initial_fen, "rating": row.rating, "difficulty": row.difficulty, "themes": row.themes} for row in rows]})
+        courses = PuzzleCourse.objects.filter(is_published=True).prefetch_related("items__puzzle")
+        return Response({"daily_id": daily.pk if daily else None, "puzzle_rating": request.user.puzzle_rating, "streak": request.user.puzzle_streak, "best_streak": request.user.puzzle_best_streak, "leaderboard": [{"name":u.display_name,"rating":u.puzzle_rating,"streak":u.puzzle_streak} for u in leaders], "courses":[{"id": course.pk,"title":course.title,"description":course.description,"theme":course.theme,"difficulty":course.difficulty,"puzzle_ids":[item.puzzle_id for item in course.items.all()]} for course in courses], "results":[{"id": row.pk, "title": row.title, "fen": row.initial_fen, "rating": row.rating, "difficulty": row.difficulty, "themes": row.themes, "course_ids": list(row.courses.values_list("id", flat=True))} for row in rows]})
 
 
 class PuzzlePlayAPIView(APIView):
@@ -158,7 +159,8 @@ class PuzzlePlayAPIView(APIView):
         attempt = get_attempt(puzzle=puzzle, user=request.user)
         correct, reply = submit_move(attempt=attempt, move_text=str(request.data.get("move", "")))
         attempt.refresh_from_db()
-        return Response({"correct": correct, "reply": reply, "fen": attempt.current_fen, "status": attempt.status, "mistakes": attempt.mistakes, "rating_change": attempt.rating_change, "puzzle_rating": request.user.puzzle_rating, "streak": request.user.puzzle_streak})
+        solved = attempt.status == attempt.Status.SOLVED
+        return Response({"correct": correct, "reply": reply, "fen": attempt.current_fen, "status": attempt.status, "mistakes": attempt.mistakes, "rating_change": attempt.rating_change, "puzzle_rating": request.user.puzzle_rating, "streak": request.user.puzzle_streak, "explanation": puzzle.explanation if solved else "", "solution_moves": puzzle.solution_moves if solved else []})
 
 
 class MeAPIView(APIView):

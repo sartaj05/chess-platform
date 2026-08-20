@@ -51,3 +51,22 @@ def test_public_rooms_api(client) -> None:
     response = client.get(reverse("api:rooms-api:room-list-create"))
     assert response.status_code == 200
     assert response.json()["count"] == 1
+
+
+@pytest.mark.django_db
+def test_mobile_can_create_chess960_and_custom_position_rooms(client) -> None:
+    chess960 = client.post(
+        reverse("api:rooms-api:room-list-create"),
+        {"host_display_name": "Variant", "variant": "chess960",
+         "chess960_position": 518, "clock_initial_minutes": 10},
+        content_type="application/json",
+    )
+    assert chess960.status_code == 201
+    assert chess960.json()["variant"] == "chess960"
+    custom = client.post(
+        reverse("api:rooms-api:room-list-create"),
+        {"host_display_name": "Custom", "initial_fen": "8/8/8/8/8/8/K6k/8 w - - 0 1",
+         "clock_initial_minutes": 10}, content_type="application/json",
+    )
+    assert custom.status_code == 201
+    assert custom.json()["initial_fen"].startswith("8/8/")

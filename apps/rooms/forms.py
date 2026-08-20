@@ -23,6 +23,15 @@ class CreateRoomForm(BootstrapFormMixin, forms.Form):
     name = forms.CharField(max_length=120, required=False, label="Room name")
     description = forms.CharField(max_length=240, required=False, widget=forms.Textarea(attrs={"rows": 2}))
     host_display_name = forms.CharField(max_length=80, required=False, label="Your display name")
+    variant = forms.ChoiceField(
+        choices=[("standard", "Standard chess"), ("chess960", "Chess960")],
+        initial="standard",
+        required=False,
+    )
+    chess960_position = forms.IntegerField(min_value=0, max_value=959, required=False,
+                                            help_text="Optional fixed Chess960 position number.")
+    initial_fen = forms.CharField(max_length=180, required=False,
+                                  help_text="Optional custom starting position; custom games are unrated.")
     mode = forms.ChoiceField(choices=Room.Mode.choices, initial=Room.Mode.ONLINE)
     visibility = forms.ChoiceField(choices=Room.Visibility.choices, initial=Room.Visibility.PRIVATE)
     clock_initial_minutes = forms.IntegerField(min_value=0, max_value=10080, initial=5, label="Initial minutes")
@@ -52,6 +61,14 @@ class CreateRoomForm(BootstrapFormMixin, forms.Form):
             raise forms.ValidationError("A room needs a positive clock or increment.")
         if cleaned.get("rated") and not getattr(self.user, "is_authenticated", False):
             raise forms.ValidationError("Guest-created rooms must be unrated.")
+        if cleaned.get("initial_fen"):
+            import chess
+            try:
+                chess.Board(cleaned["initial_fen"])
+            except ValueError as exc:
+                raise forms.ValidationError("Enter a valid custom FEN position.") from exc
+            if cleaned.get("rated"):
+                raise forms.ValidationError("Custom positions must be unrated.")
         return cleaned
 
 

@@ -249,25 +249,68 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
     return unlocked;
   }
 
-  Future<void> _createOnlineGame() => _perform((api) async {
-        final room = await api.createRoom(
+  Future<void> _createOnlineGame() async {
+    var variant = 'standard';
+    final fen = TextEditingController();
+    final choice = await showDialog<bool>(
+        context: context,
+        builder: (context) => StatefulBuilder(
+            builder: (context, setDialogState) => AlertDialog(
+                  title: const Text('Create online game'),
+                  content: Column(mainAxisSize: MainAxisSize.min, children: [
+                    DropdownButtonFormField<String>(
+                        initialValue: variant,
+                        decoration: const InputDecoration(labelText: 'Variant'),
+                        items: const [
+                          DropdownMenuItem(
+                              value: 'standard', child: Text('Standard chess')),
+                          DropdownMenuItem(
+                              value: 'chess960', child: Text('Chess960')),
+                        ],
+                        onChanged: (value) => setDialogState(
+                            () => variant = value ?? 'standard')),
+                    TextField(
+                        controller: fen,
+                        maxLines: 2,
+                        decoration: const InputDecoration(
+                            labelText: 'Custom starting FEN (optional)')),
+                  ]),
+                  actions: [
+                    TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel')),
+                    FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Create')),
+                  ],
+                )));
+    if (choice != true) {
+      fen.dispose();
+      return;
+    }
+    await _perform((api) async {
+      final room = await api.createRoom(
+        displayName: _name.text.trim(),
+        side: _side.name,
+        variant: variant,
+        initialFen: fen.text.trim(),
+      );
+      final code = room['code'] as String;
+      if (!mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ShareCodePage(
+          serverUrl: _server.text,
+          roomCode: code,
           displayName: _name.text.trim(),
-          side: _side.name,
-        );
-        final code = room['code'] as String;
-        if (!mounted) return;
-        await Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) => ShareCodePage(
-            serverUrl: _server.text,
-            roomCode: code,
-            displayName: _name.text.trim(),
-            token: _token,
-            cookie: api.cookie,
-            session: _session,
-            soundsEnabled: widget.soundsEnabled,
-          ),
-        ));
-      });
+          token: _token,
+          cookie: api.cookie,
+          session: _session,
+          soundsEnabled: widget.soundsEnabled,
+        ),
+      ));
+    });
+    fen.dispose();
+  }
 
   Future<void> _joinOnlineGame() => _perform((api) async {
         final code = _code.text.trim().toUpperCase();
@@ -393,8 +436,10 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
               manage: _authenticatedApi.manageTournament)));
   Future<void> _openOpenings() async =>
       Navigator.of(context).push(MaterialPageRoute(
-          builder: (_) =>
-              OpeningStatsPage(load: _authenticatedApi.openingStats)));
+          builder: (_) => OpeningStatsPage(
+              load: _authenticatedApi.openingStats,
+              loadPractice: _authenticatedApi.openingPractice,
+              gradePractice: _authenticatedApi.gradeOpeningPractice)));
 
   Future<String?> _stockfishMove(String fen, int level) =>
       _authenticatedApi.stockfishMove(fen, level);
@@ -1428,6 +1473,14 @@ class _MobileApi {
     return data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
+  Future<Map<String, dynamic>> openingPractice() async =>
+      Map<String, dynamic>.from(
+          await _request('GET', 'api/analysis/openings/practice/') as Map);
+  Future<void> gradeOpeningPractice(String openingId, int quality) async {
+    await _request('POST', 'api/analysis/openings/practice/',
+        {'opening_id': openingId, 'quality': quality});
+  }
+
   Future<String?> stockfishMove(String fen, int level) async {
     final data = await _request(
         'POST', 'api/stockfish/best-move/', {'fen': fen, 'level': level});
@@ -1495,7 +1548,10 @@ class _MobileApi {
       });
 
   Future<Map<String, dynamic>> createRoom(
-      {required String displayName, required String side}) async {
+      {required String displayName,
+      required String side,
+      String variant = 'standard',
+      String initialFen = ''}) async {
     final data = await _request('POST', 'api/rooms/', {
       'name': '${displayName.isEmpty ? 'Player' : displayName}\'s game',
       'host_display_name': displayName,
@@ -1505,6 +1561,8 @@ class _MobileApi {
       'clock_initial_minutes': 10,
       'allow_guests': true,
       'spectator_enabled': false,
+      'variant': variant,
+      'initial_fen': initialFen,
     });
     return Map<String, dynamic>.from(data as Map);
   }

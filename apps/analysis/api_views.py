@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.analysis.models import GameAnalysisJob
+from apps.analysis.models import GameAnalysisJob, OpeningBookLine, OpeningPractice
 from apps.analysis.serializers import (
     GameAnalysisJobSerializer,
     OpeningBookLineSerializer,
@@ -94,3 +97,35 @@ class PersonalOpeningStatsApiView(APIView):
     permission_classes = [permissions.IsAuthenticated]
     def get(self, request):
         return Response(personal_opening_statistics(request.user))
+
+
+class OpeningPracticeApiView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        now = timezone.now()
+        records = {row.opening_id: row for row in OpeningPractice.objects.filter(user=request.user)}
+        lines = list(OpeningBookLine.objects.filter(is_active=True).order_by("eco", "name")[:50])
+        rows = []
+        for line in lines:
+            record = records.get(line.pk)
+            rows.append({"id": str(line.pk), "eco": line.eco, "name": line.name,
+                         "moves_uci": line.moves_uci, "moves_san": line.moves_san,
+                         "due": record is None or record.due_at <= now,
+                         "due_at": record.due_at if record else now})
+        return Response({"due_count": sum(row["due"] for row in rows), "results": rows})
+
+    def post(self, request):
+        opening = get_object_or_404(OpeningBookLine, pk=request.data.get("opening_id"), is_active=True)
+        quality = max(0, min(int(request.data.get("quality", 0)), 5))
+        record, _ = OpeningPractice.objects.get_or_create(user=request.user, opening=opening)
+        if quality < 3:
+            record.repetitions, record.interval_days = 0, 1
+        else:
+            record.repetitions += 1
+            record.interval_days = 1 if record.repetitions == 1 else 6 if record.repetitions == 2 else max(1, round(record.interval_days * float(record.ease_factor)))
+        record.ease_factor = max(1.3, float(record.ease_factor) + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)))
+        record.last_quality = quality
+        record.due_at = timezone.now() + timedelta(days=record.interval_days)
+        record.save()
+        return Response({"opening_id": str(opening.pk), "interval_days": record.interval_days, "due_at": record.due_at})

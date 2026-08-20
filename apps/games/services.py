@@ -54,6 +54,13 @@ def board_from_fen(fen: str) -> chess.Board:
         raise ValidationError(f"Invalid FEN: {exc}") from exc
 
 
+def board_for_game(game: Any) -> chess.Board:
+    try:
+        return chess.Board(game.current_fen, chess960=(game.metadata or {}).get("variant") == "chess960")
+    except ValueError as exc:
+        raise ValidationError(f"Invalid game position: {exc}") from exc
+
+
 def color_from_board(board: chess.Board) -> str:
     return "white" if board.turn == chess.WHITE else "black"
 
@@ -84,7 +91,7 @@ def play_local_bot_reply(*, game: Any, actor: GameActor) -> None:
         return
     if game.turn == metadata.get("player_color"):
         return
-    board = board_from_fen(game.current_fen)
+    board = board_for_game(game)
     legal_moves = list(board.legal_moves)
     if legal_moves:
         level = max(1, min(int(metadata.get("bot_level", 1)), 10))
@@ -311,8 +318,11 @@ def guest_key_for_color(game: Any, color: str) -> str:
     return game.white_guest_key if color == "white" else game.black_guest_key
 
 
-def legal_moves_for_fen(fen: str) -> list[dict[str, str]]:
-    board = board_from_fen(fen)
+def legal_moves_for_fen(fen: str, *, chess960: bool = False) -> list[dict[str, str]]:
+    try:
+        board = chess.Board(fen, chess960=chess960)
+    except ValueError as exc:
+        raise ValidationError(f"Invalid FEN: {exc}") from exc
     moves: list[dict[str, str]] = []
 
     for move in board.legal_moves:
@@ -473,6 +483,23 @@ def create_game_from_room(*, room: Any, request: HttpRequest):
     delay_ms = int(room.delay_seconds) * 1000
     grace = {"bullet":30,"blitz":90,"rapid":180,"classical":300,"daily":86400}.get(room.time_category,120)
 
+    room_metadata = dict(room.metadata or {})
+    variant = room_metadata.get("variant", "standard")
+    initial_fen = room_metadata.get("initial_fen", "")
+    if not initial_fen and variant == "chess960":
+        position = room_metadata.get("chess960_position")
+        if position is None:
+            position = random.randrange(960)
+        initial_fen = chess.Board.from_chess960_pos(int(position)).fen()
+        room_metadata["chess960_position"] = int(position)
+    initial_fen = initial_fen or "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+    initial_board = chess.Board(initial_fen, chess960=variant == "chess960")
+    initial_ply = max(
+        0,
+        (initial_board.fullmove_number - 1) * 2
+        + (0 if initial_board.turn == chess.WHITE else 1),
+    )
+
     game = Game.objects.create(
         room=room,
         status=Game.Status.ACTIVE,
@@ -493,6 +520,12 @@ def create_game_from_room(*, room: Any, request: HttpRequest):
         last_move_at=timezone.now(),
         clock_started_at=timezone.now(),
         reconnect_grace_seconds=grace,
+        initial_fen=initial_fen,
+        current_fen=initial_fen,
+        turn=color_from_board(initial_board),
+        fullmove_number=initial_board.fullmove_number,
+        ply_count=initial_ply,
+        metadata={"variant": variant, "chess960_position": room_metadata.get("chess960_position"), "custom_position": bool(room_metadata.get("initial_fen"))},
     )
 
     room.status = Room.Status.IN_PROGRESS
@@ -629,7 +662,7 @@ def play_uci_move(
     if game.status != game.Status.ACTIVE:
         raise ValidationError("This game is not active.")
 
-    board = board_from_fen(game.current_fen)
+    board = board_for_game(game)
     mover_color = color_from_board(board)
 
     if actor.color is None:
@@ -762,6 +795,53 @@ def play_uci_move(
             )
 
     return game_move, game
+
+
+def set_conditional_move(*, game: Any, actor: GameActor, expected_uci: str, response_uci: str) -> None:
+    if not game.room_id or game.room.time_category != "daily":
+        raise ValidationError("Conditional moves are available in correspondence games.")
+    if actor.color not in {"white", "black"} or game.turn == actor.color:
+        raise ValidationError("Queue a conditional move while waiting for your opponent.")
+    board = board_for_game(game)
+    try:
+        expected = chess.Move.from_uci(expected_uci.strip().lower())
+        response = chess.Move.from_uci(response_uci.strip().lower())
+    except ValueError as exc:
+        raise ValidationError("Enter two valid UCI moves.") from exc
+    if expected not in board.legal_moves:
+        raise ValidationError("The expected opponent move is not legal.")
+    board.push(expected)
+    if response not in board.legal_moves:
+        raise ValidationError("Your response is not legal after that move.")
+    metadata = dict(game.metadata or {})
+    conditional = dict(metadata.get("conditional_moves", {}))
+    lines = dict(conditional.get(actor.color, {}))
+    lines[expected.uci()] = response.uci()
+    conditional[actor.color] = lines
+    metadata["conditional_moves"] = conditional
+    game.metadata = metadata
+    game.save(update_fields=["metadata", "updated_at"])
+
+
+def apply_conditional_move(game: Any) -> bool:
+    metadata = dict(game.metadata or {})
+    conditional = dict(metadata.get("conditional_moves", {}))
+    lines = dict(conditional.get(game.turn, {}))
+    response = lines.pop(game.last_move_uci, None)
+    if not response or game.status != game.Status.ACTIVE:
+        return False
+    conditional[game.turn] = lines
+    metadata["conditional_moves"] = conditional
+    game.metadata = metadata
+    game.save(update_fields=["metadata", "updated_at"])
+    identity = ParticipantIdentity(
+        user=game.white_user if game.turn == "white" else game.black_user,
+        guest_key=game.white_guest_key if game.turn == "white" else game.black_guest_key,
+        display_name=game.white_display_name if game.turn == "white" else game.black_display_name,
+    )
+    actor = GameActor(identity=identity, color=game.turn, display_name=identity.display_name)
+    play_uci_move(game=game, actor=actor, uci=response)
+    return True
 
 
 def _timeout_game(game: Any, loser_color: str) -> None:
@@ -1119,6 +1199,10 @@ def serialize_game(
             "applied": game.ratings_applied,
         },
         "room_code": game.room.code if game.room_id else "",
+        "time_category": game.room.time_category if game.room_id else metadata.get("time_category", ""),
+        "variant": metadata.get("variant", "standard"),
+        "custom_position": metadata.get("custom_position", False),
+        "conditional_moves": metadata.get("conditional_moves", {}),
         "status": game.status,
         "rated": game.rated,
         "result": game.result,
@@ -1158,7 +1242,9 @@ def serialize_game(
     }
 
     if include_legal_moves and game.status == game.Status.ACTIVE:
-        payload["legal_moves"] = legal_moves_for_fen(game.current_fen)
+        payload["legal_moves"] = legal_moves_for_fen(
+            game.current_fen, chess960=metadata.get("variant") == "chess960"
+        )
     else:
         payload["legal_moves"] = []
 

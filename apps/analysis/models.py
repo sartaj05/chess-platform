@@ -262,3 +262,17 @@ class OpeningExplorerQuery(TimeStampedModel):
         indexes = [
             models.Index(fields=["created_at"], name="an_open_qtime_idx"),
         ]
+
+
+class OpeningPractice(TimeStampedModel):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="opening_practice")
+    opening = models.ForeignKey(OpeningBookLine, on_delete=models.CASCADE, related_name="practice_records")
+    interval_days = models.PositiveSmallIntegerField(default=1)
+    ease_factor = models.DecimalField(max_digits=3, decimal_places=2, default=2.50)
+    repetitions = models.PositiveSmallIntegerField(default=0)
+    due_at = models.DateTimeField(default=timezone.now, db_index=True)
+    last_quality = models.PositiveSmallIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["due_at"]
+        constraints = [models.UniqueConstraint(fields=["user", "opening"], name="opening_practice_user_line")]

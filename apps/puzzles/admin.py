@@ -1,6 +1,20 @@
 from django.contrib import admin
 
-from .models import Puzzle, PuzzleAttempt
+from .models import Puzzle, PuzzleAttempt, PuzzleCourse, PuzzleCourseItem
+
+
+class PuzzleCourseItemInline(admin.TabularInline):
+    model = PuzzleCourseItem
+    extra = 1
+
+
+@admin.register(PuzzleCourse)
+class PuzzleCourseAdmin(admin.ModelAdmin):
+    list_display = ("title", "theme", "difficulty", "is_published")
+    list_filter = ("difficulty", "theme", "is_published")
+    search_fields = ("title", "description", "theme")
+    prepopulated_fields = {"slug": ("title",)}
+    inlines = [PuzzleCourseItemInline]
 
 
 @admin.register(Puzzle)

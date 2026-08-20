@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import chess
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import ValidationError
@@ -7,10 +8,9 @@ from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.views import View
 from django.views.generic import ListView, TemplateView
-import chess
 
 from .forms import PuzzleMoveForm
-from .models import Puzzle
+from .models import Puzzle, PuzzleCourse
 from .services import get_attempt, reset_attempt, submit_move
 
 
@@ -33,6 +33,7 @@ class PuzzleListView(LoginRequiredMixin, ListView):
         context["puzzle_rows"] = [{"puzzle": puzzle, "attempt": attempts.get(puzzle.pk)} for puzzle in context["puzzles"]]
         context["difficulties"] = Puzzle.Difficulty.choices
         context["selected_difficulty"] = self.request.GET.get("difficulty", "")
+        context["courses"] = PuzzleCourse.objects.filter(is_published=True).prefetch_related("items__puzzle")
         return context
 
 

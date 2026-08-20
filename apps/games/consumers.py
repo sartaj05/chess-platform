@@ -42,6 +42,12 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
                     self.group_name, {"type": "broadcast_game", "event": "move.played", "game": payload}
                 )
                 return
+            if event_type == "game.conditional":
+                payload = await self._set_conditional(
+                    str(content.get("expected_uci", "")), str(content.get("response_uci", ""))
+                )
+                await self.send_json({"type": "conditional.saved", "game": payload})
+                return
             if event_type == "game.resign":
                 payload = await self._resign()
                 await self.channel_layer.group_send(
@@ -167,11 +173,13 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
     @database_sync_to_async
     def _play_move(self, uci: str, client_lag_ms: int) -> dict[str, Any]:
         from apps.games.models import Game
-        from apps.games.services import actor_from_scope, play_local_bot_reply, play_uci_move
+        from apps.games.services import actor_from_scope, apply_conditional_move, play_local_bot_reply, play_uci_move
 
         game = Game.objects.select_related("white_user", "black_user").prefetch_related("moves").get(pk=self.game_id)
         actor = actor_from_scope(self.scope, game)
         play_uci_move(game=game, actor=actor, uci=uci, client_lag_ms=client_lag_ms)
+        game.refresh_from_db()
+        apply_conditional_move(game)
         game.refresh_from_db()
         play_local_bot_reply(game=game, actor=actor_from_scope(self.scope, game))
         game = (
@@ -179,6 +187,23 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
             .prefetch_related("moves")
             .get(pk=self.game_id)
         )
+        return self._serialized_for_viewer(game)
+
+    @database_sync_to_async
+    def _set_conditional(self, expected_uci: str, response_uci: str) -> dict[str, Any]:
+        from apps.games.models import Game
+        from apps.games.services import actor_from_scope, set_conditional_move
+
+        game = Game.objects.select_related("room", "white_user", "black_user").prefetch_related("moves").get(
+            pk=self.game_id
+        )
+        set_conditional_move(
+            game=game,
+            actor=actor_from_scope(self.scope, game),
+            expected_uci=expected_uci,
+            response_uci=response_uci,
+        )
+        game.refresh_from_db()
         return self._serialized_for_viewer(game)
 
     @database_sync_to_async

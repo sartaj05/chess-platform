@@ -4,10 +4,11 @@ import chess
 import pytest
 from django.core.exceptions import ValidationError
 from django.urls import reverse
+from rest_framework.test import APIClient
 
 from apps.accounts.models import User
 from apps.games.models import STARTING_FEN
-from apps.puzzles.models import Puzzle, PuzzleAttempt
+from apps.puzzles.models import Puzzle, PuzzleAttempt, PuzzleCourse, PuzzleCourseItem
 
 
 @pytest.fixture
@@ -40,6 +41,22 @@ def test_puzzle_validates_fen_and_solution(db):
     illegal = Puzzle(title="Illegal", initial_fen=STARTING_FEN, solution_moves=["e2e5"])
     with pytest.raises(ValidationError):
         illegal.full_clean()
+
+
+def test_mobile_puzzle_courses_and_solution_explanation(puzzle_user, puzzle):
+    puzzle.explanation = "Control the centre, then develop with tempo."
+    puzzle.save(update_fields=["explanation"])
+    course = PuzzleCourse.objects.create(title="Opening principles", slug="opening-principles", theme="development")
+    PuzzleCourseItem.objects.create(course=course, puzzle=puzzle, position=1)
+    client = APIClient()
+    client.force_authenticate(puzzle_user)
+    listing = client.get("/api/accounts/puzzles/")
+    assert listing.status_code == 200
+    assert listing.data["courses"][0]["puzzle_ids"] == [puzzle.pk]
+    assert client.post(f"/api/accounts/puzzles/{puzzle.pk}/play/", {"move": "e2e4"}).data["explanation"] == ""
+    solved = client.post(f"/api/accounts/puzzles/{puzzle.pk}/play/", {"move": "g1f3"})
+    assert solved.data["status"] == "solved"
+    assert "Control the centre" in solved.data["explanation"]
 
 
 def test_correct_moves_advance_and_solve(client, puzzle_user, puzzle):
@@ -106,7 +123,7 @@ def test_puzzle_detail_exposes_only_legal_visual_moves(client, puzzle_user, puzz
 
 
 def test_solved_puzzle_offers_next_puzzle(client, puzzle_user, puzzle):
-    next_puzzle = Puzzle.objects.create(
+    Puzzle.objects.create(
         title="Next lesson",
         initial_fen=STARTING_FEN,
         solution_moves=["d2d4"],

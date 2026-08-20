@@ -409,6 +409,13 @@ class _OnlineGamePageState extends State<OnlineGamePage>
               ),
             ),
             Wrap(spacing: 8, alignment: WrapAlignment.center, children: [
+              if (_game['time_category'] == 'daily')
+                OutlinedButton.icon(
+                    onPressed: _active && _game['turn'] != _viewerColor
+                        ? _queueConditionalMove
+                        : null,
+                    icon: const Icon(Icons.alt_route),
+                    label: const Text('Conditional move')),
               OutlinedButton(
                   onPressed: _active ? () => _send('game.draw') : null,
                   child: const Text('Offer draw')),
@@ -561,6 +568,44 @@ class _OnlineGamePageState extends State<OnlineGamePage>
               ],
             ));
     if (confirmed == true) _send(event);
+  }
+
+  Future<void> _queueConditionalMove() async {
+    final expected = TextEditingController();
+    final response = TextEditingController();
+    final saved = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('Add conditional move'),
+              content: Column(mainAxisSize: MainAxisSize.min, children: [
+                TextField(
+                    controller: expected,
+                    decoration: const InputDecoration(
+                        labelText: 'If opponent plays (UCI)',
+                        hintText: 'e7e5')),
+                TextField(
+                    controller: response,
+                    decoration: const InputDecoration(
+                        labelText: 'Automatically reply (UCI)',
+                        hintText: 'g1f3')),
+              ]),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel')),
+                FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Save')),
+              ],
+            ));
+    if (saved == true) {
+      _send('game.conditional', {
+        'expected_uci': expected.text.trim(),
+        'response_uci': response.text.trim()
+      });
+    }
+    expected.dispose();
+    response.dispose();
   }
 
   String _piece(String? type, bool white) {

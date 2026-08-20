@@ -115,6 +115,7 @@ class _Puzzles extends StatelessWidget {
         }
         final dashboard = snapshot.data!;
         final rows = dashboard['results'] as List? ?? const [];
+        final courses = dashboard['courses'] as List? ?? const [];
         if (rows.isEmpty) {
           return const Center(
               child: Padding(
@@ -131,6 +132,15 @@ class _Puzzles extends StatelessWidget {
                           'Rating ${dashboard['puzzle_rating']} · Streak ${dashboard['streak']}'),
                       subtitle: Text(
                           'Best streak ${dashboard['best_streak']} · Daily puzzle highlighted')),
+                  if (courses.isNotEmpty) ...[
+                    Text('Puzzle courses',
+                        style: Theme.of(context).textTheme.titleLarge),
+                    ...courses.map((course) => ListTile(
+                        leading: const Icon(Icons.route),
+                        title: Text(course['title'].toString()),
+                        subtitle: Text(
+                            '${course['theme']} - ${course['difficulty']}'))),
+                  ],
                   const Divider(),
                   ...rows.map((p) => ListTile(
                       leading: Icon(p['id'] == dashboard['daily_id']
@@ -159,6 +169,7 @@ class _PuzzlePlayState extends State<_PuzzlePlay> {
   late String fen = widget.puzzle['fen'].toString();
   String? selected;
   String result = 'Tap a piece, then tap its destination.';
+  String explanation = '';
 
   Future<void> tap(String square) async {
     final board = chess.Chess.fromFEN(fen);
@@ -185,6 +196,7 @@ class _PuzzlePlayState extends State<_PuzzlePlay> {
               ? 'Solved!'
               : 'Correct — opponent replied ${response['reply']}')
           : 'That is not the puzzle move. Try again.';
+      explanation = response['explanation']?.toString() ?? '';
     });
   }
 
@@ -234,7 +246,22 @@ class _PuzzlePlayState extends State<_PuzzlePlay> {
                                                   fontSize: 32))));
                                 })),
                         const SizedBox(height: 16),
-                        Text(result, textAlign: TextAlign.center)
+                        Text(result, textAlign: TextAlign.center),
+                        if (explanation.isNotEmpty)
+                          Card(
+                              child: Padding(
+                                  padding: const EdgeInsets.all(16),
+                                  child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Why this works',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleMedium),
+                                        const SizedBox(height: 6),
+                                        Text(explanation)
+                                      ])))
                       ])))));
 
   String _piece(String? type, bool white) {

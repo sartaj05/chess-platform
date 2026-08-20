@@ -50,6 +50,41 @@ class Puzzle(TimeStampedModel):
             board.push(move)
 
 
+class PuzzleCourse(TimeStampedModel):
+    title = models.CharField(max_length=120)
+    slug = models.SlugField(max_length=140, unique=True)
+    description = models.CharField(max_length=300, blank=True)
+    theme = models.CharField(max_length=80, db_index=True)
+    difficulty = models.CharField(
+        max_length=16, choices=Puzzle.Difficulty.choices,
+        default=Puzzle.Difficulty.BEGINNER, db_index=True,
+    )
+    puzzles = models.ManyToManyField(Puzzle, through="PuzzleCourseItem", related_name="courses")
+    is_published = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        ordering = ["difficulty", "title"]
+
+    def __str__(self) -> str:
+        return self.title
+
+
+class PuzzleCourseItem(models.Model):
+    course = models.ForeignKey(PuzzleCourse, on_delete=models.CASCADE, related_name="items")
+    puzzle = models.ForeignKey(Puzzle, on_delete=models.CASCADE, related_name="course_items")
+    position = models.PositiveSmallIntegerField(default=1)
+
+    class Meta:
+        ordering = ["position", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["course", "puzzle"], name="puzzle_course_unique_puzzle"),
+            models.UniqueConstraint(fields=["course", "position"], name="puzzle_course_unique_position"),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.course}: {self.position}. {self.puzzle}"
+
+
 class PuzzleAttempt(TimeStampedModel):
     class Status(models.TextChoices):
         IN_PROGRESS = "in_progress", "In progress"

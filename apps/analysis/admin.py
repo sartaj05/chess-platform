@@ -2,7 +2,21 @@ from __future__ import annotations
 
 from django.contrib import admin
 
-from apps.analysis.models import GameAnalysisJob, MoveReview, OpeningBookLine, OpeningExplorerQuery, PositionAnalysis
+from apps.analysis.models import (
+    GameAnalysisJob,
+    MoveReview,
+    OpeningBookLine,
+    OpeningExplorerQuery,
+    OpeningPractice,
+    PositionAnalysis,
+)
+
+
+@admin.register(OpeningPractice)
+class OpeningPracticeAdmin(admin.ModelAdmin):
+    list_display = ("user", "opening", "due_at", "interval_days", "repetitions", "last_quality")
+    list_filter = ("due_at", "last_quality")
+    search_fields = ("user__email", "opening__name", "opening__eco")
 
 
 @admin.register(GameAnalysisJob)

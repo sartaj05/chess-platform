@@ -142,6 +142,11 @@ def create_room(*, request: HttpRequest, cleaned_data: dict[str, Any]):
         delay_seconds=delay_seconds,
         time_category=classify_time_category(initial_seconds, increment_seconds),
         color_preference=cleaned_data.get("color_preference") or Room.ColorPreference.RANDOM,
+        metadata={
+            "variant": cleaned_data.get("variant", "standard"),
+            "chess960_position": cleaned_data.get("chess960_position"),
+            "initial_fen": cleaned_data.get("initial_fen", ""),
+        },
     )
     RoomParticipant.objects.create(
         room=room,

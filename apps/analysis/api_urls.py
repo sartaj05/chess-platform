@@ -3,8 +3,9 @@ from django.urls import path
 from apps.analysis.api_views import (
     GameAnalysisJobApiView,
     OpeningExplorerApiView,
-    PositionAnalysisApiView,
+    OpeningPracticeApiView,
     PersonalOpeningStatsApiView,
+    PositionAnalysisApiView,
     StartGameAnalysisApiView,
 )
 
@@ -14,4 +15,5 @@ urlpatterns = [
     path("analysis/position/", PositionAnalysisApiView.as_view(), name="analysis-position"),
     path("analysis/openings/", OpeningExplorerApiView.as_view(), name="analysis-openings"),
     path("analysis/openings/personal/", PersonalOpeningStatsApiView.as_view(), name="analysis-opening-stats"),
+    path("analysis/openings/practice/", OpeningPracticeApiView.as_view(), name="analysis-opening-practice"),
 ]

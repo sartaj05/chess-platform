@@ -7,13 +7,16 @@ from apps.accounts.models import User
 from apps.games.services import (
     GameActor,
     ParticipantIdentity,
+    apply_conditional_move,
     award_bot_level_if_won,
     create_same_pc_game,
     play_local_bot_reply,
     play_uci_move,
     serialize_game,
+    set_conditional_move,
 )
 from apps.notifications.models import Notification
+from apps.rooms.models import Room
 from apps.stockfish.engine import EngineResult
 from django.core.exceptions import ValidationError
 from django.urls import reverse
@@ -59,6 +62,25 @@ def test_illegal_move_rejected():
     )
     with pytest.raises(ValidationError):
         play_uci_move(game=game, actor=actor, uci="e2e5")
+
+
+@pytest.mark.django_db
+def test_correspondence_conditional_move_is_applied():
+    game = create_same_pc_game(white_name="White", black_name="Black")
+    room = Room.objects.create(host_display_name="White", time_category=Room.TimeCategory.DAILY,
+                               clock_initial_seconds=86400)
+    game.room = room
+    game.save(update_fields=["room", "updated_at"])
+    black = GameActor(identity=ParticipantIdentity(user=None, guest_key="black", display_name="Black"),
+                      color="black", display_name="Black")
+    white = GameActor(identity=ParticipantIdentity(user=None, guest_key="white", display_name="White"),
+                      color="white", display_name="White")
+    set_conditional_move(game=game, actor=black, expected_uci="e2e4", response_uci="e7e5")
+    play_uci_move(game=game, actor=white, uci="e2e4")
+    game.refresh_from_db()
+    assert apply_conditional_move(game) is True
+    game.refresh_from_db()
+    assert game.last_move_uci == "e7e5"
 
 
 @pytest.mark.django_db

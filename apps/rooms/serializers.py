@@ -29,6 +29,8 @@ class RoomSerializer(serializers.ModelSerializer):
     participants = RoomParticipantSerializer(many=True, read_only=True)
     invite_url = serializers.SerializerMethodField()
     time_control = serializers.CharField(source="time_control_label", read_only=True)
+    variant = serializers.SerializerMethodField()
+    initial_fen = serializers.SerializerMethodField()
 
     class Meta:
         model = Room
@@ -55,6 +57,8 @@ class RoomSerializer(serializers.ModelSerializer):
             "invite_url",
             "last_activity_at",
             "created_at",
+            "variant",
+            "initial_fen",
         ]
         read_only_fields = [
             "id",
@@ -73,8 +77,17 @@ class RoomSerializer(serializers.ModelSerializer):
             return obj.invite_path
         return absolute_invite_url(request, obj)
 
+    def get_variant(self, obj: Room) -> str:
+        return (obj.metadata or {}).get("variant", "standard")
+
+    def get_initial_fen(self, obj: Room) -> str:
+        return (obj.metadata or {}).get("initial_fen", "")
+
 
 class CreateRoomSerializer(serializers.Serializer):
+    variant = serializers.ChoiceField(choices=["standard", "chess960"], default="standard")
+    chess960_position = serializers.IntegerField(min_value=0, max_value=959, required=False)
+    initial_fen = serializers.CharField(max_length=180, required=False, allow_blank=True)
     name = serializers.CharField(max_length=120, required=False, allow_blank=True)
     description = serializers.CharField(max_length=240, required=False, allow_blank=True)
     host_display_name = serializers.CharField(max_length=80, required=False, allow_blank=True)
@@ -96,6 +109,14 @@ class CreateRoomSerializer(serializers.Serializer):
         request = self.context.get("request")
         if attrs.get("rated") and (request is None or not request.user.is_authenticated):
             raise serializers.ValidationError("Guest-created rooms must be unrated.")
+        if attrs.get("initial_fen"):
+            import chess
+            try:
+                chess.Board(attrs["initial_fen"])
+            except ValueError as exc:
+                raise serializers.ValidationError({"initial_fen": "Enter a valid playable FEN."}) from exc
+            if attrs.get("rated"):
+                raise serializers.ValidationError("Custom positions must be unrated.")
         return attrs
 
     def create(self, validated_data: dict) -> Room:
