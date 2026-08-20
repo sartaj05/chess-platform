@@ -14,7 +14,7 @@ from apps.accounts.models import User
 
 from .forms import MessageForm
 from .models import Conversation, Message
-from .services import get_or_create_conversation, send_message
+from .services import delete_message_for_sender, edit_message, get_or_create_conversation, send_message, unsend_message
 
 
 class ConversationListView(LoginRequiredMixin, TemplateView):
@@ -68,7 +68,9 @@ class ConversationDetailView(LoginRequiredMixin, TemplateView):
         context.update(
             conversation=conversation,
             other=conversation.other_user(self.request.user),
-            chat_messages=conversation.messages.select_related("sender"),
+            chat_messages=conversation.messages.select_related("sender").exclude(
+                sender=self.request.user, deleted_for_sender=True
+            ),
             message_form=MessageForm(),
         )
         return context
@@ -84,3 +86,38 @@ class ConversationDetailView(LoginRequiredMixin, TemplateView):
         else:
             messages.error(request, "Enter a message of 2,000 characters or fewer.")
         return redirect("chat:thread", pk=conversation.pk)
+
+
+class MessageActionView(LoginRequiredMixin, View):
+    action = ""
+
+    def post(self, request: HttpRequest, pk: int, message_pk: int) -> HttpResponse:
+        conversation = get_object_or_404(Conversation, pk=pk)
+        if not conversation.involves(request.user):
+            raise Http404
+        message = get_object_or_404(Message, pk=message_pk, conversation=conversation)
+        try:
+            if self.action == "edit":
+                edit_message(message=message, actor=request.user, body=request.POST.get("body", ""))
+                messages.success(request, "Message updated.")
+            elif self.action == "delete":
+                delete_message_for_sender(message=message, actor=request.user)
+                messages.success(request, "Message deleted for you.")
+            else:
+                unsend_message(message=message, actor=request.user)
+                messages.success(request, "Message unsent for everyone.")
+        except (PermissionDenied, ValidationError) as exc:
+            messages.error(request, "; ".join(exc.messages) if hasattr(exc, "messages") else str(exc))
+        return redirect("chat:thread", pk=conversation.pk)
+
+
+class EditMessageView(MessageActionView):
+    action = "edit"
+
+
+class DeleteMessageView(MessageActionView):
+    action = "delete"
+
+
+class UnsendMessageView(MessageActionView):
+    action = "unsend"
