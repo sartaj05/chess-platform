@@ -3,6 +3,7 @@ import 'package:chess/chess.dart' as chess;
 import 'package:flutter/material.dart';
 import 'app_preferences.dart';
 import 'result_share_service.dart';
+import 'mobile_export_service.dart';
 
 class GameReplayPage extends StatefulWidget {
   const GameReplayPage(
@@ -34,6 +35,7 @@ class _GameReplayPageState extends State<GameReplayPage> {
       if (mounted) setState(() => _boardTheme = value);
     });
   }
+
   chess.Chess _position() {
     final game = chess.Chess.fromFEN(
         widget.game['initial_fen']?.toString() ?? chess.Chess.DEFAULT_POSITION);
@@ -53,7 +55,9 @@ class _GameReplayPageState extends State<GameReplayPage> {
       final id = job['id'].toString();
       for (var i = 0; i < 60; i++) {
         final state = await widget.analysisStatus(id);
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
         setState(() => _analysis = state);
         if (state['status'] == 'completed' || state['status'] == 'failed') {
           break;
@@ -73,6 +77,21 @@ class _GameReplayPageState extends State<GameReplayPage> {
     final reviewRows = _analysis?['reviews'] as List? ?? const [];
     return Scaffold(
         appBar: AppBar(title: const Text('Game Replay'), actions: [
+          PopupMenuButton<String>(
+              tooltip: 'Download game',
+              onSelected: (format) async {
+                final path =
+                    await MobileExportService.saveGame(widget.game, format);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text(
+                          '${format.toUpperCase()} saved to $path and copied.')));
+                }
+              },
+              itemBuilder: (_) => const [
+                    PopupMenuItem(value: 'pgn', child: Text('Download PGN')),
+                    PopupMenuItem(value: 'fen', child: Text('Download FEN')),
+                  ]),
           IconButton(
               tooltip: 'Share result',
               onPressed: () => ResultShareService.shareGame(widget.game),
@@ -84,34 +103,58 @@ class _GameReplayPageState extends State<GameReplayPage> {
               style: Theme.of(context).textTheme.titleLarge),
           Text('Move $_ply of ${_moves.length}'),
           const SizedBox(height: 10),
-          AspectRatio(
-              aspectRatio: 1,
-              child: GridView.builder(
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 8),
-                  itemCount: 64,
-                  itemBuilder: (_, index) {
-                    final file = index % 8,
-                        rank = 7 - index ~/ 8,
-                        square = '${String.fromCharCode(97 + file)}${rank + 1}',
-                        piece = board.get(square),
-                        dark = (file + rank).isOdd;
-                    final palette = switch (_boardTheme) {
-                      'classic' =>
-                        (const Color(0xffb58863), const Color(0xfff0d9b5)),
-                      'midnight' =>
-                        (const Color(0xff334155), const Color(0xffcbd5e1)),
-                      _ => (const Color(0xff769656), const Color(0xffeeeed2)),
-                    };
-                    return Container(
-                        color: dark ? palette.$1 : palette.$2,
-                        alignment: Alignment.center,
-                        child: Text(
-                            _symbol(piece?.type.name,
-                                piece?.color == chess.Color.WHITE),
-                            style: const TextStyle(fontSize: 34)));
-                  })),
+          Center(child: LayoutBuilder(builder: (context, constraints) {
+            final media = MediaQuery.sizeOf(context);
+            final size = (media.width > media.height
+                    ? media.height - 150
+                    : constraints.maxWidth)
+                .clamp(280.0, 720.0);
+            return SizedBox.square(
+                dimension: size,
+                child: GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 8),
+                    itemCount: 64,
+                    itemBuilder: (_, index) {
+                      final file = index % 8,
+                          rank = 7 - index ~/ 8,
+                          square =
+                              '${String.fromCharCode(97 + file)}${rank + 1}',
+                          piece = board.get(square),
+                          dark = (file + rank).isOdd;
+                      final palette = switch (_boardTheme) {
+                        'classic' => (
+                            const Color(0xffb58863),
+                            const Color(0xfff0d9b5)
+                          ),
+                        'midnight' => (
+                            const Color(0xff334155),
+                            const Color(0xffcbd5e1)
+                          ),
+                        _ => (const Color(0xff769656), const Color(0xffeeeed2)),
+                      };
+                      final pieceName = piece == null
+                          ? 'empty'
+                          : '${piece.color == chess.Color.WHITE ? 'white' : 'black'} ${piece.type.name}';
+                      return Semantics(
+                          label: '$square, $pieceName',
+                          child: ExcludeSemantics(
+                              child: Container(
+                                  color: dark ? palette.$1 : palette.$2,
+                                  alignment: Alignment.center,
+                                  child: LayoutBuilder(
+                                      builder: (_, box) => Text(
+                                            _symbol(
+                                                piece?.type.name,
+                                                piece?.color ==
+                                                    chess.Color.WHITE),
+                                            style: TextStyle(
+                                                fontSize: box.maxWidth * .58),
+                                          )))));
+                    }));
+          })),
           Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             IconButton(
                 onPressed: _ply > 0 ? () => setState(() => _ply--) : null,
@@ -172,9 +215,13 @@ class _GameReplayPageState extends State<GameReplayPage> {
   Future<void> _analyseStatus(String id) async {
     for (var i = 0; i < 60; i++) {
       final state = await widget.analysisStatus(id);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       setState(() => _analysis = state);
-      if (state['status'] == 'completed' || state['status'] == 'failed') return;
+      if (state['status'] == 'completed' || state['status'] == 'failed') {
+        return;
+      }
       await Future<void>.delayed(const Duration(seconds: 2));
     }
   }
@@ -186,10 +233,14 @@ class _GameStory extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final moments = rows.where((item) {
-      final label = (item as Map)['classification']?.toString().toLowerCase();
-      return {'best', 'inaccuracy', 'mistake', 'blunder'}.contains(label);
-    }).take(6).toList();
+    final moments = rows
+        .where((item) {
+          final label =
+              (item as Map)['classification']?.toString().toLowerCase();
+          return {'best', 'inaccuracy', 'mistake', 'blunder'}.contains(label);
+        })
+        .take(6)
+        .toList();
     if (moments.isEmpty) return const SizedBox.shrink();
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 12),

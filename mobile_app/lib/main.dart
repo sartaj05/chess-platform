@@ -76,8 +76,16 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
     await _preferences.saveLocale(locale);
     setState(() => _locale = locale);
   }
-  Future<void> _setBoardTheme(String value) async { await _preferences.saveBoardTheme(value); setState(() => _boardTheme = value); }
-  Future<void> _setSoundPack(String value) async { await _preferences.saveSoundPack(value); setState(() => _soundPack = value); }
+
+  Future<void> _setBoardTheme(String value) async {
+    await _preferences.saveBoardTheme(value);
+    setState(() => _boardTheme = value);
+  }
+
+  Future<void> _setSoundPack(String value) async {
+    await _preferences.saveSoundPack(value);
+    setState(() => _soundPack = value);
+  }
 
   Future<void> _completeOnboarding() async {
     await _preferences.saveOnboardingComplete();
@@ -140,8 +148,8 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
           return MediaQuery(
             data: media.copyWith(
               textScaler: media.textScaler.clamp(
-                minScaleFactor: 0.85,
-                maxScaleFactor: 2.0,
+                minScaleFactor: 1.0,
+                maxScaleFactor: 3.0,
               ),
             ),
             child: child ?? const SizedBox.shrink(),
@@ -152,15 +160,15 @@ class _ChessPlatformAppState extends State<ChessPlatformApp> {
             : !_onboardingComplete
                 ? OnboardingPage(onComplete: _completeOnboarding)
                 : SimpleHomePage(
-            themeMode: _themeMode,
-            soundsEnabled: _soundsEnabled,
-            boardTheme: _boardTheme,
-            soundPack: _soundPack,
-            locale: _locale,
-            onThemeChanged: _setTheme,
-            onSoundsChanged: _setSounds,
-            onBoardThemeChanged: _setBoardTheme,
-            onSoundPackChanged: _setSoundPack,
+                    themeMode: _themeMode,
+                    soundsEnabled: _soundsEnabled,
+                    boardTheme: _boardTheme,
+                    soundPack: _soundPack,
+                    locale: _locale,
+                    onThemeChanged: _setTheme,
+                    onSoundsChanged: _setSounds,
+                    onBoardThemeChanged: _setBoardTheme,
+                    onSoundPackChanged: _setSoundPack,
                     onLocaleChanged: _setLocale),
       );
 }

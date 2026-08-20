@@ -365,7 +365,14 @@ class _OnlineGamePageState extends State<OnlineGamePage>
                 name: ((_game[top] as Map?)?['name'] ?? top).toString(),
                 clock: _clock(_timeFor(top))),
             const SizedBox(height: 8),
-            AspectRatio(aspectRatio: 1, child: _board()),
+            Center(child: LayoutBuilder(builder: (context, constraints) {
+              final media = MediaQuery.sizeOf(context);
+              final landscape = media.width > media.height;
+              final boardSize = landscape
+                  ? (media.height - 150).clamp(280.0, 620.0)
+                  : constraints.maxWidth.clamp(280.0, 760.0);
+              return SizedBox.square(dimension: boardSize, child: _board());
+            })),
             const SizedBox(height: 8),
             _PlayerBar(
                 name: ((_game[bottom] as Map?)?['name'] ?? bottom).toString(),
@@ -514,7 +521,10 @@ class _OnlineGamePageState extends State<OnlineGamePage>
               : '${piece.color == chess.Color.WHITE ? 'white' : 'black'} ${piece.type.name}';
           return Semantics(
             button: true,
+            selected: _selected == square,
             label: '$square, $pieceName${highlighted ? ', highlighted' : ''}',
+            hint:
+                piece == null ? 'Empty square' : 'Double tap to select or move',
             child: InkWell(
               onTap: () => _tapSquare(square),
               child: Container(
@@ -524,9 +534,12 @@ class _OnlineGamePageState extends State<OnlineGamePage>
                         ? const Color(0xff769656)
                         : const Color(0xffeeeed2)),
                 alignment: Alignment.center,
-                child: Text(
-                    _piece(piece?.type.name, piece?.color == chess.Color.WHITE),
-                    style: const TextStyle(fontSize: 34)),
+                child: ExcludeSemantics(
+                    child: LayoutBuilder(
+                        builder: (_, box) => Text(
+                            _piece(piece?.type.name,
+                                piece?.color == chess.Color.WHITE),
+                            style: TextStyle(fontSize: box.maxWidth * .58)))),
               ),
             ),
           );
@@ -586,7 +599,12 @@ class _PlayerBar extends StatelessWidget {
   final String clock;
 
   @override
-  Widget build(BuildContext context) => Row(children: [
+  Widget build(BuildContext context) => Semantics(
+      container: true,
+      label: '$name, clock $clock',
+      liveRegion: true,
+      child: ExcludeSemantics(
+          child: Row(children: [
         const CircleAvatar(child: Icon(Icons.person)),
         const SizedBox(width: 10),
         Expanded(
@@ -601,5 +619,5 @@ class _PlayerBar extends StatelessWidget {
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold))),
-      ]);
+      ])));
 }

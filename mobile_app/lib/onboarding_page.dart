@@ -11,9 +11,24 @@ class OnboardingPage extends StatefulWidget {
 class _OnboardingPageState extends State<OnboardingPage> {
   static const _lessons = [
     ('Your first move', 'Move the highlighted pawn from e2 to e4.', 'e2', 'e4'),
-    ('Castle safely', 'Tap the king, then its highlighted castling square.', 'e1', 'g1'),
-    ('Promote a pawn', 'Guide the pawn to the last rank and choose a queen.', 'a7', 'a8'),
-    ('Deliver checkmate', 'Move the queen to the highlighted mating square.', 'h5', 'f7'),
+    (
+      'Castle safely',
+      'Tap the king, then its highlighted castling square.',
+      'e1',
+      'g1'
+    ),
+    (
+      'Promote a pawn',
+      'Guide the pawn to the last rank and choose a queen.',
+      'a7',
+      'a8'
+    ),
+    (
+      'Deliver checkmate',
+      'Move the queen to the highlighted mating square.',
+      'h5',
+      'f7'
+    ),
   ];
   int _lesson = 0;
   String? _selected;
@@ -44,6 +59,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
   Widget build(BuildContext context) {
     final lesson = _lessons[_lesson];
     return Scaffold(
+      bottomNavigationBar: SafeArea(
+        child: TextButton(
+            onPressed: widget.onComplete, child: const Text('Skip tutorial')),
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -59,15 +78,22 @@ class _OnboardingPageState extends State<OnboardingPage> {
               const SizedBox(height: 22),
               LinearProgressIndicator(value: (_lesson + 1) / _lessons.length),
               const SizedBox(height: 20),
-              Text('${_lesson + 1}. ${lesson.$1}',
-                  style: Theme.of(context).textTheme.titleLarge),
+              Text('Step ${_lesson + 1} of ${_lessons.length}',
+                  style: Theme.of(context).textTheme.labelLarge),
+              Text(lesson.$1, style: Theme.of(context).textTheme.titleLarge),
               Text(lesson.$2),
               const SizedBox(height: 16),
-              _LessonBoard(
-                  source: lesson.$3,
-                  target: lesson.$4,
-                  selected: _selected,
-                  onTap: _tap),
+              Center(
+                child: SizedBox.square(
+                  dimension: (MediaQuery.sizeOf(context).height * .48)
+                      .clamp(260.0, 380.0),
+                  child: _LessonBoard(
+                      source: lesson.$3,
+                      target: lesson.$4,
+                      selected: _selected,
+                      onTap: _tap),
+                ),
+              ),
               const SizedBox(height: 18),
               Card(
                 child: ListTile(
@@ -77,9 +103,6 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       '${_completed.length}/${_lessons.length} lessons · Complete all to unlock your badge'),
                 ),
               ),
-              TextButton(
-                  onPressed: widget.onComplete,
-                  child: const Text('Skip tutorial')),
             ]),
           ),
         ),

@@ -291,9 +291,11 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
       _MobileApi(_server.text, _token, _cookie, session: _session);
 
   Future<void> _openProfile() async {
-    await Navigator.of(context).push(MaterialPageRoute(
+    final deleted = await Navigator.of(context).push<bool>(MaterialPageRoute(
       builder: (_) => ProfilePage(
         load: _authenticatedApi.profile,
+        exportData: _authenticatedApi.exportAccountData,
+        deleteAccount: _authenticatedApi.deleteAccount,
         save: (data) async {
           final profile = await _authenticatedApi.updateProfile(data);
           if (mounted) {
@@ -306,6 +308,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
         },
       ),
     ));
+    if (deleted == true) await _logout();
   }
 
   Future<void> _openHistory() async {
@@ -1325,6 +1328,15 @@ class _MobileApi {
 
   Future<Map<String, dynamic>> profile() async => Map<String, dynamic>.from(
       await _request('GET', 'api/accounts/me/') as Map);
+  Future<Map<String, dynamic>> exportAccountData() async =>
+      Map<String, dynamic>.from(
+          await _request('GET', 'api/accounts/me/export/') as Map);
+  Future<void> deleteAccount(String password) async {
+    await _request('POST', 'api/accounts/me/delete/',
+        {'password': password, 'confirmation': 'DELETE'});
+    await session?.clear();
+  }
+
   Future<Map<String, dynamic>> experience() async => Map<String, dynamic>.from(
       await _request('GET', 'api/accounts/experience/') as Map);
 

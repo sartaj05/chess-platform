@@ -2,6 +2,7 @@ import json
 
 import pytest
 from django.urls import reverse
+from rest_framework.test import APIClient
 
 from apps.accounts.models import User, UserPreference
 from apps.games.models import Game
@@ -57,3 +58,25 @@ def test_private_profile_is_hidden_from_other_users(client, account_user):
     assert client.get(reverse("accounts:public_profile", args=[account_user.pk])).status_code == 404
     client.force_login(account_user)
     assert client.get(reverse("accounts:public_profile", args=[account_user.pk])).status_code == 200
+
+
+def test_mobile_data_export_and_account_deletion(account_user):
+    client = APIClient()
+    client.force_authenticate(account_user)
+    Game.objects.create(white_user=account_user, white_display_name="Privacy", black_display_name="Bot")
+    exported = client.get("/api/accounts/me/export/")
+    assert exported.status_code == 200
+    assert exported.data["account"]["email"] == account_user.email
+    assert exported.data["games"][0]["fen"]
+
+    rejected = client.post(
+        "/api/accounts/me/delete/",
+        {"password": "wrong", "confirmation": "DELETE"}, format="json"
+    )
+    assert rejected.status_code == 400
+    deleted = client.post(
+        "/api/accounts/me/delete/",
+        {"password": "StrongPass123!", "confirmation": "DELETE"}, format="json"
+    )
+    assert deleted.status_code == 204
+    assert not User.objects.filter(pk=account_user.pk).exists()

@@ -52,45 +52,54 @@ class _LeaderboardState extends State<_Leaderboard> {
       child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 900),
           child: Column(children: [
-        SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: SegmentedButton<String>(segments: const [
-          ButtonSegment(value: 'bullet', label: Text('Bullet')),
-          ButtonSegment(value: 'blitz', label: Text('Blitz')),
-          ButtonSegment(value: 'rapid', label: Text('Rapid'))
-        ], selected: {
-          category
-        }, onSelectionChanged: (v) => setState(() => category = v.first))),
-        Expanded(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-                future: widget.load(category),
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final rows = snapshot.data!;
-                  return ListView.builder(
-                      itemCount: rows.length,
-                      itemBuilder: (_, i) {
-                        final p = rows[i];
-                        return ListTile(
-                            leading: CircleAvatar(child: Text('${i + 1}')),
-                            title:
-                                Text(p['display_name']?.toString() ?? 'Player'),
-                            subtitle: Text('${p['country'] ?? ''}'),
-                            trailing: Text('${p['${category}_rating'] ?? 1200}',
-                                style: Theme.of(context).textTheme.titleMedium),
-                            onTap: () => showDialog(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                    title: Text(p['display_name']?.toString() ??
-                                        'Player'),
-                                    content: Text(
-                                        'Bullet ${p['bullet_rating']}\nBlitz ${p['blitz_rating']}\nRapid ${p['rapid_rating']}\n${p['bio'] ?? ''}'))));
-                      });
-                }))
-      ])));
+            SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: SegmentedButton<String>(
+                    segments: const [
+                      ButtonSegment(value: 'bullet', label: Text('Bullet')),
+                      ButtonSegment(value: 'blitz', label: Text('Blitz')),
+                      ButtonSegment(value: 'rapid', label: Text('Rapid'))
+                    ],
+                    selected: {
+                      category
+                    },
+                    onSelectionChanged: (v) =>
+                        setState(() => category = v.first))),
+            Expanded(
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                    future: widget.load(category),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+                      final rows = snapshot.data!;
+                      return ListView.builder(
+                          itemCount: rows.length,
+                          itemBuilder: (_, i) {
+                            final p = rows[i];
+                            return ListTile(
+                                leading: CircleAvatar(child: Text('${i + 1}')),
+                                title: Text(
+                                    p['display_name']?.toString() ?? 'Player'),
+                                subtitle: Text('${p['country'] ?? ''}'),
+                                trailing: Text(
+                                    '${p['${category}_rating'] ?? 1200}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium),
+                                onTap: () => showDialog(
+                                    context: context,
+                                    builder: (_) => AlertDialog(
+                                        title: Text(
+                                            p['display_name']?.toString() ??
+                                                'Player'),
+                                        content: Text(
+                                            'Bullet ${p['bullet_rating']}\nBlitz ${p['blitz_rating']}\nRapid ${p['rapid_rating']}\n${p['bio'] ?? ''}'))));
+                          });
+                    }))
+          ])));
 }
 
 class _Puzzles extends StatelessWidget {
@@ -116,24 +125,25 @@ class _Puzzles extends StatelessWidget {
             child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 900),
                 child: ListView(padding: const EdgeInsets.all(12), children: [
-          ListTile(
-              leading: const Icon(Icons.local_fire_department),
-              title: Text(
-                  'Rating ${dashboard['puzzle_rating']} · Streak ${dashboard['streak']}'),
-              subtitle: Text(
-                  'Best streak ${dashboard['best_streak']} · Daily puzzle highlighted')),
-          const Divider(),
-          ...rows.map((p) => ListTile(
-              leading: Icon(p['id'] == dashboard['daily_id']
-                  ? Icons.today
-                  : Icons.extension),
-              title: Text(p['title'].toString()),
-              subtitle: Text('${p['difficulty']} · ${p['rating']}'),
-              onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => _PuzzlePlay(puzzle: p, play: play)))))
-        ])));
+                  ListTile(
+                      leading: const Icon(Icons.local_fire_department),
+                      title: Text(
+                          'Rating ${dashboard['puzzle_rating']} · Streak ${dashboard['streak']}'),
+                      subtitle: Text(
+                          'Best streak ${dashboard['best_streak']} · Daily puzzle highlighted')),
+                  const Divider(),
+                  ...rows.map((p) => ListTile(
+                      leading: Icon(p['id'] == dashboard['daily_id']
+                          ? Icons.today
+                          : Icons.extension),
+                      title: Text(p['title'].toString()),
+                      subtitle: Text('${p['difficulty']} · ${p['rating']}'),
+                      onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  _PuzzlePlay(puzzle: p, play: play)))))
+                ])));
       });
 }
 
@@ -183,42 +193,49 @@ class _PuzzlePlayState extends State<_PuzzlePlay> {
       appBar: AppBar(title: Text(widget.puzzle['title'].toString())),
       body: Center(
           child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: SingleChildScrollView(
-          padding: EdgeInsets.all(MediaQuery.sizeOf(context).width < 380 ? 10 : 20),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            AspectRatio(
-                aspectRatio: 1,
-                child: GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 8),
-                    itemCount: 64,
-                    itemBuilder: (_, index) {
-                      final file = index % 8;
-                      final rank = 8 - index ~/ 8;
-                      final square = '${String.fromCharCode(97 + file)}$rank';
-                      final piece = chess.Chess.fromFEN(fen).get(square);
-                      final dark = (file + rank).isOdd;
-                      return InkWell(
-                          onTap: () => tap(square),
-                          child: Container(
-                              color: selected == square
-                                  ? Colors.amber
-                                  : (dark
-                                      ? const Color(0xff769656)
-                                      : const Color(0xffeeeed2)),
-                              alignment: Alignment.center,
-                              child: Text(
-                                  _piece(piece?.type.name,
-                                      piece?.color == chess.Color.WHITE),
-                                  style: const TextStyle(fontSize: 32))));
-                    })),
-            const SizedBox(height: 16),
-            Text(result, textAlign: TextAlign.center)
-          ])))));
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: SingleChildScrollView(
+                  padding: EdgeInsets.all(
+                      MediaQuery.sizeOf(context).width < 380 ? 10 : 20),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AspectRatio(
+                            aspectRatio: 1,
+                            child: GridView.builder(
+                                physics: const NeverScrollableScrollPhysics(),
+                                gridDelegate:
+                                    const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 8),
+                                itemCount: 64,
+                                itemBuilder: (_, index) {
+                                  final file = index % 8;
+                                  final rank = 8 - index ~/ 8;
+                                  final square =
+                                      '${String.fromCharCode(97 + file)}$rank';
+                                  final piece =
+                                      chess.Chess.fromFEN(fen).get(square);
+                                  final dark = (file + rank).isOdd;
+                                  return InkWell(
+                                      onTap: () => tap(square),
+                                      child: Container(
+                                          color: selected == square
+                                              ? Colors.amber
+                                              : (dark
+                                                  ? const Color(0xff769656)
+                                                  : const Color(0xffeeeed2)),
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                              _piece(
+                                                  piece?.type.name,
+                                                  piece?.color ==
+                                                      chess.Color.WHITE),
+                                              style: const TextStyle(
+                                                  fontSize: 32))));
+                                })),
+                        const SizedBox(height: 16),
+                        Text(result, textAlign: TextAlign.center)
+                      ])))));
 
   String _piece(String? type, bool white) {
     const glyphs = {

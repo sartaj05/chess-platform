@@ -36,9 +36,6 @@ class GameConsumer(AsyncJsonWebsocketConsumer):
             if event_type == "game.sync":
                 await self.send_json({"type": "game.synced", "game": await self._state()})
                 return
-            if event_type == "game.sync":
-                await self.send_json({"type": "game.synced", "game": await self._state()})
-                return
             if event_type == "game.move":
                 payload = await self._play_move(str(content.get("uci", "")), int(content.get("client_lag_ms", 0) or 0))
                 await self.channel_layer.group_send(

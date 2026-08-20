@@ -54,9 +54,14 @@ class OfflineGameRepository {
 
   Future<void> markSynced(String id) async {
     final db = await _db;
-    await db.update('offline_games',
-        {'synced_at': DateTime.now().toUtc().toIso8601String()},
-        where: 'id = ?', whereArgs: [id]);
+    await db.update(
+        'offline_games',
+        {
+          'synced_at': DateTime.now().toUtc().toIso8601String(),
+          'conflict_details': null,
+        },
+        where: 'id = ?',
+        whereArgs: [id]);
   }
 
   Future<void> markConflict(String id, Map<String, dynamic> details) async {

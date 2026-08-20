@@ -10,7 +10,7 @@ class UserActivityMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
         user = getattr(request, "user", None)
-        if user and user.is_authenticated:
+        if user and user.is_authenticated and not getattr(request, "_account_deleted", False):
             cache.set(f"presence:user:{user.pk}", True, 75)
             key = f"user-last-seen-written:{user.pk}"
             if not cache.get(key):

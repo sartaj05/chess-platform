@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'game_replay_page.dart';
+import 'mobile_export_service.dart';
 
 class PublicProfilePage extends StatelessWidget {
   const PublicProfilePage({super.key, required this.profile, this.comparison});
@@ -51,20 +52,48 @@ class _MobileComparison extends StatelessWidget {
   Widget build(BuildContext context) {
     final first = data['first'] as Map? ?? const {};
     final second = data['second'] as Map? ?? const {};
-    final a = first['profile'] as Map? ?? const {}, b = second['profile'] as Map? ?? const {};
-    return Card(child: Padding(padding: const EdgeInsets.all(14), child: Column(children: [
-      Text('Head to head', style: Theme.of(context).textTheme.titleMedium),
-      _row('Player', a['display_name'], b['display_name']), _row('Games', first['games'], second['games']), _row('Win rate', '${first['win_rate']}%', '${second['win_rate']}%'), _row('Blitz', a['blitz_rating'], b['blitz_rating']), _row('Rapid', a['rapid_rating'], b['rapid_rating']), _row('Puzzles', a['puzzle_rating'], b['puzzle_rating'])
-    ])));
+    final a = first['profile'] as Map? ?? const {},
+        b = second['profile'] as Map? ?? const {};
+    return Card(
+        child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(children: [
+              Text('Head to head',
+                  style: Theme.of(context).textTheme.titleMedium),
+              _row('Player', a['display_name'], b['display_name']),
+              _row('Games', first['games'], second['games']),
+              _row('Win rate', '${first['win_rate']}%',
+                  '${second['win_rate']}%'),
+              _row('Blitz', a['blitz_rating'], b['blitz_rating']),
+              _row('Rapid', a['rapid_rating'], b['rapid_rating']),
+              _row('Puzzles', a['puzzle_rating'], b['puzzle_rating'])
+            ])));
   }
-  Widget _row(String label, Object? first, Object? second) => Padding(padding: const EdgeInsets.symmetric(vertical: 5), child: Row(children: [Expanded(child: Text('$first', textAlign: TextAlign.right)), Padding(padding: const EdgeInsets.symmetric(horizontal: 10), child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold))), Expanded(child: Text('$second'))]));
+
+  Widget _row(String label, Object? first, Object? second) => Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5),
+      child: Row(children: [
+        Expanded(child: Text('$first', textAlign: TextAlign.right)),
+        Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text(label,
+                style: const TextStyle(fontWeight: FontWeight.bold))),
+        Expanded(child: Text('$second'))
+      ]));
 }
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key, required this.load, required this.save});
+  const ProfilePage(
+      {super.key,
+      required this.load,
+      required this.save,
+      required this.exportData,
+      required this.deleteAccount});
 
   final Future<Map<String, dynamic>> Function() load;
   final Future<Map<String, dynamic>> Function(Map<String, dynamic>) save;
+  final Future<Map<String, dynamic>> Function() exportData;
+  final Future<void> Function(String password) deleteAccount;
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -96,7 +125,9 @@ class _ProfilePageState extends State<ProfilePage> {
       _country.text = profile['country']?.toString() ?? '';
       if (mounted) setState(() => _profile = profile);
     } catch (error) {
-      if (mounted) setState(() => _error = '$error');
+      if (mounted) {
+        setState(() => _error = '$error');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -124,6 +155,61 @@ class _ProfilePageState extends State<ProfilePage> {
       if (mounted) setState(() => _error = '$error');
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _export() async {
+    try {
+      final path =
+          await MobileExportService.saveAccount(await widget.exportData());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text('Data saved to $path and copied to clipboard.')));
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = '$error');
+    }
+  }
+
+  Future<void> _delete() async {
+    final password = TextEditingController();
+    final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('Delete account permanently?'),
+              content: Column(mainAxisSize: MainAxisSize.min, children: [
+                const Text(
+                    'Your profile and personal data will be deleted. This cannot be undone.'),
+                const SizedBox(height: 12),
+                TextField(
+                    controller: password,
+                    obscureText: true,
+                    autofillHints: const [AutofillHints.password],
+                    decoration:
+                        const InputDecoration(labelText: 'Confirm password')),
+              ]),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('Cancel')),
+                FilledButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Delete forever')),
+              ],
+            ));
+    if (confirmed != true) {
+      password.dispose();
+      return;
+    }
+    try {
+      await widget.deleteAccount(password.text);
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = '$error');
+    } finally {
+      password.dispose();
     }
   }
 
@@ -186,6 +272,20 @@ class _ProfilePageState extends State<ProfilePage> {
                     onPressed: _busy ? null : _save,
                     icon: const Icon(Icons.save),
                     label: const Text('Save profile')),
+                const SizedBox(height: 20),
+                Semantics(
+                    header: true,
+                    child: Text('Privacy and data',
+                        style: Theme.of(context).textTheme.titleLarge)),
+                OutlinedButton.icon(
+                    onPressed: _export,
+                    icon: const Icon(Icons.download),
+                    label: const Text('Export my data')),
+                TextButton.icon(
+                    onPressed: _delete,
+                    icon: const Icon(Icons.delete_forever),
+                    label: const Text('Delete account'),
+                    style: TextButton.styleFrom(foregroundColor: Colors.red)),
               ]),
       );
 }

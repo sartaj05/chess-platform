@@ -12,9 +12,11 @@ class OfflineSyncService {
   Future<OfflineSyncResult> sync(
       {required String serverUrl,
       String? accessToken,
-      String? sessionCookie}) async {
+      String? sessionCookie,
+      OfflineConflictPolicy conflictPolicy = OfflineConflictPolicy.ask}) async {
     final pending = await _repository.pendingSync();
     var synced = 0;
+    final conflicts = <OfflineSyncConflict>[];
     for (final game in pending) {
       final client = HttpClient();
       try {
@@ -49,12 +51,17 @@ class OfflineSyncService {
               ? <String, dynamic>{'detail': 'Offline sync conflict.'}
               : Map<String, dynamic>.from(jsonDecode(responseText) as Map);
           await _repository.markConflict(game.id, details);
-          return OfflineSyncResult(
-              synced: synced,
-              pending: pending.length - synced,
-              conflicts: [OfflineSyncConflict(game: game, details: details)],
-              message:
-                  'A game changed on both device and server. Choose which copy to keep.');
+          final conflict = OfflineSyncConflict(game: game, details: details);
+          if (conflictPolicy == OfflineConflictPolicy.keepServer) {
+            await resolve(conflict, OfflineConflictResolution.keepServer);
+            synced++;
+          } else if (conflictPolicy == OfflineConflictPolicy.keepBoth) {
+            await resolve(
+                conflict, OfflineConflictResolution.uploadDeviceAsCopy);
+            synced++;
+          } else {
+            conflicts.add(conflict);
+          }
         } else {
           return OfflineSyncResult(
               synced: synced,
@@ -72,7 +79,12 @@ class OfflineSyncService {
       }
     }
     return OfflineSyncResult(
-        synced: synced, pending: 0, message: 'Offline games synced.');
+        synced: synced,
+        pending: pending.length - synced,
+        conflicts: conflicts,
+        message: conflicts.isEmpty
+            ? 'Offline games synced.'
+            : '${conflicts.length} conflict(s) need your decision. Other games were still synced.');
   }
 
   Future<void> resolve(OfflineSyncConflict conflict,
@@ -86,6 +98,8 @@ class OfflineSyncService {
 }
 
 enum OfflineConflictResolution { keepServer, uploadDeviceAsCopy }
+
+enum OfflineConflictPolicy { ask, keepServer, keepBoth }
 
 class OfflineSyncConflict {
   const OfflineSyncConflict({required this.game, required this.details});

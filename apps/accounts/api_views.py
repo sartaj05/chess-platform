@@ -1,4 +1,5 @@
 from django.db.models import Q
+from django.forms.models import model_to_dict
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions, status
@@ -178,6 +179,39 @@ class MeAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class MobileDataExportAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        games = Game.objects.filter(Q(white_user=user) | Q(black_user=user)).order_by("created_at")
+        preference = getattr(user, "preferences", None)
+        return Response({
+            "exported_at": timezone.now(),
+            "account": UserSerializer(user, context={"request": request}).data,
+            "preferences": model_to_dict(preference) if preference else {},
+            "games": [{
+                "id": str(game.pk), "white": game.white_display_name,
+                "black": game.black_display_name, "result": game.result,
+                "status": game.status, "fen": game.current_fen,
+                "pgn": game.cached_pgn, "created_at": game.created_at,
+            } for game in games],
+        })
+
+
+class MobileDeleteAccountAPIView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        if str(request.data.get("confirmation", "")) != "DELETE":
+            return Response({"confirmation": ["Type DELETE to confirm."]}, status=status.HTTP_400_BAD_REQUEST)
+        if not request.user.check_password(str(request.data.get("password", ""))):
+            return Response({"password": ["Incorrect password."]}, status=status.HTTP_400_BAD_REQUEST)
+        request._request._account_deleted = True
+        request.user.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class MobileRegisterAPIView(APIView):

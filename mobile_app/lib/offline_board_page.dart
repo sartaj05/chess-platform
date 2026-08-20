@@ -97,7 +97,11 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
     final moved =
         _game.move({'from': _selected, 'to': square, 'promotion': promotion});
     setState(() => _selected = moved ? null : square);
-    if (moved && widget.soundsEnabled && widget.soundPack != 'silent') SystemSound.play(widget.soundPack == 'soft' ? SystemSoundType.alert : SystemSoundType.click);
+    if (moved && widget.soundsEnabled && widget.soundPack != 'silent') {
+      SystemSound.play(widget.soundPack == 'soft'
+          ? SystemSoundType.alert
+          : SystemSoundType.click);
+    }
     if (moved) {
       await _checkResult();
     }
@@ -130,7 +134,11 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
       _game.move(move);
       _botThinking = false;
     });
-    if (widget.soundsEnabled && widget.soundPack != 'silent') SystemSound.play(widget.soundPack == 'soft' ? SystemSoundType.alert : SystemSoundType.click);
+    if (widget.soundsEnabled && widget.soundPack != 'silent') {
+      SystemSound.play(widget.soundPack == 'soft'
+          ? SystemSoundType.alert
+          : SystemSoundType.click);
+    }
     _checkResult();
   }
 
@@ -159,14 +167,35 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
         : null;
     if (!mounted) return;
     final action = await showGameResultDialog(context,
-        outcome: isDraw ? PlayerGameOutcome.draw : widget.mode == OfflinePlayMode.friend ? PlayerGameOutcome.complete : playerWon ? PlayerGameOutcome.win : PlayerGameOutcome.loss,
-        score: isDraw ? '½ – ½' : whiteWon ? '1 – 0' : '0 – 1',
-        message: unlocked != null && unlocked > widget.botLevel ? 'Level $unlocked is now unlocked. Your next challenge is ready.' : null);
+        outcome: isDraw
+            ? PlayerGameOutcome.draw
+            : widget.mode == OfflinePlayMode.friend
+                ? PlayerGameOutcome.complete
+                : playerWon
+                    ? PlayerGameOutcome.win
+                    : PlayerGameOutcome.loss,
+        score: isDraw
+            ? '½ – ½'
+            : whiteWon
+                ? '1 – 0'
+                : '0 – 1',
+        message: unlocked != null && unlocked > widget.botLevel
+            ? 'Level $unlocked is now unlocked. Your next challenge is ready.'
+            : null);
     if (!mounted) return;
     if (action == GameResultAction.home) {
       Navigator.of(context).popUntil((route) => route.isFirst);
     } else if (action == GameResultAction.newGame) {
-      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => OfflineBoardPage(mode: widget.mode, preferredSide: widget.preferredSide, botLevel: widget.botLevel, onBotVictory: widget.onBotVictory, stockfishMove: widget.stockfishMove, soundsEnabled: widget.soundsEnabled, boardTheme: widget.boardTheme, soundPack: widget.soundPack)));
+      Navigator.of(context).pushReplacement(MaterialPageRoute(
+          builder: (_) => OfflineBoardPage(
+              mode: widget.mode,
+              preferredSide: widget.preferredSide,
+              botLevel: widget.botLevel,
+              onBotVictory: widget.onBotVictory,
+              stockfishMove: widget.stockfishMove,
+              soundsEnabled: widget.soundsEnabled,
+              boardTheme: widget.boardTheme,
+              soundPack: widget.soundPack)));
     }
   }
 
@@ -231,25 +260,44 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
                       final piece = _game.get(square);
                       final dark = (file + rank).isOdd;
                       final palette = switch (widget.boardTheme) {
-                        'classic' => dark ? const Color(0xff765f40) : const Color(0xffeee2cd),
-                        'midnight' => dark ? const Color(0xff374653) : const Color(0xffb8c1c8),
-                        _ => dark ? const Color(0xff63845d) : const Color(0xffe8efd9),
+                        'classic' => dark
+                            ? const Color(0xff765f40)
+                            : const Color(0xffeee2cd),
+                        'midnight' => dark
+                            ? const Color(0xff374653)
+                            : const Color(0xffb8c1c8),
+                        _ => dark
+                            ? const Color(0xff63845d)
+                            : const Color(0xffe8efd9),
                       };
-                      return InkWell(
-                        key: ValueKey('board-square-$square'),
-                        onTap: () => _tap(square),
-                        child: Container(
-                          color: _selected == square
-                              ? Colors.amber
-                              : palette,
-                          alignment: Alignment.center,
-                          child: Text(
-                            _symbol(piece?.type.name,
-                                piece?.color == chess.Color.WHITE),
-                            style: const TextStyle(fontSize: 34),
-                          ),
-                        ),
-                      );
+                      final pieceName = piece == null
+                          ? 'empty'
+                          : '${piece.color == chess.Color.WHITE ? 'white' : 'black'} ${piece.type.name}';
+                      return Semantics(
+                          button: true,
+                          selected: _selected == square,
+                          label: '$square, $pieceName',
+                          hint: piece == null
+                              ? 'Empty square'
+                              : 'Double tap to select or move',
+                          child: InkWell(
+                            key: ValueKey('board-square-$square'),
+                            onTap: () => _tap(square),
+                            child: Container(
+                              color:
+                                  _selected == square ? Colors.amber : palette,
+                              alignment: Alignment.center,
+                              child: ExcludeSemantics(
+                                  child: LayoutBuilder(
+                                builder: (_, box) => Text(
+                                  _symbol(piece?.type.name,
+                                      piece?.color == chess.Color.WHITE),
+                                  style:
+                                      TextStyle(fontSize: box.maxWidth * .58),
+                                ),
+                              )),
+                            ),
+                          ));
                     },
                   ),
                 ),

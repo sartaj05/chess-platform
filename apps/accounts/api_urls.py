@@ -4,6 +4,8 @@ from .api_views import (
     LeaderboardAPIView,
     MeAPIView,
     MobileBotVictoryAPIView,
+    MobileDataExportAPIView,
+    MobileDeleteAccountAPIView,
     MobileExperienceAPIView,
     MobileRegisterAPIView,
     MobileVerifyEmailAPIView,
@@ -16,6 +18,8 @@ from .api_views import (
 app_name = "accounts_api"
 urlpatterns = [
     path("me/", MeAPIView.as_view(), name="me"),
+    path("me/export/", MobileDataExportAPIView.as_view(), name="mobile-data-export"),
+    path("me/delete/", MobileDeleteAccountAPIView.as_view(), name="mobile-delete-account"),
     path("register/", MobileRegisterAPIView.as_view(), name="register"),
     path("verify-email/", MobileVerifyEmailAPIView.as_view(), name="verify-email"),
     path("bot-victory/", MobileBotVictoryAPIView.as_view(), name="bot-victory"),
