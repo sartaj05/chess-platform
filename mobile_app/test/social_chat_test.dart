@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  testWidgets('mobile chat exposes edit delete and unsend actions', (tester) async {
+  testWidgets('mobile chat exposes edit delete and unsend actions',
+      (tester) async {
     final actions = <Map<String, dynamic>>[];
     final social = <String, dynamic>{
       'friendships': <dynamic>[],
@@ -20,6 +21,7 @@ void main() {
               'can_edit': true,
               'can_delete': true,
               'can_unsend': true,
+              'delivery_state': 'read',
             }
           ]
         }
@@ -28,12 +30,14 @@ void main() {
     Future<Map<String, dynamic>> load() async => social;
     Future<void> action(Map<String, dynamic> value) async => actions.add(value);
 
-    await tester.pumpWidget(MaterialApp(home: SocialPage(load: load, action: action)));
+    await tester
+        .pumpWidget(MaterialApp(home: SocialPage(load: load, action: action)));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Alex'));
     await tester.pumpAndSettle();
 
     expect(find.text('Ready to play?'), findsOneWidget);
+    expect(find.text('Read'), findsOneWidget);
     await tester.tap(find.byType(PopupMenuButton<String>));
     await tester.pumpAndSettle();
     expect(find.text('Edit'), findsOneWidget);

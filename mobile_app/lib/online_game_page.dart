@@ -58,6 +58,7 @@ class _OnlineGamePageState extends State<OnlineGamePage>
     if (_handshakeMs > 350) return 'Fair';
     return 'Good';
   }
+
   String get _connectionNotice {
     final presence = _game['reconnection'] as Map?;
     if (presence == null) return '';
@@ -80,7 +81,9 @@ class _OnlineGamePageState extends State<OnlineGamePage>
         .map((e) => Map<String, dynamic>.from(e as Map)));
     _connect();
     _syncTurnReminder();
-    if (!_active) WidgetsBinding.instance.addPostFrameCallback((_) => _showResult());
+    if (!_active) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showResult());
+    }
     _clockTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted && _active) setState(() {});
     });
@@ -180,7 +183,8 @@ class _OnlineGamePageState extends State<OnlineGamePage>
             : winner == _viewerColor
                 ? PlayerGameOutcome.win
                 : PlayerGameOutcome.loss;
-    final action = await showGameResultDialog(context, outcome: outcome, score: result);
+    final action =
+        await showGameResultDialog(context, outcome: outcome, score: result);
     if (!mounted) return;
     if (action == GameResultAction.home || action == GameResultAction.newGame) {
       Navigator.of(context).pop();
@@ -302,6 +306,13 @@ class _OnlineGamePageState extends State<OnlineGamePage>
     } else if (state == AppLifecycleState.resumed) {
       final id = _game['id']?.toString();
       if (id != null) PushService.cancelGameReminder(id);
+      if (_socket == null) {
+        _reconnectTimer?.cancel();
+        _connect();
+      } else {
+        _send('game.sync');
+      }
+      if (mounted) setState(() {});
     }
   }
 
@@ -333,8 +344,7 @@ class _OnlineGamePageState extends State<OnlineGamePage>
               liveRegion: true,
               label: 'Connection quality: $_connectionQuality',
               child: Chip(
-                avatar: Icon(
-                    _connecting ? Icons.sync : Icons.network_check,
+                avatar: Icon(_connecting ? Icons.sync : Icons.network_check,
                     size: 18,
                     color: _connecting
                         ? Colors.orange
@@ -508,13 +518,15 @@ class _OnlineGamePageState extends State<OnlineGamePage>
             child: InkWell(
               onTap: () => _tapSquare(square),
               child: Container(
-              color: highlighted
-                  ? Colors.amber.shade400
-                  : (dark ? const Color(0xff769656) : const Color(0xffeeeed2)),
-              alignment: Alignment.center,
-              child: Text(
-                  _piece(piece?.type.name, piece?.color == chess.Color.WHITE),
-                  style: const TextStyle(fontSize: 34)),
+                color: highlighted
+                    ? Colors.amber.shade400
+                    : (dark
+                        ? const Color(0xff769656)
+                        : const Color(0xffeeeed2)),
+                alignment: Alignment.center,
+                child: Text(
+                    _piece(piece?.type.name, piece?.color == chess.Color.WHITE),
+                    style: const TextStyle(fontSize: 34)),
               ),
             ),
           );

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'deep_link_service.dart';
+
 class NotificationPage extends StatefulWidget {
   const NotificationPage(
       {super.key,
@@ -69,6 +71,8 @@ class _NotificationPageState extends State<NotificationPage> {
                               subtitle: Text(row['message']?.toString() ?? ''),
                               onTap: () async {
                                 await widget.markRead(row['id'] as int);
+                                DeepLinkService.dispatch(
+                                    row['target_url']?.toString());
                                 await _load();
                               });
                         })),

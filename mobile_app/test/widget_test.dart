@@ -19,10 +19,21 @@ void main() {
         MobileDestination.game);
     expect(MobileLink.parse('chessplatform://notifications')?.destination,
         MobileDestination.notifications);
+    expect(MobileLink.parse('/rooms/abc123/')?.destination,
+        MobileDestination.room);
+    expect(MobileLink.parse('/players/player-id/')?.destination,
+        MobileDestination.profile);
+    expect(MobileLink.parse('/games/game-id/')?.destination,
+        MobileDestination.game);
+    expect(MobileLink.parse('/tournaments/42/')?.destination,
+        MobileDestination.tournament);
+    expect(MobileLink.parse('/notifications/')?.destination,
+        MobileDestination.notifications);
   });
   testWidgets('shows simple play choices and opens a friend game',
       (tester) async {
     await tester.pumpWidget(const ChessPlatformApp());
+    await tester.pumpAndSettle();
 
     expect(find.text('Login'), findsWidgets);
     expect(find.text('Create Account'), findsOneWidget);

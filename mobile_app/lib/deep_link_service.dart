@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
-enum MobileDestination { room, profile, game, notifications }
+enum MobileDestination { room, profile, game, tournament, notifications }
 
 class MobileLink {
   const MobileLink(this.destination, [this.id]);
@@ -32,6 +32,10 @@ class MobileLink {
     if ({'profiles', 'profile', 'players'}.contains(segments.first) &&
         segments.length > 1) {
       return MobileLink(MobileDestination.profile, segments[1]);
+    }
+    if ({'tournaments', 'tournament'}.contains(segments.first) &&
+        segments.length > 1) {
+      return MobileLink(MobileDestination.tournament, segments[1]);
     }
     return null;
   }

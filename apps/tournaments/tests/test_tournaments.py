@@ -275,3 +275,36 @@ def test_registered_player_can_use_tournament_chat(client, tournament_users, tou
     client.force_login(player)
     client.post(reverse("tournaments:chat", args=[tournament.pk]), {"body": "Good luck everyone"})
     assert TournamentMessage.objects.filter(sender=player, body="Good luck everyone").exists()
+
+
+def test_mobile_organizer_can_create_share_and_start_tournament(client, tournament_users):
+    organizer, player, _ = tournament_users
+    client.force_login(organizer)
+    response = client.post(
+        "/api/tournaments/",
+        {
+            "name": "Mobile Cup",
+            "description": "Created on Android",
+            "format": "swiss",
+            "starts_at": (timezone.now() + timedelta(hours=2)).isoformat(),
+            "max_players": 8,
+            "clock_initial_minutes": 10,
+            "increment_seconds": 0,
+            "is_public": True,
+        },
+        content_type="application/json",
+    )
+    assert response.status_code == 201
+    payload = response.json()
+    assert payload["is_organizer"] is True
+    assert len(payload["invite_code"]) == 8
+    tournament = Tournament.objects.get(pk=payload["id"])
+    TournamentEntry.objects.create(tournament=tournament, user=player)
+
+    started = client.post(
+        f"/api/tournaments/{tournament.pk}/",
+        {"action": "start"},
+        content_type="application/json",
+    )
+    assert started.status_code == 200
+    assert started.json()["status"] == Tournament.Status.ACTIVE
