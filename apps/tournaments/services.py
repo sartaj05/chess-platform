@@ -1,16 +1,27 @@
 from __future__ import annotations
 
 import math
+import secrets
+import string
 from decimal import Decimal
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.utils import timezone
 
 from apps.accounts.models import User
+from apps.games.models import Game
 from apps.notifications.models import Notification
 from apps.notifications.services import notify
 
 from .models import (
+    Club,
+    ClubMembership,
+    SimulSeat,
+    SimultaneousExhibition,
+    TeamBoard,
+    TeamCompetition,
+    TeamCompetitionEntry,
     Tournament,
     TournamentAnnouncement,
     TournamentEntry,
@@ -18,6 +29,36 @@ from .models import (
     TournamentPairing,
     TournamentRound,
 )
+
+
+def invite_code(length: int = 10) -> str:
+    return "".join(secrets.choice(string.ascii_uppercase + string.digits) for _ in range(length))
+
+
+def _create_pairing_game(pairing: TournamentPairing) -> Game | None:
+    if pairing.black_entry_id is None:
+        return None
+    tournament = pairing.round.tournament
+    initial_ms = tournament.clock_initial_minutes * 60 * 1000
+    game = Game.objects.create(
+        status=Game.Status.ACTIVE,
+        rated=False,
+        white_user=pairing.white_entry.user,
+        black_user=pairing.black_entry.user,
+        white_display_name=pairing.white_entry.user.display_name,
+        black_display_name=pairing.black_entry.user.display_name,
+        clock_initial_ms=initial_ms,
+        increment_ms=tournament.increment_seconds * 1000,
+        white_time_ms=initial_ms,
+        black_time_ms=initial_ms,
+        started_at=timezone.now(),
+        last_move_at=timezone.now(),
+        clock_started_at=timezone.now(),
+        metadata={"mode": "tournament", "tournament_id": tournament.pk, "pairing_id": pairing.pk},
+    )
+    pairing.game = game
+    pairing.save(update_fields=["game", "updated_at"])
+    return game
 
 
 def _maximum_rounds(tournament: Tournament, player_count: int) -> int:
@@ -54,8 +95,123 @@ def _create_next_round(tournament: Tournament, number: int) -> TournamentRound:
         if pairing.result == TournamentPairing.Result.BYE:
             white.score += 1
             white.save(update_fields=["score", "updated_at"])
+        else:
+            _create_pairing_game(pairing)
         board += 1
     return tournament_round
+
+
+@transaction.atomic
+def create_club(*, owner: User, name: str, slug: str, description: str = "") -> Club:
+    club = Club.objects.create(
+        owner=owner, name=name.strip()[:120], slug=slug.strip().lower(), description=description.strip()[:500],
+        invite_code=invite_code(),
+    )
+    ClubMembership.objects.create(club=club, user=owner, role=ClubMembership.Role.OWNER)
+    return club
+
+
+@transaction.atomic
+def join_club(*, user: User, code: str) -> ClubMembership:
+    club = Club.objects.select_for_update().get(invite_code=code.strip().upper())
+    membership, _ = ClubMembership.objects.get_or_create(club=club, user=user)
+    return membership
+
+
+@transaction.atomic
+def create_team_competition(*, organizer: User, name: str, starts_at, boards_per_team: int = 4) -> TeamCompetition:
+    return TeamCompetition.objects.create(
+        organizer=organizer, name=name.strip()[:140], starts_at=starts_at,
+        boards_per_team=max(1, min(int(boards_per_team), 20)),
+    )
+
+
+@transaction.atomic
+def enter_club(*, competition: TeamCompetition, club: Club, captain: User) -> TeamCompetitionEntry:
+    if not club.memberships.filter(user=captain, role__in=[ClubMembership.Role.OWNER, ClubMembership.Role.CAPTAIN]).exists():
+        raise PermissionDenied("Only a club owner or captain can enter the club.")
+    return TeamCompetitionEntry.objects.create(competition=competition, club=club, captain=captain)
+
+
+@transaction.atomic
+def start_team_competition(*, competition: TeamCompetition, actor: User) -> TeamCompetition:
+    competition = TeamCompetition.objects.select_for_update().get(pk=competition.pk)
+    if competition.organizer_id != actor.pk:
+        raise PermissionDenied("Only the organizer can start this competition.")
+    entries = list(competition.entries.select_related("club"))
+    if len(entries) < 2:
+        raise ValidationError("At least two clubs are required.")
+    initial_ms = 10 * 60 * 1000
+    for match_index in range(0, len(entries) - 1, 2):
+        home, away = entries[match_index], entries[match_index + 1]
+        home_players = list(home.club.members.order_by("club_memberships__created_at")[:competition.boards_per_team])
+        away_players = list(away.club.members.order_by("club_memberships__created_at")[:competition.boards_per_team])
+        board_count = min(len(home_players), len(away_players), competition.boards_per_team)
+        if board_count == 0:
+            continue
+        for index in range(board_count):
+            white, black = (home_players[index], away_players[index]) if index % 2 == 0 else (away_players[index], home_players[index])
+            game = Game.objects.create(
+                status=Game.Status.ACTIVE, white_user=white, black_user=black,
+                white_display_name=white.display_name, black_display_name=black.display_name,
+                clock_initial_ms=initial_ms, white_time_ms=initial_ms, black_time_ms=initial_ms,
+                started_at=timezone.now(), last_move_at=timezone.now(), clock_started_at=timezone.now(),
+                metadata={"mode": "team_competition", "competition_id": competition.pk,
+                          "home_club": home.club.name, "away_club": away.club.name},
+            )
+            TeamBoard.objects.create(
+                competition=competition, round_number=1, board_number=index + 1,
+                home_club=home.club, away_club=away.club, white_player=white, black_player=black, game=game,
+            )
+    if not competition.boards.exists():
+        raise ValidationError("The entered clubs need active members before the event can start.")
+    competition.status = TeamCompetition.Status.ACTIVE
+    competition.save(update_fields=["status", "updated_at"])
+    return competition
+
+
+@transaction.atomic
+def create_simul(*, host: User, name: str, starts_at, max_opponents: int = 20, host_color: str = "white") -> SimultaneousExhibition:
+    return SimultaneousExhibition.objects.create(
+        host=host, name=name.strip()[:140], starts_at=starts_at,
+        max_opponents=max(1, min(int(max_opponents), 100)), host_color=host_color,
+        invite_code=invite_code(),
+    )
+
+
+@transaction.atomic
+def join_simul(*, exhibition: SimultaneousExhibition, opponent: User) -> SimulSeat:
+    exhibition = SimultaneousExhibition.objects.select_for_update().get(pk=exhibition.pk)
+    if exhibition.status != SimultaneousExhibition.Status.REGISTRATION:
+        raise ValidationError("This exhibition is no longer accepting players.")
+    if exhibition.host_id == opponent.pk:
+        raise ValidationError("The host cannot take an opponent seat.")
+    if exhibition.seats.count() >= exhibition.max_opponents:
+        raise ValidationError("This exhibition is full.")
+    return SimulSeat.objects.create(exhibition=exhibition, opponent=opponent, board_number=exhibition.seats.count() + 1)
+
+
+@transaction.atomic
+def start_simul(*, exhibition: SimultaneousExhibition, actor: User) -> SimultaneousExhibition:
+    exhibition = SimultaneousExhibition.objects.select_for_update().get(pk=exhibition.pk)
+    if exhibition.host_id != actor.pk:
+        raise PermissionDenied("Only the host can start this exhibition.")
+    if not exhibition.seats.exists():
+        raise ValidationError("At least one opponent is required.")
+    initial_ms = exhibition.clock_initial_minutes * 60 * 1000
+    for seat in exhibition.seats.select_related("opponent"):
+        white, black = (actor, seat.opponent) if exhibition.host_color == "white" else (seat.opponent, actor)
+        seat.game = Game.objects.create(
+            status=Game.Status.ACTIVE, white_user=white, black_user=black,
+            white_display_name=white.display_name, black_display_name=black.display_name,
+            clock_initial_ms=initial_ms, white_time_ms=initial_ms, black_time_ms=initial_ms,
+            started_at=timezone.now(), last_move_at=timezone.now(), clock_started_at=timezone.now(),
+            metadata={"mode": "simul", "simul_id": exhibition.pk, "board_number": seat.board_number},
+        )
+        seat.save(update_fields=["game", "updated_at"])
+    exhibition.status = SimultaneousExhibition.Status.ACTIVE
+    exhibition.save(update_fields=["status", "updated_at"])
+    return exhibition
 
 
 def recalculate_tiebreaks(tournament: Tournament) -> None:
@@ -182,6 +338,29 @@ def report_pairing_result(
         else:
             _create_next_round(tournament, tournament_round.number + 1)
     return pairing
+
+
+def sync_pairing_result_from_game(game: Game) -> None:
+    """Advance a tournament automatically when its linked game finishes."""
+
+    try:
+        pairing = TournamentPairing.objects.select_related("round__tournament").get(game=game)
+    except TournamentPairing.DoesNotExist:
+        return
+    if pairing.result != TournamentPairing.Result.PENDING or game.status != Game.Status.FINISHED:
+        return
+    result = {
+        Game.Result.WHITE_WIN: TournamentPairing.Result.WHITE_WIN,
+        Game.Result.BLACK_WIN: TournamentPairing.Result.BLACK_WIN,
+        Game.Result.DRAW: TournamentPairing.Result.DRAW,
+    }.get(game.result)
+    if result:
+        report_pairing_result(
+            tournament=pairing.round.tournament,
+            pairing=pairing,
+            actor=pairing.round.tournament.organizer,
+            result=result,
+        )
 
 
 def cancel_tournament(*, tournament: Tournament, actor: User) -> None:

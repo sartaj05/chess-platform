@@ -44,6 +44,7 @@
           <div class="mode-icon">♟</div><span class="mode-tag">PROGRESSIVE</span><h3>Play with Bot</h3>
           <p>Train against a computer opponent that becomes more challenging as you advance.</p>
           <label class="level-control">Bot level <select name="bot_level">{% for level in bot_levels %}<option value="{{ level }}"{% if level == bot_level %} selected{% endif %}>Level {{ level }}</option>{% endfor %}</select></label>
+          <label class="level-control">Playing style <select name="bot_personality"><option value="balanced">Balanced</option><option value="aggressive">Aggressive attacker</option><option value="positional">Positional strategist</option><option value="defensive">Solid defender</option><option value="unpredictable">Creative wildcard</option></select></label>
           <div class="level-progress"><span style="width:{% widthratio bot_level 10 100 %}%"></span></div>
           <small>{% if request.user.is_authenticated and bot_level < 10 %}Beat Level {{ bot_level }} to unlock Level {{ bot_level|add:1 }}{% elif request.user.is_authenticated %}Maximum level unlocked{% else %}Sign in to save level progress{% endif %}</small>
           <button type="submit" name="action" value="bot">Play Bot <span>→</span></button>

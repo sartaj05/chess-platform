@@ -45,4 +45,16 @@
     </div>
   </div>
 </div>
+<section class="card border-secondary shadow-sm mt-4">
+  <div class="card-header"><h2 class="h5 mb-0">Explore an alternative move</h2></div>
+  <div class="card-body"><p class="text-secondary">Enter a legal UCI move such as <code>e2e4</code>. Stockfish compares it with the best move and shows the reply.</p><div class="row g-3"><div class="col-md-8"><input id="explorerFen" class="form-control" value="{{ form.fen.value|default:'' }}" aria-label="Position FEN"></div><div class="col-md-2"><input id="candidateMove" class="form-control" placeholder="e2e4" maxlength="5"></div><div class="col-md-2"><button id="exploreMove" class="btn btn-success w-100" type="button">Compare</button></div></div><div id="explorerResult" class="analysis-pre mt-3" hidden></div></div>
+</section>
+<script>
+document.getElementById('exploreMove')?.addEventListener('click', async () => {
+  const output = document.getElementById('explorerResult'); output.hidden = false; output.textContent = 'Analysing…';
+  const response = await fetch('/api/analysis/explore/', {method:'POST', headers:{'Content-Type':'application/json','X-CSRFToken':'{{ csrf_token }}'}, body:JSON.stringify({fen:document.getElementById('explorerFen').value,candidate_uci:document.getElementById('candidateMove').value,depth:10,movetime_ms:500})});
+  const data = await response.json();
+  output.textContent = response.ok ? `Best: ${data.best_move_san} (${data.best_move})\nYour move: ${data.candidate?.san || '—'}\nVerdict: ${data.candidate?.verdict || 'Explore legal moves'}\nLoss: ${data.candidate?.centipawn_loss ?? '—'} cp\nExpected reply: ${data.candidate?.reply_san || '—'}` : (data.detail || 'Analysis failed.');
+});
+</script>
 {% endblock %}

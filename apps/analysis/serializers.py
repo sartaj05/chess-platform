@@ -18,6 +18,10 @@ class PositionAnalysisSerializer(serializers.Serializer):
     movetime_ms = serializers.IntegerField(min_value=100, max_value=10000, default=750)
 
 
+class MoveExplorerSerializer(PositionAnalysisSerializer):
+    candidate_uci = serializers.CharField(max_length=8, required=False, allow_blank=True)
+
+
 class PositionAnalysisResultSerializer(serializers.ModelSerializer):
     class Meta:
         model = PositionAnalysis

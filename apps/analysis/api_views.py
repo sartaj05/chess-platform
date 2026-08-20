@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 from apps.analysis.models import GameAnalysisJob, OpeningBookLine, OpeningPractice
 from apps.analysis.serializers import (
     GameAnalysisJobSerializer,
+    MoveExplorerSerializer,
     OpeningBookLineSerializer,
     PositionAnalysisResultSerializer,
     PositionAnalysisSerializer,
@@ -81,6 +82,63 @@ class PositionAnalysisApiView(APIView):
         serializer.is_valid(raise_exception=True)
         position = analyse_position(**serializer.validated_data)
         return Response(PositionAnalysisResultSerializer(position).data)
+
+
+class MoveExplorerApiView(APIView):
+    """Compare a player's candidate with Stockfish and return legal alternatives."""
+
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [AnalysisAnonRateThrottle, AnalysisUserRateThrottle]
+
+    def post(self, request):
+        import chess
+
+        serializer = MoveExplorerSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        try:
+            board = chess.Board(data["fen"])
+        except ValueError as exc:
+            return Response({"detail": f"Invalid FEN: {exc}"}, status=400)
+        candidate_uci = data.get("candidate_uci", "")
+        candidate = None
+        if candidate_uci:
+            try:
+                candidate = chess.Move.from_uci(candidate_uci)
+            except ValueError:
+                return Response({"detail": "Enter a valid UCI move."}, status=400)
+            if candidate not in board.legal_moves:
+                return Response({"detail": "That move is not legal in this position."}, status=400)
+        before = analyse_position(
+            fen=board.fen(), depth=data["depth"], movetime_ms=data["movetime_ms"]
+        )
+        result = {
+            "fen": board.fen(), "turn": "white" if board.turn else "black",
+            "best_move": before.bestmove_uci, "best_move_san": before.bestmove_san,
+            "evaluation_cp": before.score_white_cp, "mate": before.mate_score,
+            "principal_variation": before.pv,
+            "alternatives": [
+                {"uci": move.uci(), "san": board.san(move)}
+                for move in list(board.legal_moves)[:30]
+            ],
+        }
+        if candidate is not None:
+            candidate_san = board.san(candidate)
+            board.push(candidate)
+            after = analyse_position(
+                fen=board.fen(), depth=data["depth"], movetime_ms=data["movetime_ms"]
+            )
+            before_cp = before.score_white_cp or 0
+            after_cp = after.score_white_cp or 0
+            mover_white = not board.turn
+            loss = max(0, before_cp - after_cp) if mover_white else max(0, after_cp - before_cp)
+            result["candidate"] = {
+                "uci": candidate_uci, "san": candidate_san, "fen_after": board.fen(),
+                "evaluation_after_cp": after.score_white_cp, "centipawn_loss": loss,
+                "reply": after.bestmove_uci, "reply_san": after.bestmove_san,
+                "verdict": "best" if candidate_uci == before.bestmove_uci else "excellent" if loss <= 30 else "inaccuracy" if loss <= 100 else "mistake",
+            }
+        return Response(result)
 
 
 class OpeningExplorerApiView(APIView):

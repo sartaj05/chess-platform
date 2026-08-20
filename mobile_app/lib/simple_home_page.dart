@@ -69,6 +69,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
   bool _busy = false;
   int _botLevel = 1;
   int _selectedBotLevel = 1;
+  String _botPersonality = 'balanced';
   String? _displayName;
   Map<String, dynamic>? _experience;
   PlayerSide _side = PlayerSide.random;
@@ -728,6 +729,21 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                                   () => _selectedBotLevel = value ?? 1),
                             ),
                             const SizedBox(height: 10),
+                            DropdownButtonFormField<String>(
+                              initialValue: _botPersonality,
+                              decoration: const InputDecoration(
+                                  labelText: 'Computer personality'),
+                              items: const [
+                                DropdownMenuItem(value: 'balanced', child: Text('Balanced')),
+                                DropdownMenuItem(value: 'aggressive', child: Text('Aggressive attacker')),
+                                DropdownMenuItem(value: 'positional', child: Text('Positional strategist')),
+                                DropdownMenuItem(value: 'defensive', child: Text('Solid defender')),
+                                DropdownMenuItem(value: 'unpredictable', child: Text('Creative wildcard')),
+                              ],
+                              onChanged: (value) => setState(() =>
+                                  _botPersonality = value ?? 'balanced'),
+                            ),
+                            const SizedBox(height: 10),
                             FilledButton.icon(
                               onPressed: () =>
                                   Navigator.of(context).push(MaterialPageRoute(
@@ -735,6 +751,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                                     mode: OfflinePlayMode.bot,
                                     preferredSide: chessSide(),
                                     botLevel: _selectedBotLevel,
+                                    botPersonality: _botPersonality,
                                     onBotVictory: _recordBotVictory,
                                     stockfishMove: _stockfishMove,
                                     soundsEnabled: widget.soundsEnabled,

@@ -95,32 +95,38 @@ def play_local_bot_reply(*, game: Any, actor: GameActor) -> None:
     legal_moves = list(board.legal_moves)
     if legal_moves:
         level = max(1, min(int(metadata.get("bot_level", 1)), 10))
+        personality = metadata.get("bot_personality", "balanced")
         move = None
-        try:
-            from apps.stockfish.services import analyse_fen_with_stockfish
+        if personality == "balanced":
+            try:
+                from apps.stockfish.services import analyse_fen_with_stockfish
 
-            result = analyse_fen_with_stockfish(
-                fen=board.fen(),
-                game=game,
-                skill_level=min(20, level * 2),
-                depth=min(16, 6 + level),
-                movetime_ms=100 + level * 75,
-                command_type="website_bot_move",
-            )
-            candidate = chess.Move.from_uci(result.bestmove)
-            if candidate in legal_moves:
-                move = candidate
-                metadata["bot_engine"] = "stockfish"
-        except Exception:
-            metadata["bot_engine"] = "built_in_fallback"
+                result = analyse_fen_with_stockfish(
+                    fen=board.fen(),
+                    game=game,
+                    skill_level=min(20, level * 2),
+                    depth=min(16, 6 + level),
+                    movetime_ms=100 + level * 75,
+                    command_type="website_bot_move",
+                )
+                candidate = chess.Move.from_uci(result.bestmove)
+                if candidate in legal_moves:
+                    move = candidate
+                    metadata["bot_engine"] = "stockfish"
+            except Exception:
+                metadata["bot_engine"] = "built_in_fallback"
+        else:
+            metadata["bot_engine"] = f"{personality}_personality"
         game.metadata = metadata
         game.save(update_fields=["metadata", "updated_at"])
         if move is None:
-            move = choose_bot_move(board, legal_moves, level)
+            move = choose_bot_move(board, legal_moves, level, personality)
         play_uci_move(game=game, actor=actor, uci=move.uci())
 
 
-def choose_bot_move(board: chess.Board, legal_moves: list[chess.Move], level: int) -> chess.Move:
+def choose_bot_move(
+    board: chess.Board, legal_moves: list[chess.Move], level: int, personality: str = "balanced"
+) -> chess.Move:
     """Choose increasingly tactical moves without requiring an engine binary."""
 
     if level <= 1:
@@ -130,6 +136,7 @@ def choose_bot_move(board: chess.Board, legal_moves: list[chess.Move], level: in
     for move in legal_moves:
         captured = board.piece_at(move.to_square)
         mover = board.piece_at(move.from_square)
+        is_castling = board.is_castling(move)
         score = float(piece_values.get(captured.piece_type, 0) * 10 if captured else 0)
         if mover and captured:
             score -= piece_values.get(mover.piece_type, 0)
@@ -137,11 +144,19 @@ def choose_bot_move(board: chess.Board, legal_moves: list[chess.Move], level: in
         if board.is_checkmate():
             score += 10000
         elif board.is_check():
-            score += 3 + level
+            score += (6 if personality == "aggressive" else 3) + level
+        if personality == "positional":
+            center = {chess.D4, chess.E4, chess.D5, chess.E5}
+            score += 2.5 if move.to_square in center else 0
+            score += 1.5 if mover and mover.piece_type in {chess.KNIGHT, chess.BISHOP} else 0
+        elif personality == "defensive":
+            score += 4 if is_castling else 0
+            score -= 2 if board.is_attacked_by(board.turn, move.to_square) else 0
         if level >= 4:
             score += len(list(board.legal_moves)) * 0.03
         board.pop()
-        score += random.random() * max(0.2, 3 - level * 0.25)
+        randomness = 8 if personality == "unpredictable" else max(0.2, 3 - level * 0.25)
+        score += random.random() * randomness
         scored.append((score, move))
     scored.sort(key=lambda item: item[0], reverse=True)
     return random.choice(scored[: max(1, 5 - level // 2)])[1]

@@ -61,10 +61,16 @@ class HomeView(View):
             except (TypeError, ValueError):
                 selected_level = unlocked_level
             selected_level = max(1, min(selected_level, unlocked_level, 10))
+            personality = request.POST.get("bot_personality", "balanced")
+            if personality not in {"balanced", "aggressive", "positional", "defensive", "unpredictable"}:
+                personality = "balanced"
             player_side = side if side != Room.ColorPreference.RANDOM else random.choice(["white", "black"])
             white_name, black_name = (name, "Bot") if player_side == "white" else ("Bot", name)
             game = create_same_pc_game(white_name=white_name, black_name=black_name, initial_minutes=10)
-            game.metadata = {"mode": "local_ai", "player_color": player_side, "bot_level": selected_level}
+            game.metadata = {
+                "mode": "local_ai", "player_color": player_side,
+                "bot_level": selected_level, "bot_personality": personality,
+            }
             if request.user.is_authenticated:
                 if player_side == "white":
                     game.white_user = request.user

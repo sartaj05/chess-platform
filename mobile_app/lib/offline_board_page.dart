@@ -17,6 +17,7 @@ class OfflineBoardPage extends StatefulWidget {
     this.mode = OfflinePlayMode.friend,
     this.preferredSide = BoardSide.white,
     this.botLevel = 1,
+    this.botPersonality = 'balanced',
     this.onBotVictory,
     this.stockfishMove,
     this.soundsEnabled = true,
@@ -27,6 +28,7 @@ class OfflineBoardPage extends StatefulWidget {
   final OfflinePlayMode mode;
   final BoardSide preferredSide;
   final int botLevel;
+  final String botPersonality;
   final Future<int> Function(int level)? onBotVictory;
   final Future<String?> Function(String fen, int level)? stockfishMove;
   final bool soundsEnabled;
@@ -143,13 +145,30 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
   }
 
   dynamic _chooseBotMove(List<Map> moves) {
-    if (widget.botLevel <= 1) return moves[Random().nextInt(moves.length)];
+    if (widget.botLevel <= 1 || widget.botPersonality == 'unpredictable') {
+      return moves[Random().nextInt(moves.length)];
+    }
     const values = {'p': 1, 'n': 3, 'b': 3, 'r': 5, 'q': 9, 'k': 0};
     moves.sort((a, b) {
-      final aScore = (values[a['captured']] ?? 0) * 10 +
-          (a['san']?.toString().contains('+') == true ? widget.botLevel : 0);
-      final bScore = (values[b['captured']] ?? 0) * 10 +
-          (b['san']?.toString().contains('+') == true ? widget.botLevel : 0);
+      int score(Map move) {
+        var value = (values[move['captured']] ?? 0) * 10;
+        final san = move['san']?.toString() ?? '';
+        if (san.contains('+')) {
+          value += widget.botPersonality == 'aggressive'
+              ? widget.botLevel * 3
+              : widget.botLevel;
+        }
+        if (widget.botPersonality == 'defensive' && san.contains('O-O')) {
+          value += 10;
+        }
+        if (widget.botPersonality == 'positional' &&
+            ['d4', 'e4', 'd5', 'e5'].contains(move['to'])) {
+          value += 6;
+        }
+        return value;
+      }
+      final aScore = score(a);
+      final bScore = score(b);
       return bScore.compareTo(aScore);
     });
     final pool = max(1, 5 - widget.botLevel ~/ 2);
@@ -191,6 +210,7 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
               mode: widget.mode,
               preferredSide: widget.preferredSide,
               botLevel: widget.botLevel,
+              botPersonality: widget.botPersonality,
               onBotVictory: widget.onBotVictory,
               stockfishMove: widget.stockfishMove,
               soundsEnabled: widget.soundsEnabled,

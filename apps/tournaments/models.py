@@ -118,6 +118,9 @@ class TournamentPairing(TimeStampedModel):
         null=True,
     )
     result = models.CharField(max_length=16, choices=Result.choices, default=Result.PENDING, db_index=True)
+    game = models.OneToOneField(
+        "games.Game", on_delete=models.SET_NULL, null=True, blank=True, related_name="tournament_pairing"
+    )
 
     class Meta:
         ordering = ["round__number", "board_number"]
@@ -144,3 +147,106 @@ class TournamentMessage(TimeStampedModel):
 
     class Meta:
         ordering = ["created_at"]
+
+
+class Club(TimeStampedModel):
+    name = models.CharField(max_length=120)
+    slug = models.SlugField(max_length=140, unique=True)
+    description = models.CharField(max_length=500, blank=True)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="owned_chess_clubs")
+    members = models.ManyToManyField(settings.AUTH_USER_MODEL, through="ClubMembership", related_name="chess_clubs")
+    invite_code = models.CharField(max_length=10, unique=True, db_index=True)
+    is_public = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class ClubMembership(TimeStampedModel):
+    class Role(models.TextChoices):
+        OWNER = "owner", "Owner"
+        CAPTAIN = "captain", "Captain"
+        MEMBER = "member", "Member"
+
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name="memberships")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="club_memberships")
+    role = models.CharField(max_length=16, choices=Role.choices, default=Role.MEMBER)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["club", "user"], name="club_unique_member")]
+
+
+class TeamCompetition(TimeStampedModel):
+    class Status(models.TextChoices):
+        REGISTRATION = "registration", "Registration open"
+        ACTIVE = "active", "In progress"
+        COMPLETED = "completed", "Completed"
+
+    name = models.CharField(max_length=140)
+    organizer = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="team_competitions")
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.REGISTRATION, db_index=True)
+    starts_at = models.DateTimeField(db_index=True)
+    boards_per_team = models.PositiveSmallIntegerField(default=4)
+    clubs = models.ManyToManyField(Club, through="TeamCompetitionEntry", related_name="competitions")
+
+
+class TeamCompetitionEntry(TimeStampedModel):
+    competition = models.ForeignKey(TeamCompetition, on_delete=models.CASCADE, related_name="entries")
+    club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name="competition_entries")
+    captain = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="captained_team_entries")
+    match_points = models.DecimalField(max_digits=6, decimal_places=1, default=0)
+    board_points = models.DecimalField(max_digits=6, decimal_places=1, default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["competition", "club"], name="competition_unique_club")]
+
+
+class TeamBoard(TimeStampedModel):
+    competition = models.ForeignKey(TeamCompetition, on_delete=models.CASCADE, related_name="boards")
+    round_number = models.PositiveSmallIntegerField(default=1)
+    board_number = models.PositiveSmallIntegerField()
+    home_club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name="home_team_boards")
+    away_club = models.ForeignKey(Club, on_delete=models.CASCADE, related_name="away_team_boards")
+    white_player = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="team_white_boards")
+    black_player = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="team_black_boards")
+    game = models.OneToOneField("games.Game", on_delete=models.CASCADE, related_name="team_board")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["competition", "round_number", "home_club", "away_club", "board_number"],
+                name="team_unique_match_board",
+            )
+        ]
+
+
+class SimultaneousExhibition(TimeStampedModel):
+    class Status(models.TextChoices):
+        REGISTRATION = "registration", "Registration open"
+        ACTIVE = "active", "In progress"
+        COMPLETED = "completed", "Completed"
+
+    name = models.CharField(max_length=140)
+    host = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="hosted_simuls")
+    status = models.CharField(max_length=16, choices=Status.choices, default=Status.REGISTRATION, db_index=True)
+    starts_at = models.DateTimeField(db_index=True)
+    max_opponents = models.PositiveSmallIntegerField(default=20)
+    clock_initial_minutes = models.PositiveSmallIntegerField(default=30)
+    host_color = models.CharField(max_length=5, choices=[("white", "White"), ("black", "Black")], default="white")
+    invite_code = models.CharField(max_length=10, unique=True, db_index=True)
+
+
+class SimulSeat(TimeStampedModel):
+    exhibition = models.ForeignKey(SimultaneousExhibition, on_delete=models.CASCADE, related_name="seats")
+    opponent = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="simul_seats")
+    board_number = models.PositiveSmallIntegerField()
+    game = models.OneToOneField("games.Game", on_delete=models.SET_NULL, null=True, blank=True, related_name="simul_seat")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["exhibition", "opponent"], name="simul_unique_opponent"),
+            models.UniqueConstraint(fields=["exhibition", "board_number"], name="simul_unique_board"),
+        ]

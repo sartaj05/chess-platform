@@ -192,6 +192,9 @@ class Game(TimeStampedModel):
                 "updated_at",
             ]
         )
+        from apps.tournaments.services import sync_pairing_result_from_game
+
+        sync_pairing_result_from_game(self)
 
 
 class GameMove(TimeStampedModel):

@@ -1,6 +1,18 @@
 from django.contrib import admin
 
-from .models import Tournament, TournamentEntry, TournamentPairing, TournamentRound
+from .models import (
+    Club,
+    ClubMembership,
+    SimulSeat,
+    SimultaneousExhibition,
+    TeamBoard,
+    TeamCompetition,
+    TeamCompetitionEntry,
+    Tournament,
+    TournamentEntry,
+    TournamentPairing,
+    TournamentRound,
+)
 
 
 class TournamentEntryInline(admin.TabularInline):
@@ -38,3 +50,12 @@ class TournamentRoundAdmin(admin.ModelAdmin):
 class TournamentPairingAdmin(admin.ModelAdmin):
     list_display = ("round", "board_number", "white_entry", "black_entry", "result")
     list_filter = ("result",)
+
+
+admin.site.register(Club)
+admin.site.register(ClubMembership)
+admin.site.register(TeamCompetition)
+admin.site.register(TeamCompetitionEntry)
+admin.site.register(TeamBoard)
+admin.site.register(SimultaneousExhibition)
+admin.site.register(SimulSeat)
