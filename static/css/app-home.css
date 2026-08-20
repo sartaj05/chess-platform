@@ -23,3 +23,24 @@
 @media(max-width:991px){.progress-layout,.activity-layout{grid-template-columns:1fr}.daily-goals{max-width:none}.live-community{margin-top:3rem}}
 @media(max-width:650px){.product-section-heading{align-items:start;flex-direction:column}.achievement-grid{grid-template-columns:1fr}.live-counts{width:100%}.live-counts span{flex:1;text-align:center}.activity-row b{display:none}.onboarding-dialog{padding:1.4rem}.hero-actions{display:grid}.hero-tour-button{width:100%}}
 .recommendation-section{margin-top:4rem}.recommendation-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}.recommendation-card{display:flex;align-items:center;gap:.85rem;padding:1rem;border:1px solid #d4e0d0;border-radius:14px;background:linear-gradient(145deg,#fff,#f7faf4);color:#263426!important;box-shadow:0 10px 26px rgba(35,68,37,.06);transition:.2s}.recommendation-card:hover{transform:translateY(-3px);box-shadow:0 17px 36px rgba(35,68,37,.11)}.recommendation-icon{display:grid;flex:0 0 42px;width:42px;height:42px;place-items:center;border-radius:11px;background:#deebda;color:#326c36;font-size:1.15rem}.recommendation-card>span:nth-child(2){min-width:0;flex:1}.recommendation-card small,.recommendation-card strong,.recommendation-card em{display:block}.recommendation-card small{color:#578057;font-size:.56rem;font-weight:800;letter-spacing:.12em}.recommendation-card strong{overflow:hidden;margin:.15rem 0;text-overflow:ellipsis;white-space:nowrap;font-size:.84rem}.recommendation-card em{color:#7a8478;font-size:.67rem;font-style:normal}.recommendation-card b{color:#477849}@media(max-width:900px){.recommendation-grid{grid-template-columns:1fr}}@media(max-width:650px){.recommendation-section{margin-top:3rem}}
+.play-workspace-heading {
+  max-width: 1280px;
+  margin: 1.5rem auto 2rem;
+  text-align: center;
+}
+
+.play-workspace-heading > span {
+  color: var(--brand-green, #34753a);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.play-workspace-heading h1 {
+  margin: 0.35rem 0 0.3rem;
+}
+
+.play-workspace-heading p {
+  margin: 0;
+  color: var(--text-dim, #6d756d);
+}

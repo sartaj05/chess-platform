@@ -1,6 +1,7 @@
 import random
 
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -16,8 +17,18 @@ class HomeView(View):
     template_name = "core/home.html"
 
     def get(self, request):
+        if request.user.is_authenticated:
+            return redirect("dashboard:home")
+        return self.render_page(request, show_marketing=True)
+
+    def render_page(self, request, *, show_marketing):
         bot_level = request.user.bot_level if request.user.is_authenticated else 1
-        context = {"bot_level": bot_level, "bot_levels": range(1, bot_level + 1), **live_platform_activity()}
+        context = {
+            "bot_level": bot_level,
+            "bot_levels": range(1, bot_level + 1),
+            "show_marketing": show_marketing,
+            **live_platform_activity(),
+        }
         if request.user.is_authenticated:
             context.update(player_progress(request.user))
         return render(request, self.template_name, context)
@@ -85,10 +96,17 @@ class HomeView(View):
                 join_room(request=request, room=room, display_name=name)
             except (ValidationError, PermissionDenied) as exc:
                 messages.error(request, str(exc))
-                return redirect("core:home")
+                return redirect("core:play" if request.user.is_authenticated else "core:home")
             return redirect(room.get_absolute_url())
 
-        return redirect("core:home")
+        return redirect("core:play" if request.user.is_authenticated else "core:home")
+
+
+class PlayView(LoginRequiredMixin, HomeView):
+    """Focused play workspace for signed-in players."""
+
+    def get(self, request):
+        return self.render_page(request, show_marketing=False)
 
 
 def health_check(request):

@@ -56,6 +56,11 @@ class PuzzleDetailView(LoginRequiredMixin, TemplateView):
         symbols = {"P":"♙","N":"♘","B":"♗","R":"♖","Q":"♕","K":"♔","p":"♟","n":"♞","b":"♝","r":"♜","q":"♛","k":"♚"}
         context.update(
             puzzle=puzzle, attempt=attempt, move_form=PuzzleMoveForm(), legal_moves=legal_moves,
+            side_to_move="White" if board.turn == chess.WHITE else "Black",
+            player_move_number=(attempt.next_move_index // 2) + 1,
+            total_player_moves=(len(puzzle.solution_moves) + 1) // 2,
+            next_puzzle=Puzzle.objects.filter(is_published=True, rating__gte=puzzle.rating).exclude(pk=puzzle.pk).order_by("rating", "pk").first()
+            or Puzzle.objects.filter(is_published=True).exclude(pk=puzzle.pk).order_by("rating", "pk").first(),
             board_squares=[{"name": chess.square_name(square), "piece": symbols.get(board.piece_at(square).symbol(), "") if board.piece_at(square) else "", "dark": (file + rank) % 2 == 0} for rank in range(7, -1, -1) for file in range(8) for square in [chess.square(file, rank)]],
         )
         return context

@@ -49,7 +49,9 @@
     square.classList.add("target");
     input.value = move;
     submit.disabled = false;
-    help.textContent = `Move ${move} is ready. Play it or select another piece.`;
+    help.textContent = `Playing ${move}…`;
     source = null;
+    board.classList.add("is-submitting");
+    submit.form.requestSubmit();
   });
 })();

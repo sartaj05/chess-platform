@@ -4,6 +4,7 @@
 {% block body_class %}app-home-page{% endblock %}
 {% block extra_css %}<link rel="stylesheet" href="{% static 'css/app-home.css' %}">{% endblock %}
 {% block content %}
+{% if show_marketing %}
 <section class="chess-hero">
   <div class="hero-copy">
     <span class="hero-kicker">YOUR NEXT GAME STARTS HERE</span>
@@ -16,11 +17,18 @@
   <div class="hero-board" aria-hidden="true"><span>♜</span><span>♞</span><span>♝</span><span>♛</span><span>♚</span><span>♝</span><span>♞</span><span>♜</span></div>
 </section>
 <div class="trust-strip" aria-label="Platform benefits"><span><strong>Stockfish powered</strong><small>Progressive bot training</small></span><span><strong>Private by design</strong><small>Local modes stay offline</small></span><span><strong>Play anywhere</strong><small>Web, Android, and LAN</small></span></div>
+{% else %}
+<header class="play-workspace-heading">
+  <span>PLAY</span>
+  <h1>Start your next game</h1>
+  <p>Choose a side and play instantly, locally, or online.</p>
+</header>
+{% endif %}
 
 <div class="home-layout">
   <main class="play-studio" id="playStudio">
     <div class="section-heading centered-heading"><div><span class="step-number">01</span><h2>Set up your game</h2></div><p>Choose your identity and preferred side.</p></div>
-    <form method="post" id="quickPlayForm">
+    <form method="post"{% if request.user.is_authenticated %} action="{% url 'core:play' %}"{% endif %} id="quickPlayForm">
       {% csrf_token %}
       <div class="game-setup-bar">
         <label class="name-control"><span>Your name</span><input name="display_name" maxlength="80" placeholder="Player name" value="{% if request.user.is_authenticated %}{{ request.user.display_name }}{% endif %}"></label>

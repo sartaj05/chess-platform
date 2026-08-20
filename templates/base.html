@@ -23,7 +23,7 @@
 
     <nav class="navbar navbar-expand-lg navbar-light sticky-top">
       <div class="container">
-        <a class="navbar-brand fw-bold" href="{% url 'core:home' %}">
+        <a class="navbar-brand fw-bold" href="{% if request.user.is_authenticated %}{% url 'dashboard:home' %}{% else %}{% url 'core:home' %}{% endif %}">
           <span class="brand-mark"><img src="{% static 'img/brand-mark.svg' %}" alt="" /></span>{{ site_name }}
         </a>
 
@@ -38,7 +38,7 @@
 
         <div class="collapse navbar-collapse" id="mainNavbar">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0" aria-label="Primary navigation">
-            <li class="nav-item"><a class="nav-link{% if request.resolver_match.view_name == 'core:home' %} active{% endif %}" href="{% url 'core:home' %}"{% if request.resolver_match.view_name == 'core:home' %} aria-current="page"{% endif %}>Play</a></li>
+            <li class="nav-item"><a class="nav-link{% if request.resolver_match.view_name == 'core:home' or request.resolver_match.view_name == 'core:play' %} active{% endif %}" href="{% if request.user.is_authenticated %}{% url 'core:play' %}{% else %}{% url 'core:home' %}{% endif %}"{% if request.resolver_match.view_name == 'core:home' or request.resolver_match.view_name == 'core:play' %} aria-current="page"{% endif %}>Play</a></li>
             <li class="nav-item"><a class="nav-link{% if request.resolver_match.namespace == 'puzzles' %} active{% endif %}" href="{% url 'puzzles:list' %}"{% if request.resolver_match.namespace == 'puzzles' %} aria-current="page"{% endif %}>Puzzles</a></li>
             <li class="nav-item"><a class="nav-link{% if request.resolver_match.view_name == 'dashboard:leaderboard' %} active{% endif %}" href="{% url 'dashboard:leaderboard' %}"{% if request.resolver_match.view_name == 'dashboard:leaderboard' %} aria-current="page"{% endif %}>Leaderboard</a></li>
             {% if request.user.is_authenticated %}
@@ -120,7 +120,7 @@
     <footer class="site-footer">
       <div class="container site-footer-grid">
         <div>
-          <a class="footer-brand" href="{% url 'core:home' %}"><img src="{% static 'img/brand-mark.svg' %}" alt="" /> {{ site_name }}</a>
+          <a class="footer-brand" href="{% if request.user.is_authenticated %}{% url 'dashboard:home' %}{% else %}{% url 'core:home' %}{% endif %}"><img src="{% static 'img/brand-mark.svg' %}" alt="" /> {{ site_name }}</a>
           <p>Play chess online, with friends, or against the computer.</p>
         </div>
         <nav class="footer-links" aria-label="Footer navigation">

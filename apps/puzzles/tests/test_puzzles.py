@@ -99,3 +99,26 @@ def test_puzzle_detail_exposes_only_legal_visual_moves(client, puzzle_user, puzz
     assert response.status_code == 200
     assert response.context["legal_moves"]["e2"] == {"e3": "e2e3", "e4": "e2e4"}
     assert "f2" not in response.context["legal_moves"]["e2"]
+    assert response.context["side_to_move"] == "White"
+    assert response.context["player_move_number"] == 1
+    assert response.context["total_player_moves"] == 2
+    assert b"Select a piece, then a highlighted square" in response.content
+
+
+def test_solved_puzzle_offers_next_puzzle(client, puzzle_user, puzzle):
+    next_puzzle = Puzzle.objects.create(
+        title="Next lesson",
+        initial_fen=STARTING_FEN,
+        solution_moves=["d2d4"],
+        rating=900,
+        difficulty=Puzzle.Difficulty.BEGINNER,
+    )
+    client.force_login(puzzle_user)
+    client.post(reverse("puzzles:detail", args=[puzzle.pk]), {"move": "e2e4"})
+    client.post(reverse("puzzles:detail", args=[puzzle.pk]), {"move": "g1f3"})
+
+    response = client.get(reverse("puzzles:detail", args=[puzzle.pk]))
+    assert response.context["next_puzzle"] is not None
+    assert response.context["next_puzzle"] != puzzle
+    assert b"Puzzle solved" in response.content
+    assert b"Next puzzle" in response.content

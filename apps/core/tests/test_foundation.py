@@ -62,7 +62,7 @@ def test_signed_in_header_shows_player_navigation_without_guest_actions(client, 
     )
     client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
 
-    response = client.get(reverse("core:home"))
+    response = client.get(reverse("core:play"))
 
     assert response.status_code == 200
     assert b"Dashboard" in response.content
@@ -76,7 +76,7 @@ def test_signed_in_home_has_progress_and_live_activity(client, db):
     user = User.objects.create_user(email="progress@example.com", password="StrongPass123!", display_name="Progress")
     client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
 
-    response = client.get(reverse("core:home"))
+    response = client.get(reverse("core:play"))
 
     assert response.status_code == 200
     assert len(response.context["achievements"]) == 4
@@ -84,6 +84,20 @@ def test_signed_in_home_has_progress_and_live_activity(client, db):
     assert response.context["active_game_count"] >= 0
     assert b"Build your chess story" in response.content
     assert b"The club is active" in response.content
+
+
+def test_signed_in_home_redirects_to_dashboard_and_play_hides_marketing(client, db):
+    user = User.objects.create_user(email="member@example.com", password="StrongPass123!", display_name="Member")
+    client.force_login(user, backend="django.contrib.auth.backends.ModelBackend")
+
+    response = client.get(reverse("core:home"))
+    assert response.status_code == 302
+    assert response.url == reverse("dashboard:home")
+
+    play = client.get(reverse("core:play"))
+    assert play.status_code == 200
+    assert b"Start your next game" in play.content
+    assert b"Chess for every" not in play.content
 
 
 def test_home_can_start_same_pc_game(client, db):
