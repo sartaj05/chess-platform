@@ -3,8 +3,8 @@ from django.db.models import Q
 from rest_framework import permissions, response, status, views
 from apps.accounts.models import User
 from apps.accounts.serializers import UserSerializer
-from apps.chat.models import Conversation
-from apps.chat.services import get_or_create_conversation, send_message
+from apps.chat.models import Conversation, Message
+from apps.chat.services import delete_message_for_sender, edit_message, get_or_create_conversation, send_message, unsend_message
 from apps.friends.models import Friendship, UserBlock, UserReport
 from apps.friends.services import respond_to_request, send_friend_request
 from apps.notifications.models import Notification
@@ -22,11 +22,24 @@ class SocialAPIView(views.APIView):
             rows.append({"id":item.pk,"status":item.status,"incoming":item.addressee_id==request.user.pk,"player":UserSerializer(other,context={"request":request}).data})
         conversations=[]
         for chat in Conversation.objects.filter(Q(first_user=request.user)|Q(second_user=request.user)).select_related("first_user","second_user"):
-            conversations.append({"id":chat.pk,"player":UserSerializer(chat.other_user(request.user),context={"request":request}).data,"messages":[{"id":m.pk,"body":m.body,"mine":m.sender_id==request.user.pk,"created_at":m.created_at} for m in chat.messages.all().order_by("-created_at")[:30]]})
+            messages = chat.messages.all().order_by("-created_at")[:50]
+            conversations.append({"id":chat.pk,"player":UserSerializer(chat.other_user(request.user),context={"request":request}).data,"messages":[{"id":m.pk,"body":"" if m.unsent_at else m.body,"mine":m.sender_id==request.user.pk,"created_at":m.created_at,"edited_at":m.edited_at,"unsent":m.unsent_at is not None,"can_edit":m.sender_id==request.user.pk and m.can_edit,"can_delete":m.sender_id==request.user.pk and m.can_delete,"can_unsend":m.sender_id==request.user.pk and m.unsent_at is None} for m in messages if not (m.sender_id==request.user.pk and m.deleted_for_sender)]})
         return response.Response({"friendships":rows,"conversations":conversations})
     def post(self, request):
         action=request.data.get("action")
         try:
+            if action in {"edit_message", "delete_message", "unsend_message"}:
+                chat = Conversation.objects.get(pk=request.data.get("conversation_id"))
+                if not chat.involves(request.user):
+                    raise PermissionDenied("You are not part of this conversation.")
+                message = Message.objects.get(pk=request.data.get("message_id"), conversation=chat)
+                if action == "edit_message":
+                    edit_message(message=message, actor=request.user, body=request.data.get("body", ""))
+                elif action == "delete_message":
+                    delete_message_for_sender(message=message, actor=request.user)
+                else:
+                    unsend_message(message=message, actor=request.user)
+                return response.Response({"status": "ok"})
             if action=="request":
                 item=send_friend_request(requester=request.user,email=request.data.get("email","")); return response.Response({"id":item.pk},status=201)
             if action in {"accept","decline"}:
@@ -41,6 +54,6 @@ class SocialAPIView(views.APIView):
                 UserBlock.objects.get_or_create(blocker=request.user,blocked=other); Friendship.objects.filter(Q(requester=request.user,addressee=other)|Q(requester=other,addressee=request.user)).delete(); return response.Response({"blocked":True})
             if action=="report":
                 report=UserReport.objects.create(reporter=request.user,reported=other,reason=request.data.get("reason","other"),details=request.data.get("details","")[:1000]); return response.Response({"id":report.pk},status=201)
-        except (User.DoesNotExist, Friendship.DoesNotExist): return response.Response({"detail":"Item not found."},status=404)
+        except (User.DoesNotExist, Friendship.DoesNotExist, Conversation.DoesNotExist, Message.DoesNotExist): return response.Response({"detail":"Item not found."},status=404)
         except (ValidationError,PermissionDenied) as exc: return response.Response({"detail":str(exc)},status=400)
         return response.Response({"detail":"Unsupported action."},status=400)

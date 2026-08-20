@@ -236,6 +236,7 @@ class _OfflineBoardPageState extends State<OfflineBoardPage> {
                         _ => dark ? const Color(0xff63845d) : const Color(0xffe8efd9),
                       };
                       return InkWell(
+                        key: ValueKey('board-square-$square'),
                         onTap: () => _tap(square),
                         child: Container(
                           color: _selected == square

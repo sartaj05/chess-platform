@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [string]$DeviceId,
-    [switch]$Integration
+    [switch]$Integration,
+    [switch]$Physical
 )
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent $PSScriptRoot
@@ -18,7 +19,20 @@ try {
         if (-not $DeviceId) {
             throw 'Pass -DeviceId with an emulator or physical Android device.'
         }
-        flutter test integration_test/app_test.dart -d $DeviceId
+        if ($Physical) {
+            $adbDevice = adb -s $DeviceId get-state 2>$null
+            if ($LASTEXITCODE -ne 0 -or $adbDevice.Trim() -ne 'device') {
+                throw "Physical Android device '$DeviceId' is not connected and authorized."
+            }
+            $isEmulator = adb -s $DeviceId shell getprop ro.kernel.qemu
+            if ($isEmulator.Trim() -eq '1') {
+                throw "Device '$DeviceId' is an emulator. Remove -Physical or connect a real phone."
+            }
+            $androidVersion = adb -s $DeviceId shell getprop ro.build.version.release
+            $model = adb -s $DeviceId shell getprop ro.product.model
+            Write-Host "Testing physical device: $model (Android $androidVersion)" -ForegroundColor Cyan
+        }
+        flutter test integration_test/app_test.dart -d $DeviceId --reporter expanded
         if ($LASTEXITCODE -ne 0) { throw 'Android integration tests failed.' }
     }
 } finally {

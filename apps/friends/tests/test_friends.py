@@ -6,6 +6,7 @@ from django.urls import reverse
 from apps.accounts.models import User
 from apps.friends.models import Friendship
 from apps.notifications.models import Notification
+from apps.chat.models import Conversation, Message
 
 
 @pytest.fixture
@@ -71,3 +72,35 @@ def test_friend_can_remove_relationship(client, users):
     client.force_login(second)
     client.post(reverse("friends:remove", args=[friendship.pk]))
     assert not Friendship.objects.filter(pk=friendship.pk).exists()
+
+
+def test_mobile_social_api_exposes_and_applies_message_controls(client, users):
+    first, second, _ = users
+    Friendship.objects.create(requester=first, addressee=second, status=Friendship.Status.ACCEPTED)
+    conversation = Conversation.objects.create(first_user=first, second_user=second)
+    message = Message.objects.create(conversation=conversation, sender=first, body="Mobile original")
+    client.force_login(first)
+
+    response = client.get("/api/social/")
+    mobile_message = response.json()["conversations"][0]["messages"][0]
+    assert mobile_message["can_edit"] is True
+    assert mobile_message["can_delete"] is True
+    assert mobile_message["can_unsend"] is True
+
+    response = client.post(
+        "/api/social/",
+        {"action": "edit_message", "conversation_id": conversation.pk, "message_id": message.pk, "body": "Mobile edited"},
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    message.refresh_from_db()
+    assert message.body == "Mobile edited"
+
+    response = client.post(
+        "/api/social/",
+        {"action": "unsend_message", "conversation_id": conversation.pk, "message_id": message.pk},
+        content_type="application/json",
+    )
+    assert response.status_code == 200
+    message.refresh_from_db()
+    assert message.unsent_at is not None

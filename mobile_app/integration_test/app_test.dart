@@ -24,5 +24,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('White to move'), findsOneWidget);
     expect(find.text('Save offline game'), findsOneWidget);
+
+    for (final move in const [
+      ['f2', 'f3'],
+      ['e7', 'e5'],
+      ['g2', 'g4'],
+      ['d8', 'h4'],
+    ]) {
+      await tester.tap(find.byKey(ValueKey('board-square-${move[0]}')));
+      await tester.tap(find.byKey(ValueKey('board-square-${move[1]}')));
+      await tester.pumpAndSettle();
+    }
+    expect(find.text('Game complete'), findsOneWidget);
+    expect(find.text('0 – 1'), findsOneWidget);
+    expect(find.text('New game'), findsOneWidget);
+    expect(find.text('Home'), findsOneWidget);
   });
 }

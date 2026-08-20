@@ -40,4 +40,8 @@ jobs:
       - uses: actions/checkout@v4
       - run: flutter pub get
       - run: flutter devices
-      - run: flutter test integration_test/app_test.dart -d ${{ vars.ANDROID_DEVICE_ID }}
+      - name: Verify a physical phone is attached
+        run: |
+          test "$(adb -s '${{ vars.ANDROID_DEVICE_ID }}' get-state)" = "device"
+          test "$(adb -s '${{ vars.ANDROID_DEVICE_ID }}' shell getprop ro.kernel.qemu | tr -d '\r')" != "1"
+      - run: flutter test integration_test/app_test.dart -d ${{ vars.ANDROID_DEVICE_ID }} --reporter expanded
