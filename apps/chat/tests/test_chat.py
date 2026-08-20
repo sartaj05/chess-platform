@@ -61,6 +61,8 @@ def test_opening_thread_marks_only_received_messages_read(client, chat_users):
     sent = Message.objects.create(conversation=conversation, sender=first, body="Hi")
     client.force_login(first)
     response = client.get(reverse("chat:thread", args=[conversation.pk]))
+    assert b"message-bubble" in response.content
+    assert b"Back to messages" not in response.content
     assert response.status_code == 200
     received.refresh_from_db()
     sent.refresh_from_db()
