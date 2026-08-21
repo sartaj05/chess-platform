@@ -7,7 +7,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "project_documentation"
-AUDIT_DATE = date(2026, 8, 14).strftime("%d %B %Y")
+AUDIT_DATE = date.today().strftime("%d %B %Y")
 
 
 def run(text: str, bold: bool = False) -> str:
@@ -471,6 +471,145 @@ def kt_document() -> list[str]:
     ]
 
 
+def desktop_setup_document() -> list[str]:
+    return [
+        heading("1. Purpose and supported use"),
+        paragraph("This guide explains how to transfer, install and use Chess Platform Desktop on another Windows PC. The ready-made package is portable: a player does not need Python, Django, Flutter, Android Studio, Visual Studio, PostgreSQL or Redis for offline bot and same-device games."),
+        table(["Mode", "Internet", "Django server", "Available on another PC"], [
+            ["Play with Bot", "Not required", "Not required", "Yes; uses the built-in offline computer opponent"],
+            ["Same Device", "Not required", "Not required", "Yes; two people share one keyboard/mouse and board"],
+            ["Login and cloud profile", "Required", "Required", "Only when a reachable server URL is configured"],
+            ["Online rooms/matchmaking", "Required", "Required", "Only when Django, Redis and WebSockets are deployed"],
+            ["Chat, tournaments, leaderboard", "Required", "Required", "Only when connected to the backend"],
+            ["Server Stockfish analysis", "Required", "Required", "The desktop offline bot does not require this service"],
+        ], [1900, 1500, 1900, 3900]),
+        heading("2. Minimum requirements for a player PC"),
+        bullet_list([
+            "64-bit Windows 10 or Windows 11.",
+            "Approximately 100 MB free disk space for the extracted application and future local data.",
+            "Permission to extract a ZIP and run a desktop executable.",
+            "A display resolution of at least 1280 x 720 is recommended; resizing and landscape layouts are supported.",
+            "Internet is optional and is needed only for account and online features.",
+        ]),
+        heading("3. Install the ready desktop package on any PC"),
+        paragraph("Package name: dist\\windows\\ChessPlatform-Windows-0.1.0.zip"),
+        bullet_list([
+            "Copy the ZIP to the other PC using a USB drive, local network, cloud drive or approved download page.",
+            "Right-click the ZIP, choose Extract All, and select a permanent folder such as C:\\Apps\\ChessPlatform.",
+            "Do not run the executable while it is still inside the ZIP.",
+            "Do not separate the EXE from its data folder, DLL files, SQLite DLL or README. All packaged files must stay together.",
+            "Open the extracted folder and double-click chess_platform_mobile.exe.",
+            "Optionally right-click the EXE and choose Send to > Desktop (create shortcut). Do not move only the EXE onto the desktop.",
+        ]),
+        heading("4. First launch and Windows security"),
+        bullet_list([
+            "The current internal package is not code-signed. Windows SmartScreen may therefore show an unknown-publisher warning.",
+            "For public distribution, sign the executable or installer with a trusted Windows code-signing certificate. Do not train public users to bypass security warnings.",
+            "An organization can distribute this verified internal build through its normal trusted software channel while production signing is completed.",
+            "If antivirus quarantines a file, verify the SHA-256 checksum and scan the package; never disable antivirus globally.",
+        ]),
+        heading("5. Playing completely offline"),
+        heading("5.1 Bot game", 2),
+        bullet_list([
+            "Launch the application without starting Django and without connecting the PC to Wi-Fi/Ethernet.",
+            "Choose your player name and side, select Play with Bot, and choose a level/personality.",
+            "The Windows app intentionally uses its bundled offline computer logic so a missing server cannot delay the bot response.",
+            "Moves and local game state are stored in a Windows SQLite database through sqflite_common_ffi.",
+        ]),
+        heading("5.2 Two players on one PC", 2),
+        bullet_list([
+            "Select Same Device, choose sides, and start the board.",
+            "Both players use the same mouse/touchscreen and take turns on the same computer.",
+            "No account, network, Redis, WebSocket or server process is required.",
+        ]),
+        heading("5.3 Offline limitations", 2),
+        paragraph("Offline mode cannot authenticate accounts, sync cloud history, join another device, receive push notifications, open matchmaking, use server-hosted tournaments/chat, or request server Stockfish analysis. These are connection-dependent by design and do not indicate a broken desktop installation."),
+        page_break(),
+        heading("6. Connect the desktop app to online services"),
+        paragraph("A player installation needs only the desktop app, but one reachable Django production server must be operated for online features."),
+        bullet_list([
+            "Production builds should be created with: .\\scripts\\build_windows_desktop.ps1 -ServerUrl https://chess.example.com -Version 1.0.0",
+            "The script rejects non-HTTPS URLs for distributable configured builds.",
+            "The backend must expose HTTPS REST endpoints and WSS WebSockets through Nginx or another reverse proxy.",
+            "Set Django allowed hosts, CSRF trusted origins, CORS policy where applicable, Redis/Channels and TLS for the real domain.",
+            "A localhost development build defaults to http://127.0.0.1:8000 on Windows, which works only when Django runs on the same PC.",
+        ]),
+        heading("7. Developer setup on a new Windows PC"),
+        heading("7.1 Install tools", 2),
+        bullet_list([
+            "Git for Windows.",
+            "Flutter stable with Windows desktop enabled.",
+            "Visual Studio 2022 Community or Build Tools with Desktop development with C++, MSVC, CMake and a Windows SDK.",
+            "Python 3.11 for the Django backend. Android Studio is required only for Android development, not Windows desktop builds.",
+            "Docker Desktop is recommended when running PostgreSQL, Redis, Celery and the complete online backend locally.",
+        ]),
+        heading("7.2 Prepare the source", 2),
+        bullet_list([
+            "Copy or clone the repository. Do not copy venv, build, dist, .dart_tool, secrets, database files or IDE caches from the old PC.",
+            "Keep all Django migrations. They are required source history and must not be deleted.",
+            "Create a new Python virtual environment: py -3.11 -m venv venv",
+            "Activate it: venv\\Scripts\\activate",
+            "Install backend packages: python -m pip install --upgrade pip, then python -m pip install -r requirements.txt",
+            "Copy .env.example to .env and supply local values without committing secrets.",
+            "Run python manage.py migrate and python manage.py check.",
+        ]),
+        heading("7.3 Prepare Flutter", 2),
+        bullet_list([
+            "Run flutter doctor -v and resolve every Windows toolchain error.",
+            "Run flutter config --enable-windows-desktop.",
+            "Change directory to mobile_app and run flutter pub get.",
+            "Validate with flutter analyze and flutter test.",
+            "For development, run flutter run -d windows.",
+        ]),
+        heading("8. Build a new portable release"),
+        paragraph("From the repository root in PowerShell:"),
+        bullet_list([
+            "Offline/local-server build: .\\scripts\\build_windows_desktop.ps1 -Version 1.0.0",
+            "Production-server build: .\\scripts\\build_windows_desktop.ps1 -ServerUrl https://your-domain.example -Version 1.0.0",
+            "Output folder: dist\\windows\\ChessPlatform-1.0.0",
+            "Output ZIP: dist\\windows\\ChessPlatform-Windows-1.0.0.zip",
+            "The script runs dependency resolution and a release build, stops on any Flutter failure, copies only runtime files, adds desktop instructions and creates the ZIP.",
+        ]),
+        heading("9. Verify a release before sharing"),
+        bullet_list([
+            "Extract the ZIP into a new empty folder on a clean Windows user account or test PC.",
+            "Confirm chess_platform_mobile.exe starts with Wi-Fi disabled.",
+            "Complete one bot game and one same-device game, close the app, reopen it, and confirm local data remains usable.",
+            "Resize the window and test a smaller laptop display and a high-DPI display.",
+            "If online features are included, verify login, token refresh, room creation, matchmaking, WebSocket reconnection and logout.",
+            "Calculate and publish a SHA-256 checksum with the release. Sign production binaries before public download.",
+        ]),
+        heading("10. Data, upgrades and uninstall"),
+        bullet_list([
+            "The application stores offline games in chess_platform_offline.db under the Windows application-documents location returned by the operating system.",
+            "Secure login values use Windows-supported secure storage. Offline-only players do not need to sign in.",
+            "For an upgrade, close the app, extract the new complete bundle into a new folder, then launch it. Do not mix DLLs from different versions.",
+            "Back up important exported PGN/data before major upgrades or uninstalling.",
+            "To remove the portable app, close it and delete its extracted program folder. Remove local application data separately only when the user also wants their offline history erased.",
+        ]),
+        heading("11. Troubleshooting"),
+        table(["Problem", "Resolution"], [
+            ["EXE does not start", "Extract the entire ZIP, keep data/DLL files beside the EXE, confirm Windows x64, and inspect antivirus/Event Viewer."],
+            ["Missing flutter_windows.dll or sqlite3.dll", "The EXE was copied alone. Re-extract the complete ZIP and keep the bundle together."],
+            ["Bot appears offline", "That is expected on Windows: local bot play requires no server. Start a new bot game and verify moves locally."],
+            ["Login/online pages fail", "Confirm internet, production HTTPS URL, Django availability, certificate, firewall and WebSocket proxy configuration."],
+            ["127.0.0.1 cannot connect", "127.0.0.1 means the same PC. Start Django locally or rebuild with the real HTTPS server URL."],
+            ["Build linker errors from Firebase", "Use the repository-pinned FlutterFire versions and Visual Studio toolchain; run flutter clean after changing native Firebase versions."],
+            ["Build script creates no ZIP", "Read the Flutter error above it. The script intentionally stops and does not publish a package after a failed build."],
+            ["Local game data missing after PC change", "Program files do not contain user data. Export/copy approved user data separately before moving PCs."],
+        ], [3000, 6200]),
+        heading("12. Distribution checklist"),
+        bullet_list([
+            "Use a unique version number and retain the source commit ID used for the build.",
+            "Test the exact ZIP, not only the build output folder.",
+            "Publish the SHA-256 checksum and release notes.",
+            "Code-sign public releases and use an HTTPS download location.",
+            "Never include .env files, Django secrets, Firebase service-account JSON, Android keystores, databases, backups or user exports inside the desktop ZIP.",
+            "State clearly which features work offline and which require the hosted service.",
+        ]),
+    ]
+
+
 def main() -> None:
     write_docx(
         "04_feature_inventory_and_gap_analysis.docx",
@@ -496,7 +635,13 @@ def main() -> None:
         "Architecture, demonstrations, operations, troubleshooting and ownership handover",
         kt_document(),
     )
-    for path in sorted(OUTPUT.glob("0[4-7]_*.docx")):
+    write_docx(
+        "08_windows_desktop_setup_and_usage.docx",
+        "Windows Desktop Setup and Usage Guide",
+        "Portable offline app, source setup, online connection, rebuilding and troubleshooting",
+        desktop_setup_document(),
+    )
+    for path in sorted(OUTPUT.glob("0[4-8]_*.docx")):
         print(f"Created {path.relative_to(ROOT)} ({path.stat().st_size:,} bytes)")
 
 
