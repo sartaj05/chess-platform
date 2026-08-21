@@ -23,6 +23,12 @@ import 'dart:async';
 
 enum PlayerSide { white, black, random }
 
+String _defaultServerUrl() {
+  const configured = String.fromEnvironment('CHESS_SERVER_URL');
+  if (configured.isNotEmpty) return configured;
+  return Platform.isWindows ? 'http://127.0.0.1:8000' : 'http://10.0.2.2:8000';
+}
+
 class SimpleHomePage extends StatefulWidget {
   const SimpleHomePage(
       {super.key,
@@ -55,10 +61,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
   StreamSubscription<MobileLink>? _deepLinkSubscription;
   Timer? _presenceTimer;
   final _server = TextEditingController(
-    text: const String.fromEnvironment(
-      'CHESS_SERVER_URL',
-      defaultValue: 'http://10.0.2.2:8000',
-    ),
+    text: _defaultServerUrl(),
   );
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -466,8 +469,9 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
               loadPractice: _authenticatedApi.openingPractice,
               gradePractice: _authenticatedApi.gradeOpeningPractice)));
 
-  Future<String?> _stockfishMove(String fen, int level) =>
-      _authenticatedApi.stockfishMove(fen, level);
+  Future<String?> _stockfishMove(String fen, int level) => Platform.isWindows
+      ? Future<String?>.value(null)
+      : _authenticatedApi.stockfishMove(fen, level);
 
   Future<void> _openMatchmaking() async {
     final api = _authenticatedApi;

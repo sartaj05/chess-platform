@@ -1,9 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 /// Stores locally played games until the Django server can accept a sync.
 class OfflineGameRepository {
@@ -11,6 +12,10 @@ class OfflineGameRepository {
 
   Future<Database> get _db async {
     if (_database != null) return _database!;
+    if (Platform.isWindows || Platform.isLinux) {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    }
     final directory = await getApplicationDocumentsDirectory();
     _database = await openDatabase(
       join(directory.path, 'chess_platform_offline.db'),

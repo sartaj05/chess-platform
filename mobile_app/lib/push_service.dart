@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -46,6 +48,7 @@ class PushService {
     if (_initialized) return;
     _initialized = true;
     tz.initializeTimeZones();
+    if (!Platform.isAndroid && !Platform.isIOS) return;
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     await _localNotifications.initialize(
       const InitializationSettings(android: android),
@@ -61,6 +64,7 @@ class PushService {
 
   static Future<void> configure(
       Future<void> Function(String token) register) async {
+    if (!Platform.isAndroid && !Platform.isIOS) return;
     final options = _firebaseOptions;
     if (options == null) return;
     try {
@@ -108,6 +112,7 @@ class PushService {
     required String gameId,
     required Duration remaining,
   }) async {
+    if (!Platform.isAndroid && !Platform.isIOS) return;
     final delay = remaining > const Duration(minutes: 2)
         ? remaining - const Duration(minutes: 1)
         : const Duration(seconds: 5);
@@ -132,6 +137,8 @@ class PushService {
     );
   }
 
-  static Future<void> cancelGameReminder(String gameId) =>
-      _localNotifications.cancel(gameId.hashCode);
+  static Future<void> cancelGameReminder(String gameId) async {
+    if (!Platform.isAndroid && !Platform.isIOS) return;
+    await _localNotifications.cancel(gameId.hashCode);
+  }
 }
