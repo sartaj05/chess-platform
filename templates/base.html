@@ -55,6 +55,7 @@
                 <li><a class="dropdown-item" href="{% url 'games:same_pc_new' %}">Same device</a></li>
                 <li><a class="dropdown-item" href="{% url 'rooms:list' %}">Live rooms</a></li>
                 <li><a class="dropdown-item" href="{% url 'tournaments:list' %}">Tournaments</a></li>
+                {% if request.user.is_authenticated %}<li><a class="dropdown-item" href="{% url 'core:community' %}">Community & rewards</a></li>{% endif %}
               </ul>
             </li>
           </ul>

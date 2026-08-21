@@ -7,15 +7,25 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 from django.views import View
 
 from apps.accounts.models import User, UserPreference
+from apps.core.models import AchievementShare, NewsArticle, PlayerReward, ReferralInvite, Season
 from apps.core.product_experience import live_platform_activity, player_progress
+from apps.core.retention import (
+    claim_mission,
+    club_leaderboard,
+    create_achievement_share,
+    create_referral_invite,
+    mission_dashboard,
+    redeem_referral,
+)
 from apps.games.models import Game
 from apps.games.services import actor_from_request, create_same_pc_game, play_local_bot_reply
 from apps.rooms.models import Room
 from apps.rooms.services import create_room, join_room
-from apps.tournaments.models import Tournament
+from apps.tournaments.models import Tournament, TournamentAnnouncement
 
 
 class HomeView(View):
@@ -195,3 +205,46 @@ class GlobalSearchView(View):
             "core/search.html",
             {"query": query, "players": players, "tournaments": tournaments, "games": games},
         )
+
+
+class CommunityHubView(LoginRequiredMixin, View):
+    def get(self, request):
+        rewards, _ = PlayerReward.objects.get_or_create(user=request.user)
+        return render(request, "core/community_hub.html", {
+            "missions": mission_dashboard(request.user), "rewards": rewards,
+            "season": Season.objects.filter(is_active=True, starts_at__lte=timezone.now(),
+                                             ends_at__gte=timezone.now()).first(),
+            "club_leaderboard": club_leaderboard()[:20],
+            "news": NewsArticle.objects.filter(is_published=True, published_at__lte=timezone.now())[:20],
+            "tournament_announcements": TournamentAnnouncement.objects.filter(
+                tournament__entries__user=request.user
+            ).select_related("tournament", "author")[:20],
+            "referral_codes": ReferralInvite.objects.filter(inviter=request.user),
+            "achievements": player_progress(request.user)["achievements"],
+        })
+
+    def post(self, request):
+        action = request.POST.get("action", "")
+        try:
+            if action == "claim_mission":
+                claim_mission(request.user, int(request.POST.get("mission_id", 0)))
+            elif action == "share_achievement":
+                share = create_achievement_share(request.user, request.POST.get("achievement_key", ""))
+                messages.success(request, f"Share link created: /achievements/{share.share_code}/")
+            elif action == "create_referral":
+                invite = create_referral_invite(request.user)
+                messages.success(request, f"Invite code created: {invite.code}")
+            elif action == "redeem_referral":
+                redeem_referral(request.POST.get("code", ""), request.user)
+                messages.success(request, "Referral applied. Your inviter earned 100 points.")
+            else:
+                raise ValueError("Unsupported community action.")
+        except (ValueError, ReferralInvite.DoesNotExist) as exc:
+            messages.error(request, str(exc))
+        return redirect("core:community")
+
+
+class AchievementShareView(View):
+    def get(self, request, code):
+        share = get_object_or_404(AchievementShare.objects.select_related("user"), share_code=code)
+        return render(request, "core/achievement_share.html", {"share": share})

@@ -71,6 +71,7 @@ class FriendChallenge(TimeStampedModel):
         "rooms.Room", on_delete=models.SET_NULL, null=True, blank=True, related_name="friend_challenges"
     )
     status = models.CharField(max_length=16, default="pending", db_index=True)
+    reminded_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ["-created_at"]

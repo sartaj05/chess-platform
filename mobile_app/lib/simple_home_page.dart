@@ -18,6 +18,7 @@ import 'tournament_page.dart';
 import 'deep_link_service.dart';
 import 'game_replay_page.dart';
 import 'onboarding_page.dart';
+import 'retention_page.dart';
 import 'dart:async';
 
 enum PlayerSide { white, black, random }
@@ -52,6 +53,7 @@ class SimpleHomePage extends StatefulWidget {
 
 class _SimpleHomePageState extends State<SimpleHomePage> {
   StreamSubscription<MobileLink>? _deepLinkSubscription;
+  Timer? _presenceTimer;
   final _server = TextEditingController(
     text: const String.fromEnvironment(
       'CHESS_SERVER_URL',
@@ -136,6 +138,8 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
     try {
       final api = _MobileApi(_server.text, _token, _cookie, session: _session);
       final profile = await api.profile();
+      await api.presenceHeartbeat();
+      _startPresenceHeartbeat();
       final experience = await api.experience();
       if (!mounted) return;
       setState(() {
@@ -156,6 +160,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
   @override
   void dispose() {
     _deepLinkSubscription?.cancel();
+    _presenceTimer?.cancel();
     _server.dispose();
     _email.dispose();
     _password.dispose();
@@ -195,6 +200,8 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
           server: _server.text.trim(),
         );
         _token = _session.accessToken;
+        await _authenticatedApi.presenceHeartbeat();
+        _startPresenceHeartbeat();
         await PushService.configure(_authenticatedApi.registerPushDevice);
         final profile =
             await _MobileApi(_server.text, _token, _cookie, session: _session)
@@ -223,6 +230,7 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
   }
 
   Future<void> _logout() async {
+    _presenceTimer?.cancel();
     await _session.clear();
     if (!mounted) return;
     setState(() {
@@ -233,6 +241,17 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
       _selectedBotLevel = 1;
       _displayName = null;
       _message = 'Logged out.';
+    });
+  }
+
+  void _startPresenceHeartbeat() {
+    _presenceTimer?.cancel();
+    _presenceTimer = Timer.periodic(const Duration(seconds: 60), (_) async {
+      if (_signedIn) {
+        try {
+          await _authenticatedApi.presenceHeartbeat();
+        } catch (_) {}
+      }
     });
   }
 
@@ -435,6 +454,11 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
               action: _authenticatedApi.tournamentAction,
               create: _authenticatedApi.createTournament,
               manage: _authenticatedApi.manageTournament)));
+  Future<void> _openRetention() async =>
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => RetentionPage(
+              load: _authenticatedApi.retention,
+              action: _authenticatedApi.retentionAction)));
   Future<void> _openOpenings() async =>
       Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => OpeningStatsPage(
@@ -493,6 +517,9 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
         return;
       case 'tournaments':
         await _openTournaments();
+        return;
+      case 'community':
+        await _openRetention();
         return;
       case 'competitive':
         await _openCompetitive();
@@ -558,6 +585,11 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                       child: ListTile(
                           leading: Icon(Icons.workspace_premium_outlined),
                           title: Text('Tournaments'))),
+                  PopupMenuItem(
+                      value: 'community',
+                      child: ListTile(
+                          leading: Icon(Icons.emoji_events_outlined),
+                          title: Text('Community & rewards'))),
                   PopupMenuItem(
                       value: 'openings',
                       child: ListTile(
@@ -734,14 +766,23 @@ class _SimpleHomePageState extends State<SimpleHomePage> {
                               decoration: const InputDecoration(
                                   labelText: 'Computer personality'),
                               items: const [
-                                DropdownMenuItem(value: 'balanced', child: Text('Balanced')),
-                                DropdownMenuItem(value: 'aggressive', child: Text('Aggressive attacker')),
-                                DropdownMenuItem(value: 'positional', child: Text('Positional strategist')),
-                                DropdownMenuItem(value: 'defensive', child: Text('Solid defender')),
-                                DropdownMenuItem(value: 'unpredictable', child: Text('Creative wildcard')),
+                                DropdownMenuItem(
+                                    value: 'balanced', child: Text('Balanced')),
+                                DropdownMenuItem(
+                                    value: 'aggressive',
+                                    child: Text('Aggressive attacker')),
+                                DropdownMenuItem(
+                                    value: 'positional',
+                                    child: Text('Positional strategist')),
+                                DropdownMenuItem(
+                                    value: 'defensive',
+                                    child: Text('Solid defender')),
+                                DropdownMenuItem(
+                                    value: 'unpredictable',
+                                    child: Text('Creative wildcard')),
                               ],
-                              onChanged: (value) => setState(() =>
-                                  _botPersonality = value ?? 'balanced'),
+                              onChanged: (value) => setState(
+                                  () => _botPersonality = value ?? 'balanced'),
                             ),
                             const SizedBox(height: 10),
                             FilledButton.icon(
@@ -1442,6 +1483,16 @@ class _MobileApi {
 
   Future<Map<String, dynamic>> social() async =>
       Map<String, dynamic>.from(await _request('GET', 'api/social/') as Map);
+  Future<Map<String, dynamic>> retention() async =>
+      Map<String, dynamic>.from(await _request('GET', 'api/retention/') as Map);
+  Future<Map<String, dynamic>> retentionAction(
+          Map<String, dynamic> values) async =>
+      Map<String, dynamic>.from(
+          await _request('POST', 'api/retention/', values) as Map);
+  Future<void> presenceHeartbeat() async {
+    await _request('POST', 'api/presence/heartbeat/');
+  }
+
   Future<void> socialAction(Map<String, dynamic> values) async {
     await _request('POST', 'api/social/', values);
   }

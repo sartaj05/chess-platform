@@ -2,6 +2,7 @@ from django.urls import path
 
 from .views import (
     AcceptFriendRequestView,
+    ChallengeReminderView,
     FriendListView,
     FriendRequestActionView,
     RemoveFriendView,
@@ -15,4 +16,5 @@ urlpatterns = [
     path("<int:pk>/accept/", AcceptFriendRequestView.as_view(), name="accept"),
     path("<int:pk>/decline/", FriendRequestActionView.as_view(), name="decline"),
     path("<int:pk>/remove/", RemoveFriendView.as_view(), name="remove"),
+    path("challenges/<int:pk>/remind/", ChallengeReminderView.as_view(), name="challenge_remind"),
 ]

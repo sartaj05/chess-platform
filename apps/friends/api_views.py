@@ -1,3 +1,4 @@
+from django.core.cache import cache
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
 from rest_framework import permissions, response, views
@@ -30,12 +31,15 @@ class SocialAPIView(views.APIView):
         rows = []
         for item in friendships:
             other = item.other_user(request.user)
+            player = UserSerializer(other, context={"request": request}).data
+            preferences, _ = UserPreference.objects.get_or_create(user=other)
+            player["online"] = preferences.show_online_status and bool(cache.get(f"presence:user:{other.pk}"))
             rows.append(
                 {
                     "id": item.pk,
                     "status": item.status,
                     "incoming": item.addressee_id == request.user.pk,
-                    "player": UserSerializer(other, context={"request": request}).data,
+                    "player": player,
                 }
             )
         conversations = []
@@ -67,7 +71,15 @@ class SocialAPIView(views.APIView):
                     ],
                 }
             )
-        return response.Response({"friendships": rows, "conversations": conversations})
+        challenges = FriendChallenge.objects.filter(
+            Q(challenger=request.user) | Q(challenged=request.user)
+        ).select_related("challenger", "challenged", "room")[:30]
+        return response.Response({"friendships": rows, "conversations": conversations,
+                                  "challenges": [{"id": item.pk, "challenger": item.challenger.display_name,
+                                                   "challenged": item.challenged.display_name,
+                                                   "status": item.status, "room_code": item.room.code if item.room else None,
+                                                   "can_remind": item.challenger_id == request.user.pk and item.status == "pending"}
+                                                  for item in challenges]})
 
     def post(self, request):
         action = request.data.get("action")

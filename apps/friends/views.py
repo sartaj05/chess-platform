@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.cache import cache
@@ -7,10 +9,13 @@ from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Q
 from django.http import HttpRequest, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
+from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
 from apps.accounts.models import UserPreference
+from apps.notifications.models import Notification
+from apps.notifications.services import notify
 
 from .forms import FriendRequestForm
 from .models import FriendChallenge, Friendship
@@ -91,4 +96,23 @@ class RemoveFriendView(LoginRequiredMixin, View):
             messages.success(request, "Friend removed.")
         except PermissionDenied as exc:
             messages.error(request, str(exc))
+        return redirect("friends:list")
+
+
+class ChallengeReminderView(LoginRequiredMixin, View):
+    def post(self, request: HttpRequest, pk: int) -> HttpResponse:
+        challenge = get_object_or_404(
+            FriendChallenge.objects.select_related("challenged", "room"), pk=pk, challenger=request.user
+        )
+        if challenge.status != "pending":
+            messages.error(request, "Only pending challenges can be reminded.")
+        elif challenge.reminded_at and challenge.reminded_at > timezone.now() - timedelta(hours=24):
+            messages.error(request, "A reminder was already sent in the last 24 hours.")
+        else:
+            notify(recipient=challenge.challenged, kind=Notification.Kind.SYSTEM,
+                   title=f"Reminder: {request.user.display_name} is waiting to play",
+                   target_url=challenge.room.get_absolute_url() if challenge.room else "")
+            challenge.reminded_at = timezone.now()
+            challenge.save(update_fields=["reminded_at", "updated_at"])
+            messages.success(request, "Challenge reminder sent.")
         return redirect("friends:list")
