@@ -610,6 +610,120 @@ def desktop_setup_document() -> list[str]:
     ]
 
 
+def remaining_features_document() -> list[str]:
+    return [
+        heading("1. Current assessment"),
+        paragraph("Chess Platform already contains a broad website, Django API, Flutter Android client and portable Windows desktop client. The largest remaining work is production readiness, cross-device proof and operational ownership—not basic chess functionality. This backlog intentionally excludes features verified in the repository."),
+        table(["Area", "Current state", "Main remaining objective"], [
+            ["Django website/API", "Feature-rich and test-covered", "Deploy, observe, load-test and harden with real services"],
+            ["Flutter Android", "Broad feature parity", "Physical-device proof, store release and remaining UX parity"],
+            ["Windows desktop", "Portable offline release builds", "Code signing, installer/update channel and desktop-specific QA"],
+            ["Operations", "Docker/scripts/templates exist", "Configure real infrastructure and prove recovery"],
+        ], [2100, 3000, 4100]),
+        heading("2. Release blockers—complete before public users"),
+        table(["Priority", "Remaining work", "Definition of done"], [
+            ["P0", "Production domain and TLS", "Real DNS, trusted HTTPS certificate, WSS proxying, allowed hosts, CSRF origins and secure redirects verified."],
+            ["P0", "Production data services", "Managed or hardened PostgreSQL and Redis deployed; Django, Channels, Celery worker and beat remain healthy after restart."],
+            ["P0", "Secrets and email", "Unique Django/database secrets and working SMTP verification/reset delivery; no placeholder values or secrets in Git."],
+            ["P0", "Stockfish production install", "Pinned engine binary installed on web/worker hosts; bot and analysis jobs verified under resource limits."],
+            ["P0", "Firebase production setup", "Real Android Firebase client values and Admin credential; foreground, background and terminated-state notification navigation verified."],
+            ["P0", "Android signing custody", "Release APK/AAB signed with the permanent key; encrypted off-device key/password backup and upgrade-install test completed."],
+            ["P0", "Legal/store publication", "Public privacy policy and terms, Play listing, truthful screenshots, Data Safety, content rating and internal/closed track approval."],
+            ["P0", "Backup recovery proof", "Scheduled encrypted off-site database/media backups with retention and a documented successful full restore rehearsal."],
+        ], [900, 2700, 5600]),
+        heading("3. Quality and validation still required"),
+        bullet_list([
+            "Run the complete Android integration journey on at least one low-memory phone, one current phone, multiple Android versions and unreliable networks; retain test evidence.",
+            "Validate browser-versus-phone and phone-versus-phone moves, clocks, reconnect grace, abandonment, rematch, chat, tournament pairing and notification deep links.",
+            "Run concurrent WebSocket, matchmaking and tournament load tests; establish capacity limits and scaling triggers.",
+            "Add automated Windows smoke/integration testing in CI. The current Windows release was built locally, but desktop CI and clean-PC execution should be repeatable.",
+            "Perform keyboard-only, TalkBack/screen-reader, 200% text, contrast, reduced-motion and color-blind board tests across web, Android and Windows.",
+            "Test offline-to-online synchronization conflicts through real UI flows, including keep-server, keep-device-copy, interrupted upload and duplicate prevention.",
+            "Complete security review: dependency scanning, penetration test, rate-limit verification, object-level authorization and WebSocket abuse testing.",
+        ]),
+        heading("4. Android application gaps"),
+        table(["Priority", "Feature/gap", "Recommended completion"], [
+            ["High", "Full localization coverage", "Move remaining hard-coded Flutter text into ARB resources; verify Hindi/Spanish and add RTL-ready layout support."],
+            ["High", "Offline sync management screen", "Show queued games, last sync, conflicts and explicit resolution actions instead of relying mainly on repository/service logic."],
+            ["High", "Mobile security parity", "Confirm password reset and TOTP setup/challenge/recovery are complete in-app, not only available on the website."],
+            ["High", "Background clock reliability", "Verify clocks/your-move alerts under Doze, battery optimization, force-stop, reboot and vendor-specific background restrictions."],
+            ["Medium", "Online board theme parity", "Apply the chosen piece/board/sound set consistently to offline, online, puzzle, replay and analysis boards."],
+            ["Medium", "Large-screen navigation", "Provide intentional foldable/tablet landscape compositions rather than only constrained widths."],
+            ["Medium", "Download management", "Give exported PGN/FEN/data clear success UI, share/open actions, filenames and storage-permission handling across Android versions."],
+            ["Optional", "iOS application", "No productized iOS target/release pipeline exists; implement only if iPhone distribution becomes a business requirement."],
+        ], [1000, 2800, 5400]),
+        heading("5. Windows desktop gaps"),
+        bullet_list([
+            "Purchase/use a trusted Windows code-signing certificate and sign the EXE or installer so public users do not receive unknown-publisher warnings.",
+            "Create a professional MSIX/MSI installer with Start Menu shortcut, uninstall entry, version metadata and safe per-user installation.",
+            "Design an update mechanism: signed release manifest, update notification, rollback and data-schema compatibility policy.",
+            "Add Windows-specific keyboard shortcuts, focus indicators, window-state persistence, high-DPI/multi-monitor testing and screen-reader validation.",
+            "Decide whether the desktop product should support local packaged Stockfish analysis. Current offline Windows bot uses bundled fallback logic; server-grade Stockfish analysis remains an online/server function.",
+            "Add a desktop settings page that clearly distinguishes Offline, Local server and Production online connection states.",
+            "Create desktop release CI, checksum/signature publication and clean Windows 10/11 installation tests.",
+        ]),
+        page_break(),
+        heading("6. Website and backend improvements"),
+        bullet_list([
+            "Replace remaining utilitarian/empty states with curated onboarding, sample events and clear calls to action without fabricating live activity.",
+            "Add robust pagination/filtering/export for high-volume moderator cases, reports, messages, games, clubs and tournaments.",
+            "Extend organizer tooling with audit history, bulk messaging, check-in/no-show workflows, dispute handling and safe rollback of pairings/results.",
+            "Add account-session management: list active sessions/devices, revoke individual sessions, suspicious-login alerts and recovery-code lifecycle.",
+            "Strengthen privacy controls with profile discoverability, presence visibility, challenge/message permissions and retention choices that are enforced across APIs.",
+            "Provide operational admin views for queue health, failed Celery jobs, Stockfish capacity, WebSocket connections, notification failures and backup status.",
+            "Introduce database/query performance budgets, caching metrics and indexes based on production-sized data rather than small local fixtures.",
+        ]),
+        heading("7. Chess features that could differentiate the product"),
+        paragraph("These are valuable future additions, not release blockers."),
+        bullet_list([
+            "Study plans that combine opening practice, puzzles, annotated games and spaced repetition into a measurable weekly curriculum.",
+            "Coach mode with goal-based review: recurring mistake themes, personalized exercises and progress across openings, tactics and endgames.",
+            "Richer variant support beyond Standard/Chess960, such as King of the Hill, Three-check or Crazyhouse, only with complete rules/testing/matchmaking separation.",
+            "Endgame tablebase integration for exact results and training positions, with licensing/storage/latency considered.",
+            "Broadcast-grade tournament pages with live boards, delay controls, commentary, embeddable widgets and anti-spoiler settings.",
+            "Federated/imported rating and identity verification only if required by clubs or organized events.",
+        ]),
+        heading("8. Social, retention and business enhancements"),
+        bullet_list([
+            "Optional opt-in email digest and event calendar reminders with unsubscribe and notification-frequency controls.",
+            "Club roles, moderation permissions, private club forums, scheduled club arenas and season promotion/relegation.",
+            "Creator/coach profiles, private studies and lesson sharing, with abuse/reporting and content ownership rules.",
+            "Shareable web result/review pages with privacy-safe previews and stable deep links.",
+            "If monetization is introduced later: subscriptions or supporter plans, entitlement service, invoices/tax handling, refunds and store-policy compliance. Payments are not required for the current free launch.",
+        ]),
+        heading("9. Architecture and maintainability backlog"),
+        bullet_list([
+            "Split large Flutter files—especially simple_home_page.dart—into feature modules, typed API clients, repositories and testable state controllers.",
+            "Generate typed Dart API models/clients from the OpenAPI schema to reduce Map/dynamic parsing errors and web/mobile contract drift.",
+            "Define versioned REST/WebSocket compatibility and forced/minimum-client-version behavior before desktop/mobile releases diverge.",
+            "Add structured domain events/outbox delivery for important notifications and tournament/game side effects so retries are observable and idempotent.",
+            "Create database migration/rollback rehearsal and zero-downtime deployment rules for active games and WebSocket clients.",
+            "Set measurable service-level objectives for HTTP latency, move acknowledgement, matchmaking time, notification delivery and recovery time." ,
+        ]),
+        heading("10. Already implemented—not pending"),
+        bullet_list([
+            "Standard chess and Chess960, custom positions, correspondence and conditional moves.",
+            "Promotion, premoves, rematch, takebacks, draw claims, reconnect and abandoned-game handling.",
+            "Separate speed ratings, matchmaking expansion, leaderboard and game history/replay.",
+            "Stockfish analysis, evaluation data, accuracy, best lines, retry and fair-play review tools.",
+            "Visual puzzles, ratings, streaks, daily puzzle, courses and solution explanations.",
+            "Friends, presence, challenges, direct/game/spectator chat, message controls, reports and blocks.",
+            "Tournament creation/codes, rounds, tie-breaks, organizer controls, automatic games, clubs, team competitions and simuls.",
+            "Achievements, recommendations, missions, referrals, seasonal events, news and activity feeds.",
+            "Profiles, privacy preferences, data export/account deletion, search and moderator/appeal interfaces.",
+            "Flutter Android feature set plus portable offline Windows desktop build and documentation.",
+        ]),
+        heading("11. Recommended next delivery sequence"),
+        table(["Phase", "Target outcome"], [
+            ["1. Production configuration", "Real domain/TLS, PostgreSQL, Redis, Celery, SMTP, Stockfish, Firebase and secrets."],
+            ["2. Release proof", "Backups restored, load/security tests passed, Android physical-device matrix and Windows clean-PC tests recorded."],
+            ["3. Distribution", "Signed Android internal/closed release and signed Windows installer with checksums, privacy and support processes."],
+            ["4. Parity polish", "Localization, offline sync UI, background reliability, themes, accessibility and large-screen UX."],
+            ["5. Differentiation", "Study/coach experiences, richer broadcasts, club seasons and carefully selected variants."],
+        ], [2000, 7200]),
+    ]
+
+
 def main() -> None:
     write_docx(
         "04_feature_inventory_and_gap_analysis.docx",
@@ -641,7 +755,13 @@ def main() -> None:
         "Portable offline app, source setup, online connection, rebuilding and troubleshooting",
         desktop_setup_document(),
     )
-    for path in sorted(OUTPUT.glob("0[4-8]_*.docx")):
+    write_docx(
+        "09_remaining_features_and_release_backlog.docx",
+        "Remaining Features and Release Backlog",
+        "Prioritized gaps for Django, website, Flutter Android and Windows desktop",
+        remaining_features_document(),
+    )
+    for path in sorted(OUTPUT.glob("0[4-9]_*.docx")):
         print(f"Created {path.relative_to(ROOT)} ({path.stat().st_size:,} bytes)")
 
 
