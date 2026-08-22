@@ -245,13 +245,17 @@ def personal_opening_statistics(user: Any) -> list[dict[str, Any]]:
     for game in games:
         played = [move.uci for move in game.moves.all().order_by("ply_number")]
         match = next((line for line in openings if played[:len(line.moves_uci)] == line.moves_uci), None)
-        if not match: continue
-        row = stats.setdefault(match.eco, {"eco":match.eco,"name":match.name,"games":0,"wins":0,"draws":0,"losses":0})
+        if not match:
+            continue
+        row = stats.setdefault(match.eco, {"eco": match.eco, "name": match.name, "games": 0, "wins": 0, "draws": 0, "losses": 0})
         row["games"] += 1
         is_white = game.white_user_id == user.pk
-        if game.result == Game.Result.DRAW: row["draws"] += 1
-        elif (game.result == Game.Result.WHITE_WIN) == is_white: row["wins"] += 1
-        else: row["losses"] += 1
+        if game.result == Game.Result.DRAW:
+            row["draws"] += 1
+        elif (game.result == Game.Result.WHITE_WIN) == is_white:
+            row["wins"] += 1
+        else:
+            row["losses"] += 1
     return sorted(stats.values(), key=lambda row: -row["games"])
 
 

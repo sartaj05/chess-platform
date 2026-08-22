@@ -14,7 +14,9 @@ def test_rated_result_updates_elo_once():
 
     apply_elo_ratings(game)
     apply_elo_ratings(game)
-    white.refresh_from_db(); black.refresh_from_db(); game.refresh_from_db()
+    white.refresh_from_db()
+    black.refresh_from_db()
+    game.refresh_from_db()
 
     assert (white.rating, black.rating) == (1216, 1184)
     assert white.rated_games == black.rated_games == 1

@@ -5,10 +5,10 @@ from apps.rooms.views import (
     JoinRoomByCodeView,
     LanModeView,
     LeaveRoomView,
+    MatchmakingView,
     RoomDetailView,
     RoomListView,
     RoomStateView,
-    MatchmakingView,
 )
 
 app_name = "rooms"

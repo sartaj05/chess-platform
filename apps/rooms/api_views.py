@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, pagination, permissions, response, status, views
 
@@ -11,7 +12,6 @@ from apps.games.services import create_game_from_room, serialize_game
 from apps.rooms.models import Room
 from apps.rooms.serializers import CreateRoomSerializer, JoinRoomSerializer, RoomParticipantSerializer, RoomSerializer
 from apps.rooms.services import enter_matchmaking
-from django.utils import timezone
 
 
 class PublicRoomPagination(pagination.PageNumberPagination):

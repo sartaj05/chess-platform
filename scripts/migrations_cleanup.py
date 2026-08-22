@@ -23,7 +23,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MANAGE_PY = PROJECT_ROOT / "manage.py"
 SKIPPED_PARTS = {".git", ".venv", "venv", "node_modules", "build"}

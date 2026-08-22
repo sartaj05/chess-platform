@@ -1,6 +1,5 @@
 from django.db import migrations
 
-
 MISSIONS = [
     ("Daily game", "Complete one chess game today.", "daily", "games", 1, 20),
     ("Daily tactics", "Solve three puzzles today.", "daily", "puzzles", 3, 30),

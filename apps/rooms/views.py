@@ -1,17 +1,24 @@
 from __future__ import annotations
 
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db.models import Prefetch
 from django.http import Http404, HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse_lazy
-from django.contrib.auth.mixins import LoginRequiredMixin
 from django.views.generic import FormView, ListView, TemplateView, View
 
 from apps.rooms.forms import CreateRoomForm, JoinRoomForm
 from apps.rooms.models import Room, RoomEvent, RoomParticipant
-from apps.rooms.services import absolute_invite_url, create_room, ensure_guest_identity, enter_matchmaking, join_room, serialize_room
+from apps.rooms.services import (
+    absolute_invite_url,
+    create_room,
+    ensure_guest_identity,
+    enter_matchmaking,
+    join_room,
+    serialize_room,
+)
 
 
 class RoomListView(ListView):

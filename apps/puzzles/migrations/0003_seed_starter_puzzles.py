@@ -1,9 +1,6 @@
 from __future__ import annotations
 
-from __future__ import annotations
-
 from django.db import migrations
-
 
 STARTER_PUZZLES = [
     ("Control the centre", "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", ["e2e4", "e7e5", "g1f3"], 700, "beginner", ["development", "centre"]),

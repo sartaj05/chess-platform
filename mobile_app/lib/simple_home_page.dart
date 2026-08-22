@@ -1695,7 +1695,7 @@ class _MobileApi {
           retryAfterRefresh &&
           session?.refreshToken != null) {
         await _refreshAccess();
-        return _request(method, path, body, false);
+        return await _request(method, path, body, false);
       }
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw HttpException(_errorMessage(data, response.statusCode));

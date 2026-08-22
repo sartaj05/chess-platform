@@ -1,6 +1,12 @@
 from django.urls import path
 
-from apps.rooms.api_views import JoinRoomAPIView, MatchmakingAPIView, RoomListCreateAPIView, RoomRetrieveAPIView, StartRoomGameAPIView
+from apps.rooms.api_views import (
+    JoinRoomAPIView,
+    MatchmakingAPIView,
+    RoomListCreateAPIView,
+    RoomRetrieveAPIView,
+    StartRoomGameAPIView,
+)
 
 app_name = "rooms-api"
 

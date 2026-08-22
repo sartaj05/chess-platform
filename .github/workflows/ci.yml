@@ -63,7 +63,7 @@ jobs:
         run: flutter test --concurrency=1
 
   android-emulator:
-    runs-on: macos-14
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2
@@ -77,5 +77,6 @@ jobs:
           api-level: 35
           arch: x86_64
           profile: pixel_6
+          emulator-boot-timeout: 900
           working-directory: mobile_app
           script: flutter test integration_test/app_test.dart -d emulator-5554

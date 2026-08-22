@@ -1,6 +1,14 @@
 from django.urls import path
 
-from .views import AchievementShareView, CommunityHubView, GlobalSearchView, HomeView, OfflineModeInfoView, PlayView, health_check
+from .views import (
+    AchievementShareView,
+    CommunityHubView,
+    GlobalSearchView,
+    HomeView,
+    OfflineModeInfoView,
+    PlayView,
+    health_check,
+)
 
 app_name = "core"
 urlpatterns = [

@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from datetime import timedelta
+
 import chess
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
-from datetime import timedelta
 
 from apps.accounts.models import User
 
@@ -29,7 +30,14 @@ def submit_move(*, attempt: PuzzleAttempt, move_text: str) -> tuple[bool, str | 
     if submitted != expected:
         attempt.mistakes += 1
         if not attempt.rating_applied:
-            user=attempt.user;expected_score=1/(1+10**((attempt.puzzle.rating-user.puzzle_rating)/400));change=-max(1,round(24*expected_score));user.puzzle_rating=max(100,user.puzzle_rating+change);user.puzzle_streak=0;user.save(update_fields=["puzzle_rating","puzzle_streak"]);attempt.rating_change=change;attempt.rating_applied=True
+            user = attempt.user
+            expected_score = 1 / (1 + 10 ** ((attempt.puzzle.rating - user.puzzle_rating) / 400))
+            change = -max(1, round(24 * expected_score))
+            user.puzzle_rating = max(100, user.puzzle_rating + change)
+            user.puzzle_streak = 0
+            user.save(update_fields=["puzzle_rating", "puzzle_streak"])
+            attempt.rating_change = change
+            attempt.rating_applied = True
         attempt.save(update_fields=["mistakes", "rating_change", "rating_applied", "updated_at"])
         return False, None
 

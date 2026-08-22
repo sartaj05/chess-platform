@@ -5,7 +5,6 @@ from django.db.models import Q
 from django.views.generic import ListView, TemplateView
 
 from apps.accounts.models import User
-
 from apps.chat.models import Message
 from apps.friends.models import Friendship
 from apps.games.models import Game

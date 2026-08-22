@@ -1,8 +1,9 @@
 from unittest.mock import patch
 
 import pytest
-from apps.stockfish.engine import EngineResult, StockfishUnavailableError
 from django.urls import reverse
+
+from apps.stockfish.engine import EngineResult, StockfishUnavailableError
 
 
 @pytest.mark.django_db
